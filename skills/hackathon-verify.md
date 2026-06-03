@@ -26,6 +26,23 @@ Make all MCP calls sequentially, not in parallel.
 
 ---
 
+## Step 0 — Claim the epic before verifying
+
+Verification is the **highest-priority** path, so the moment an epic's last child merges
+every idle machine would otherwise pick the same epic and all run the suite, all file
+duplicate bugs, and all try to close it. Claim first to serialise it.
+
+Three sequential MCP calls, no other actions between:
+1. Add yourself as assignee to the epic
+2. Comment on the epic: `agent: verifying — [github username] — [ISO timestamp]`
+3. Re-read the epic (collision check): another `agent: verifying` comment within 2 minutes,
+   or one already present and < 30 min old from a different agent → back off: unassign,
+   comment `agent: verify collision — backing off`, stop. (Do not add a label; the
+   `agent: verifying` comment is the claim. A claim older than 30 minutes is treated as
+   stale and the epic becomes verifiable again — that is the crash-recovery path.)
+
+---
+
 ## Step 1 — Load the epic
 
 Read via the GitHub MCP:
@@ -34,16 +51,21 @@ Read via the GitHub MCP:
 2. `PLAN.md` — relevant feature section and done criteria
 3. `SPECS.md` — any relevant contracts or flows for this feature
 
-Confirm every child issue is closed. If any are still open, stop: comment on the epic
-`agent: verify — blocked, child issues still open: #<list>` and output `NOTHING_TO_DO`.
+Confirm every child issue is closed. If any are still open (race with a just-merged PR),
+comment `agent: verify — child issues still open: #<list>, releasing`, unassign yourself,
+and stop. Do not emit a loop signal — return to hackathon-session, which owns that decision.
 
 ---
 
-## Step 2 — Pull latest main
+## Step 2 — Sync latest main
+
+Use the same fetch + fast-forward form as the rest of the protocol (never a plain
+`git pull`, which can create a merge commit):
 
 ```bash
+git fetch origin
 git checkout main
-git pull origin main
+git merge --ff-only origin/main
 ```
 
 ---
@@ -55,7 +77,9 @@ git pull origin main
 ```
 
 Note: pass, fail, and skip counts. If the suite cannot run (missing dependencies,
-config error), create a `bug` + `ready` issue describing the setup problem and stop.
+config error), treat it as a failure: follow the "Failures found" procedure in Step 5
+(dedupe, file a `bug` + `ready` issue describing the setup problem, add it to the epic's
+Child Issues, unassign yourself), then stop.
 
 ---
 
@@ -97,7 +121,13 @@ For each criterion, record: PASS or FAIL, and a one-line note.
 ### Failures found (test failures or unmet criteria)
 
 For each failure:
-1. Create a `bug` + `ready` GitHub issue via the GitHub MCP:
+
+1. **Deduplicate first.** Search open issues via the GitHub MCP for one that already
+   describes this failure (by test name, criterion, or error keyword). If a matching open
+   issue exists, do **not** file another — note its number and move on. (Without this,
+   every machine that reaches Path 0 before the bug is fixed would file the same bug again.)
+
+2. For each genuinely new failure, create a `bug` + `ready` GitHub issue via the GitHub MCP:
    **Title:** `[Epic #<n> verify] <short failure description>`
    **Body:**
    ```
@@ -113,7 +143,18 @@ For each failure:
    ## Actual
    <what actually happened>
    ```
-2. After creating all bug issues, comment on the epic:
+
+3. **Append the new bug issues to the epic's `## Child Issues` section** via the GitHub MCP,
+   in the exact tracked format:
+   ```
+   - [ ] #<bug number> [Epic #<n> verify] <short description>
+   ```
+   This is essential: Path 0 re-fires only when **every** linked child issue is closed, so
+   adding the open bugs as children makes the epic no longer "complete" and stops Path 0 from
+   re-verifying on a loop. When the bugs are fixed and their PRs merge, the children are all
+   closed again and Path 0 re-verifies automatically.
+
+4. Comment on the epic:
    ```
    agent: epic verification failed
 
@@ -123,11 +164,11 @@ For each failure:
    - [FAIL] <criterion> — bug filed: #<issue number>
    ...
 
-   Epic remains open until bugs are resolved.
+   Filed/linked bugs added to Child Issues. Epic remains open until they are resolved.
    ```
-3. Do not close the epic — it stays open until the bug issues are resolved and
-   verification is re-run.
-4. Stop.
+
+5. Unassign yourself from the epic (release the verifying claim). Do **not** close the epic —
+   it stays open until the bug issues are resolved and verification re-runs. Stop.
 
 ---
 

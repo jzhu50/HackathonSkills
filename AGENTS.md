@@ -66,7 +66,9 @@ An issue has exactly one of: `needs-scoping`, `ready`, `in-progress`, `blocked`,
 `epic` and `bug` are additive.
 
 `in-review` means exactly one thing: a PR is open and unmerged. Do not apply this label
-in any other situation. GitHub auto-removes it (by closing the issue) when the PR merges.
+in any other situation. When the PR merges, GitHub auto-closes the issue (via `Closes #n`);
+the reviewer also removes the `in-review` label on merge so a reopened issue never carries
+a stale state. (Closing an issue does not by itself strip its labels.)
 
 ---
 
@@ -104,6 +106,23 @@ be rejected automatically.
 
 ---
 
+## Dependency unblocking — every session, during orientation
+
+Nothing closes the loop on `blocked` issues automatically — a blocker merging or an
+epic closing does not flip its dependents. So every session, during orientation (cheap
+bookkeeping, like git sync — **not** your unit of work), sweep the `blocked` issues:
+
+For each `blocked` issue, read the issue numbers it references in its `## Blocked By`
+section or a `blocked-by: #<n>` comment, **and** any epics in a `## Depends on` / `## Dependencies`
+section. If **every** referenced issue is now closed, change the label `blocked` → `ready`
+via the GitHub MCP and comment `agent: unblocked — all dependencies closed`.
+
+Do only the label flips, then continue to routing. Two machines both flipping the same
+issue to `ready` is harmless (idempotent). This sweep is what makes the dependency graph
+actually flow — without it, blocked work stalls forever.
+
+---
+
 ## Claiming an issue
 
 **Always pick at random from available candidates — never the oldest.**
@@ -117,8 +136,11 @@ Do all steps **sequentially** via the GitHub MCP, with no other actions between 
 2. Comment: `agent: claiming — [your github username] — [ISO timestamp]`
 
 **Collision check (multi-agent concurrent sessions only):** Re-read the issue. Two
-assignees or two claiming comments within 2 minutes = collision. Unassign, comment
-`agent: collision — backing off`, pick a different issue at random.
+assignees or two claiming comments within 2 minutes = collision. Both colliding agents
+must back off (do not assume the other will proceed): unassign yourself, **reset the
+label to its pre-claim state** (`ready` for a task, `needs-scoping` for an epic) so the
+issue returns to the pool instead of being stranded `in-progress` with no owner, comment
+`agent: collision — backing off`, then pick a different issue at random.
 
 ---
 
@@ -179,7 +201,9 @@ prevents the loop from claiming it.
 
 **Detection:** During Phase 1 orientation, an `in-progress` issue is stalled if its
 most recent agent comment is the original claiming comment with no subsequent activity,
-and that comment is more than 2 hours old.
+and that comment is more than 30 minutes old. (30 minutes suits a hackathon's pace —
+raise it for longer-running tasks. The same window applies to a stale `agent: reviewing`
+claim on an `in-review` PR and a stale `agent: verifying` claim on an epic.)
 
 **Reclaim:** If no `ready` issues exist (Path A'), a stalled issue may be reclaimed:
 - Check whether the branch was pushed (`git fetch origin && git branch -r`)
@@ -227,6 +251,15 @@ the first task for the project should be to establish one and add it.
 ---
 
 ## Security notes
+
+**The autonomous loop runs with permissions skipped.** `run.sh` / `run.ps1` invoke
+`claude -p "Go" --dangerously-skip-permissions` so the agent can run git, the test
+command, and file edits unattended without prompts (a complete allowlist is impossible
+because the test command and build tooling are project-specific). This means the
+autonomous agent can run **any** shell command on the machine it runs on. Only point
+this loop at a repo and machine you trust, and prefer a sandboxed or disposable
+environment for an AFK run. Interactive `/hackathon-*` use is unaffected — it still
+prompts per the allowlist in `.claude/settings.json`.
 
 **PAT scope:** A personal access token covers all repos the account can access, not
 just this one. Use fine-grained PATs scoped to this repo if your GitHub plan supports it.

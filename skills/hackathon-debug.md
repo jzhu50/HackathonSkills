@@ -30,7 +30,7 @@ Three sequential MCP calls, no other actions between them:
 2. Change label `ready` → `in-progress` (keep `bug` label)
 3. Comment: `agent: claiming bug — [github username] — [ISO timestamp]`
 
-Collision check (multi-agent only): re-read the issue. Two assignees or two claiming comments within 2 minutes → unassign, comment `agent: collision — backing off`, pick a different issue.
+Collision check (multi-agent only): re-read the issue. Two assignees or two claiming comments within 2 minutes → both back off: unassign, reset the label `in-progress` → `ready` (keep `bug`) so the issue isn't stranded, comment `agent: collision — backing off`, pick a different issue.
 
 Create a branch (main is already synced by session Phase 1):
 ```bash

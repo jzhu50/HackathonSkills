@@ -9,6 +9,12 @@ The coordination protocol (GitHub Issues as shared brain, label state machine, b
 per issue, PR-only close-out) is harness-agnostic. Only the invocation and context
 loading need to change.
 
+> **Fastest path:** paste the **Harness bootstrap prompt** from the README into your agent
+> once. It performs Steps 1–4 below automatically — generating your context file, loop
+> runner, and permission/auto-approve config — so you just run the produced script and walk
+> away. This document is the long-form reference for what that prompt does and how to do it
+> by hand.
+
 ---
 
 ## What stays the same (do not modify)
@@ -38,18 +44,21 @@ in the same repo without conflicts.
 
 ---
 
-## Step 1 — Add your harness directory to `.gitignore`
+## Step 1 — Add your harness's local files to `.gitignore`
 
-Open `.gitignore` and add any directories your harness generates locally:
+Open `.gitignore` and add your harness's config/cache directory **and** the context file and
+loop runner you'll generate in Steps 2 and 4 (all local, per-machine — see "What to commit"):
 
 ```
 # My harness
 .your-harness-config-dir/
 your-harness-cache/
+YOURHARNESS.md          # generated context file (regenerate, don't commit)
+run-yourharness.sh      # generated loop runner (regenerate, don't commit)
 ```
 
-Commit this change to `.gitignore` so teammates using Claude Code don't accidentally
-commit your harness files either.
+Commit this `.gitignore` change so teammates don't accidentally commit your harness files
+either.
 
 ---
 
@@ -83,7 +92,9 @@ Read AGENTS.md in full before acting. Then follow hackathon-session.
 
 Trigger word: "Go"
 
-When there is nothing to do, output exactly: NOTHING_TO_DO
+Only hackathon-session Path E emits a loop signal, on its own line:
+- WAITING_FOR_PEERS — nothing for you to claim, but peers are still working
+- NOTHING_TO_DO — nothing in flight anywhere; the project is complete
 ```
 
 Save this as a file your harness auto-loads (name it after your harness, e.g.,
@@ -120,48 +131,64 @@ If your harness does not support MCP:
 
 ## Step 4 — Build your loop runner
 
-Create a script that:
-1. Invokes your harness with the "Go" trigger and your context file
-2. Checks the output for `NOTHING_TO_DO`
-3. Loops until `MAX_IDLE` consecutive nothing-to-do responses
+The loop must run **unattended**, so it has to invoke your harness with its auto-approve /
+non-interactive flag (the equivalent of Claude Code's `--dangerously-skip-permissions`) —
+otherwise the agent stalls at a permission prompt the loop can't answer. Find that flag for
+your harness first; if it has none, unattended running is unsafe — stop and reconsider.
 
-Example for a generic harness (`my-agent run --context <file> --prompt "Go"`):
+The loop branches on **three** outputs from `hackathon-session` Path E, in this order:
+
+| Output contains | Meaning | Action |
+|---|---|---|
+| `NOTHING_TO_DO` | Project complete — nothing in flight anywhere | Count it; exit after `MAX_IDLE` consecutive; else wait `IDLE_WAIT` |
+| `WAITING_FOR_PEERS` | Peers still working — a PR/task may appear soon | Reset count, wait `PEER_WAIT`, loop (NOT idle) |
+| neither (did work) | A unit of work was done | Reset count, wait `WORK_WAIT`, loop |
+
+Example for a generic harness (`my-agent run --auto-approve --context <file> --prompt "Go"`):
 
 ```bash
 #!/usr/bin/env bash
 set -euo pipefail
 
 CONTEXT_FILE="YOUR_HARNESS.md"
+AUTO_APPROVE="--auto-approve"   # your harness's skip-prompts flag — REQUIRED for AFK
 IDLE=0
-MAX_IDLE=3     # exit after this many consecutive NOTHING_TO_DO signals
-IDLE_WAIT=60   # seconds between idle retries (longer = less wasted context)
+MAX_IDLE=3        # exit after this many consecutive NOTHING_TO_DO signals
+IDLE_WAIT=60      # wait after NOTHING_TO_DO before re-checking
+PEER_WAIT=30      # wait while peers are still working (not counted as idle)
+WORK_WAIT=3       # wait between back-to-back units of real work
+
+[ -f "$CONTEXT_FILE" ] || { echo "Missing $CONTEXT_FILE — run the bootstrap prompt first." >&2; exit 1; }
 
 echo "Agent loop started. Press Ctrl-C to stop."
 while true; do
   echo "=== $(date '+%Y-%m-%d %H:%M:%S') ==="
-  output=$(my-agent run --context "$CONTEXT_FILE" --prompt "Go" 2>&1)
+  # || true: a transient harness failure must not kill the AFK loop via set -e.
+  output=$(my-agent run $AUTO_APPROVE --context "$CONTEXT_FILE" --prompt "Go" 2>&1) || true
   printf '%s\n' "$output"
 
   if printf '%s' "$output" | grep -qF 'NOTHING_TO_DO'; then
     IDLE=$((IDLE + 1))
-    [[ $IDLE -ge $MAX_IDLE ]] && { echo "All done."; break; }
+    [[ $IDLE -ge $MAX_IDLE ]] && { echo "Project complete — stopping."; break; }
     echo "Idle ($IDLE/$MAX_IDLE). Waiting ${IDLE_WAIT}s..."
     sleep "$IDLE_WAIT"
-  else
-    # Waiting for peers is not idle — reset the counter.
+  elif printf '%s' "$output" | grep -qF 'WAITING_FOR_PEERS'; then
     IDLE=0
-    sleep 3
+    echo "Peers still working. Waiting ${PEER_WAIT}s..."
+    sleep "$PEER_WAIT"
+  else
+    IDLE=0
+    sleep "$WORK_WAIT"
   fi
 done
 ```
 
-**Critical:** the session skill outputs "Waiting — N task(s) still in progress" (not
-`NOTHING_TO_DO`) when peers still have work. Your loop must NOT increment the idle
-counter on that output — only on a literal `NOTHING_TO_DO`. The grep above handles
-this correctly since `grep -qF 'NOTHING_TO_DO'` won't match the waiting message.
+**Critical:** check `NOTHING_TO_DO` **before** `WAITING_FOR_PEERS`, and treat anything else
+as real work. Only `NOTHING_TO_DO` counts toward the idle exit; `WAITING_FOR_PEERS` keeps the
+machine in the pool so it picks up a peer's PR or newly-filed tasks instead of exiting early.
 
-Name it something distinct (e.g., `run-gemini.sh`) and add it to `.gitignore` if it
-contains harness-specific configuration.
+Name it distinctly (e.g., `run-gemini.sh`) and add it to `.gitignore` — it's a local,
+per-machine file (see "What to commit" below).
 
 ---
 
@@ -193,8 +220,15 @@ If multiple harnesses are active on the same repo:
 
 ## What to commit
 
+The context file and loop runner are **generated locally per machine**, exactly like Claude
+Code's `CLAUDE.md` and `run.sh` — do not commit them. They are a concatenation of files that
+already live in git (`AGENTS.md` + `skills/`), so committing them just creates a stale
+duplicate, and CRLF/LF differences between Windows and Mac teammates cause conflicts on
+identical source. Regenerate them with the bootstrap prompt after any skill change.
+
 | Commit | Do not commit |
 |---|---|
-| `.gitignore` (updated with your harness dir) | Your harness's local config/cache dirs |
-| `YOURHARNESS.md` (context file) | Secrets or PATs |
-| `run-yourharness.sh` (loop runner) | Duplicate of `CLAUDE.md` or `run.sh` |
+| `.gitignore` (updated with your harness dir, context file, and runner) | Your harness's config/cache dirs |
+| Changes to shared source (`AGENTS.md`, `skills/`, `PLAN.md`) | `YOURHARNESS.md` context file (local, regenerate) |
+| | `run-yourharness.sh` loop runner (local, regenerate) |
+| | Secrets or PATs |

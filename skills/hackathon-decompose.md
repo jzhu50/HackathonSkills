@@ -39,7 +39,12 @@ Do not use the `gh` CLI, `curl`, or any Bash command for anything the MCP can ha
 Two machines can both see the same `needs-scoping` epic and both start decomposing,
 producing duplicate task issues. Claim the epic first to prevent this.
 
-Pick one `needs-scoping` epic at **random** from those available — not the oldest.
+**Pick from decomposable epics only.** From the `needs-scoping` epics, exclude any whose
+`## Dependencies` list still has open epics — decomposing an epic before its dependencies
+exist produces tasks no one can start (this is what keeps the **E2E Verification epic**, which
+depends on every feature epic, from being broken up before the features are built). From the
+remainder, pick one at **random** — not the oldest. If none are decomposable, return to
+hackathon-session Phase 2 (Path C/D).
 
 Three sequential MCP calls, no other actions between:
 1. Add yourself as assignee to the epic
@@ -47,7 +52,9 @@ Three sequential MCP calls, no other actions between:
 3. Comment on the epic: `agent: decomposing — [github username] — [ISO timestamp]`
 
 **Collision check:** re-read the epic. Two assignees or two decomposing comments within
-2 minutes → unassign, comment `agent: collision — backing off`, pick a different epic.
+2 minutes → both back off: unassign, **remove the `in-progress` label** (leave it
+`needs-scoping` so it returns to the decomposable pool), comment `agent: collision —
+backing off`, pick a different epic.
 
 ---
 
@@ -175,11 +182,13 @@ Epic #<n> decomposed: <N> tasks created, <M> ready to start, <K> blocked pending
 
 ---
 
-## Step 6 — Return to session
+## Step 6 — Stop
 
-If this decomposition was triggered from within the session skill (no `ready` issues existed),
-return to Phase 2 of hackathon-session. The tasks you just created are the new `ready`
-pool — claim one.
+Decomposition is itself one full unit of work. **Do not claim one of the tasks you just
+created in this same invocation** — that would violate one-context-one-task and let a
+decomposer race its own freshly-created tasks against peers. Stop here. The tasks you
+created are the new `ready` pool; the next loop cycle (a fresh context, here or on a peer
+machine) claims one.
 
 ---
 

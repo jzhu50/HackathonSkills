@@ -71,14 +71,25 @@ Then, sequentially via the GitHub MCP:
 5. List `needs-scoping` issues, no assignee — decomposition candidates
 6. List `in-review` issues — PR reviews waiting
 
+**Dependency unblock sweep (bookkeeping — not your unit of work):** For each `blocked`
+issue, read the issue numbers it references in its `## Blocked By` section, a
+`blocked-by: #<n>` comment, or a `## Depends on` / `## Dependencies` section. If **every**
+referenced issue is now closed, change its label `blocked` → `ready` via the GitHub MCP
+and comment `agent: unblocked — all dependencies closed`. Do only the label flips, then
+continue. This is what makes the dependency graph flow — without it, blocked work and the
+E2E epic stall forever. Two machines flipping the same issue is harmless (idempotent).
+
 **Stale in-progress check:** For each `in-progress` issue, read its comments. If the most
 recent agent comment is the original claiming comment (no subsequent progress updates) and
-its timestamp is more than 2 hours ago, the issue is likely stalled. Note stalled issues —
+its timestamp is more than 30 minutes ago, the issue is likely stalled. Note stalled issues —
 they are reclaim candidates in Phase 2.
 
-**Completed epic check:** For each open `epic`-labeled issue, check if all entries in its
-`## Child Issues` checklist are closed. Note any that are fully complete — verification
-(Path 0) is the highest-priority action.
+**Completed epic check:** For each open `epic`-labeled issue, check whether every issue
+number listed in its `## Child Issues` section is closed (compare the linked issue numbers
+against actual closed-issue state — not the `[ ]`/`[x]` checkbox glyph, which is not kept
+in sync). Note any epic that is fully complete — verification (Path 0) is the highest-priority
+action **unless** the epic already carries an `agent: verifying` comment less than 30 minutes
+old (another machine is verifying it; leave it alone).
 
 Synthesise: what is the team building, what's in flight, what is the most valuable thing
 to do right now? State this in 2–3 sentences before acting.
@@ -92,27 +103,34 @@ Choose exactly one path. Do not attempt more than one unit of work per invocatio
 ### Priority order
 
 ```
-0  → epic with all children closed   (verify before starting new work)
-A  → ready issue exists              (highest value)
-A' → stalled in-progress exists      (crash recovery, only if no ready issues)
-B  → needs-scoping issue exists      (unblock future work)
-C  → in-review PR exists             (unblock merged value)
-D  → none of the above               (run test suite to find bugs)
-E  → test suite also clean           (NOTHING_TO_DO)
+0  → epic with all children closed, unclaimed   (verify before starting new work)
+A  → ready issue exists                          (highest value)
+A' → stalled in-progress / stale review exists   (crash recovery, only if no ready issues)
+B  → needs-scoping epic with deps met exists     (unblock future work)
+C  → actionable in-review PR exists              (unclaimed or stale review)
+D  → none of the above                           (run test suite to find bugs)
+E  → nothing actionable                          (WAITING_FOR_PEERS or NOTHING_TO_DO)
 ```
+
+**Only Path E emits the loop signals `WAITING_FOR_PEERS` and `NOTHING_TO_DO`.** The
+sub-skills (test, review, verify) never emit them — they report their result and the
+routing here decides whether the machine waits for peers or the project is truly done.
 
 ---
 
 ### Path 0 — Verify a completed epic
 
-**Condition:** any `epic`-labeled issue is open AND all issues listed in its
-`## Child Issues` checklist are closed.
+**Condition:** any `epic`-labeled issue is open AND every issue listed in its
+`## Child Issues` section is closed AND it has no `agent: verifying` comment newer than
+30 minutes (an existing fresh claim means another machine is already verifying it).
 
 Detection: during Phase 1 orient, read each open `epic` issue and its Child Issues
-checklist. Compare each linked issue number against closed issues.
+section. Compare each linked issue number against actual closed-issue state.
 
-Follow `hackathon-verify` skill steps exactly. Stop after the verdict (pass or bug
-filing). Do not pick up a ready task in the same invocation.
+Follow `hackathon-verify` skill steps exactly — that skill **claims the epic first**
+(assignee + `agent: verifying` comment + collision check) so parallel machines don't all
+verify the same epic. Stop after the verdict (pass or bug filing). Do not pick up a ready
+task in the same invocation.
 
 **Why this is highest priority:** a passing epic is a shippable unit. An unverified
 epic can contain integration failures invisible at the task level. Verify before
@@ -148,7 +166,9 @@ breaks the symmetry. Prefer issues that unblock other work when all else is equa
    - Comment: `agent: claiming — [github username] — [ISO timestamp]`
 
 2. Collision check (multi-agent only): re-read the issue. Two assignees or two claiming comments
-   within 2 minutes → unassign, comment `agent: collision — backing off`, pick a different issue.
+   within 2 minutes → both agents back off: unassign, **reset the label `in-progress` → `ready`**
+   (so the issue isn't stranded with no owner), comment `agent: collision — backing off`, then
+   pick a different issue.
 
 3. Create a feature branch before writing any code. Handle the case where the branch
    already exists (crashed session that was reclaimed may have left it):
@@ -265,10 +285,12 @@ reproduce → diagnose → fix → regression test → suite green → PR. Then 
 
 ### Path A' — Reclaim stalled work
 
-**Condition:** no `ready` issues, but one or more `in-progress` issues appear stalled
-(last agent comment is the claiming comment, timestamp > 2 hours ago).
+**Condition:** no `ready` issues, but a claim is stale (the most recent claiming comment
+is > 30 minutes old with no follow-up). This covers two crash cases — a crashed implementer
+and a crashed reviewer — both of which otherwise wedge the loop forever.
 
-Pick the stalest stalled issue.
+**Stalled `in-progress` task** (last comment is `agent: claiming…`, > 30 min, no progress).
+Pick the stalest:
 
 1. Check whether the branch was pushed:
    ```bash
@@ -285,20 +307,31 @@ Pick the stalest stalled issue.
 
 4. Complete the work and close out → Phase 3.
 
+**Stalled `in-review` review** (the PR has an `agent: reviewing` comment > 30 min old with
+no verdict after it — `reviewed and merged` / `changes requested` / `merge conflict`): the
+reviewer crashed mid-review and the PR would otherwise sit forever. Route to Path C and
+follow `hackathon-review`; that skill treats a stale review claim as unclaimed and re-reviews.
+
 ---
 
 ### Path B — Decompose an epic
 
-**Condition:** no `ready` issues, no stalled work, but `needs-scoping` issues exist.
+**Condition:** no `ready` issues, no stalled work, but a `needs-scoping` epic exists **whose
+dependency epics (its `## Dependencies` list) are all closed**. An epic whose dependencies
+are still open is not yet decomposable — skip it (this is what keeps the E2E Verification
+epic from being broken into tasks before the features it depends on exist).
 
 Follow `hackathon-decompose` skill steps exactly. After decomposition, stop — do not claim a
-task in the same invocation.
+task in the same invocation (decomposition is itself the one unit of work for this session).
 
 ---
 
 ### Path C — Do a PR review
 
-**Condition:** no `ready` issues, no stalled work, no `needs-scoping` issues, but `in-review` PRs exist.
+**Condition:** no `ready` issues, no stalled work, no decomposable `needs-scoping` epics, but
+an **actionable** `in-review` PR exists — one with no `agent: reviewing` comment, or whose
+`agent: reviewing` comment is stale (> 30 min, no verdict after it). A PR freshly claimed by
+a peer is **not** actionable; if every `in-review` PR is freshly claimed, fall through to Path D.
 
 Follow `hackathon-review` skill steps exactly. Stop after the review.
 
@@ -306,34 +339,45 @@ Follow `hackathon-review` skill steps exactly. Stop after the review.
 
 ### Path D — Run the test suite
 
-**Condition:** no `ready` issues, no stalled work, no `needs-scoping` issues, no `in-review` PRs.
+**Condition:** nothing actionable in Paths 0/A/A'/B/C.
 
-Follow `hackathon-test` skill steps exactly. If new bugs are found, the loop will pick them up
-on the next invocation. Stop after reporting.
+Follow `hackathon-test` skill steps exactly. It runs the suite and files a `bug` + `ready`
+issue per new failure, then **reports its result back here** — it does not emit any loop
+signal itself. Then:
+
+- **New bug issues were filed** → report them and stop. They are the new `ready` pool; the
+  loop picks them up next cycle. (This counts as a unit of work — you found and filed bugs.)
+- **Suite green, no new bugs** → continue to Path E to make the idle decision.
 
 ---
 
-### Path E — Nothing to do
+### Path E — Idle decision (the only place loop signals are emitted)
 
-**Condition:** Path D test suite is fully green AND no work exists in any state —
-including no `in-progress` issues.
+Reached only when nothing is actionable and the test suite is green. Decide which signal to
+emit based on whether **peers are still working** — i.e. any `in-progress` issue exists, or any
+`in-review` PR is freshly claimed by a peer (an `agent: reviewing` comment < 30 min old):
 
-**If `in-progress` issues exist:** peers are still working. Do not output `NOTHING_TO_DO`.
-Output instead:
+**Peers are still working** → a PR may merge or new tasks may appear soon, so stay in the
+pool. Report state briefly, then output exactly (machine-readable sentinel on its own line):
 
 ```
-Waiting — <N> task(s) still in progress. Peers may open PRs or create new tasks soon.
+WAITING_FOR_PEERS — <N> task(s) in progress, <M> PR(s) under review.
 ```
 
-The loop will retry. This keeps machines in the pool while others are finishing.
+The loop sleeps briefly and retries **without** counting this as idle.
 
-**If nothing is in-progress either:** report current state briefly, then output exactly:
+**Nothing is in flight anywhere** (no in-progress, no in-review, suite green) → the project
+is truly complete. Report state briefly, then output exactly:
 
 ```
 NOTHING_TO_DO
 ```
 
-The run script uses this signal to exit when the project is truly complete.
+The run script counts consecutive `NOTHING_TO_DO` signals and exits when the project is done.
+
+> These two sentinels are emitted **only here**. `hackathon-test`, `hackathon-review`, and
+> `hackathon-verify` never print `NOTHING_TO_DO` or `WAITING_FOR_PEERS` — they return their
+> result to this routing step, which owns the idle decision.
 
 ---
 
@@ -416,3 +460,5 @@ Update the `## Subtasks` checklist if the issue has one.
 - **Never let discovered scope stay uncaptured.** Issue first, then continue.
 - **Never use `gh` CLI or Bash for GitHub operations.** GitHub MCP only.
 - **Run tests before opening a PR.** Note any failures explicitly — do not hide them.
+- **Only Path E emits `NOTHING_TO_DO` / `WAITING_FOR_PEERS`.** Sub-skills report; routing decides.
+- **Reset the label on collision back-off.** Don't strand an issue claimed-but-unowned.

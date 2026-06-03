@@ -36,9 +36,20 @@ List issues with label `in-review` via the GitHub MCP. For each, read comments t
 extract the PR number from the close-out comment
 (`agent: done — PR #<number> open for review`).
 
-Build the list of PRs with no existing `agent: reviewing` comment (unclaimed).
+Build the list of **actionable** PRs. A PR is actionable if either:
+- it has no `agent: reviewing` comment (never claimed), **or**
+- its most recent `agent: reviewing` comment is **stale** — more than 30 minutes old with no
+  verdict comment after it (`reviewed and merged` / `changes requested` / `merge conflict`).
+  A stale claim means the reviewer crashed mid-review; without this the PR would sit in
+  `in-review` forever and its epic could never complete. Treat it as reclaimable.
 
-**If there are no unclaimed `in-review` issues:** output `NOTHING_TO_DO` and stop.
+A PR whose `agent: reviewing` comment is **fresh** (< 30 min, no verdict yet) is being
+reviewed by a peer right now — skip it.
+
+**If there are no actionable PRs:** report "no PRs available to review" and stop. Do not emit
+a loop signal — when this skill runs inside the loop, hackathon-session Path E owns the
+`NOTHING_TO_DO` / `WAITING_FOR_PEERS` decision (so it can keep this machine in the pool while
+peers finish).
 
 ---
 
@@ -89,11 +100,20 @@ the code does not obviously break anything.
 
 ### Approve and merge
 
-1. Approve the PR via the GitHub MCP
-2. Merge the PR via the GitHub MCP (squash preferred)
-3. Confirm the issue was auto-closed (GitHub closes it because the PR body
-   contains `Closes #<n>`). If not, close it manually via the GitHub MCP.
-4. Delete the feature branch if the GitHub MCP supports it
+1. Approve the PR via the GitHub MCP. **If approval fails because you are the PR author**
+   (a solo dev running several machines on one PAT — GitHub forbids approving your own PR),
+   skip the formal approval: your review comment plus the merge is the audit trail. Do not
+   get stuck here.
+2. Merge the PR via the GitHub MCP — squash preferred. If the merge fails because squash
+   merging is disabled on the repo, retry with a standard merge commit.
+   - If the merge is rejected by **branch protection requiring approvals** and you could not
+     self-approve (step 1), the project is misconfigured for a single-PAT team. Comment on
+     the PR `agent: cannot merge — branch protection requires an approval this account
+     cannot give; see README branch-protection note`, leave the issue `in-review`, and stop.
+3. Confirm the issue was auto-closed (GitHub closes it because the PR body contains
+   `Closes #<n>`). If not, close it manually via the GitHub MCP.
+4. **Remove the `in-review` label** from the (now closed) issue so a reopen never carries a
+   stale state, and delete the feature branch if the GitHub MCP supports it.
 5. Comment on the issue via the GitHub MCP:
    ```
    agent: reviewed and merged — PR #<number>

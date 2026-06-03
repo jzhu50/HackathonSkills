@@ -138,10 +138,13 @@ This generates `CLAUDE.md`, `.claude/commands/`, `.claude/settings.json`, and
 Each teammate needs the GitHub MCP server configured with their own Personal Access
 Token (PAT). Use your own PAT — not a shared one — so agent actions are attributable.
 
-**Required PAT scopes:** `repo`, `read:org`
+**Required PAT scopes:** `repo` (add `read:org` for org-owned repos)
 
-**Recommended: enable branch protection on `main`** (Settings → Branches → Require a
-pull request before merging).
+**Recommended: enable branch protection on `main`** (Settings → Branches → **Require a
+pull request before merging**). Do **not** also enable *Require approvals* unless you have
+two or more distinct GitHub accounts reviewing — GitHub forbids approving your own PR, so a
+solo dev running several machines on one PAT would deadlock at the merge gate. With "require
+PR" alone (no required approval), an agent can still merge its own reviewed PR.
 
 **Docker-based GitHub MCP config** (add to Claude Code MCP settings):
 
@@ -215,19 +218,26 @@ In autonomous mode (`run.sh`): everything routes through `hackathon-session`.
 
 ## Session routing (what agents decide each invocation)
 
+Every session first does bookkeeping (sync `main`, sweep `blocked` issues whose
+dependencies are now closed back to `ready`), then routes to exactly one path:
+
 ```
-0  Epic with all children closed   → verify end-to-end before starting new work
+0  Epic done & unclaimed           → claim it, verify end-to-end before new work
 A  Ready issue available           → detect type and execute:
      - Merge conflict comment      → rebase branch onto main
      - Review feedback comment     → fix and push to existing branch
      - Bug label                   → reproduce, fix, regression test
      - Otherwise                   → implement new task
-A' No ready issues, stalled work   → reclaim crashed agent's in-progress task
-B  No ready, needs-scoping exists  → decompose epic into tasks
-C  No tasks or epics, PR waiting   → review PR and merge or request changes
+A' No ready, stale claim exists    → reclaim crashed implementer OR crashed reviewer
+B  No ready, decomposable epic     → decompose epic (deps-met epics only) into tasks
+C  No tasks/epics, actionable PR   → review PR and merge or request changes
 D  Nothing else                    → run test suite; file bug issues for failures
-E  Test suite green, nothing left  → NOTHING_TO_DO (loop waits or exits)
+E  Nothing actionable, suite green → WAITING_FOR_PEERS (peers busy) or NOTHING_TO_DO (done)
 ```
+
+Only Path E emits the two loop signals. `WAITING_FOR_PEERS` keeps the machine in the
+pool (a peer may open a PR or file tasks); `NOTHING_TO_DO` — emitted only when nothing is
+in flight anywhere — lets the loop exit after `MAX_IDLE` consecutive signals.
 
 ---
 
@@ -239,49 +249,66 @@ Only the invocation and context-loading differ. See `HARNESS.md` for the full gu
 Multiple harnesses can coexist in the same repo — each generates its own config files
 locally and `.gitignore` keeps them out of git.
 
-### Harness setup prompt (copy-paste into your agent, works mid-project too)
+### Harness bootstrap prompt (copy-paste once — it builds your walk-away setup)
 
-If you are using a harness other than Claude Code, paste the following into your agent
-at the start of any session. It loads the full coordination context and orients the
-agent to current project state. Works whether the project just started or is halfway done.
+The Claude Code path has a bootstrap script (`make-claude-md.*`) that generates the context
+file, the loop runner, and the permission config. Other harnesses don't have that script —
+so this prompt makes the agent **be its own bootstrap script**. Paste it once into your
+harness. It does not do project work: it sets up the environment so that afterwards you run
+**one** generated script and walk away.
+
+Paste this into your harness (Aider, Codex, Gemini CLI, Cursor, a custom runner, etc.):
 
 ---
 
 ```
-Read the following files in this repo in order:
-1. AGENTS.md — the full coordination protocol
-2. PLAN.md — project vision, stack, and features
-3. skills/hackathon-setup.md
-4. skills/hackathon-session.md
-5. skills/hackathon-decompose.md
-6. skills/hackathon-review.md
-7. skills/hackathon-debug.md
-8. skills/hackathon-test.md
-9. skills/hackathon-verify.md
+You are setting up an autonomous-agent loop in THIS repo for the harness you are running in.
+Do NOT do any project work yet. Your only job is to produce a "run and walk away" setup, then
+tell me the one command to start it. Work through this checklist and report what you created:
 
-After reading all of the above:
-- You are an autonomous software agent on a parallel team.
-- GitHub Issues are the coordination layer. You have no memory between sessions.
-- Every action must go through the GitHub API (use the gh CLI if you have no MCP).
-- Make all GitHub API/CLI calls sequentially — never in parallel.
-- Follow the hackathon-session skill exactly to pick up the next unit of work.
-- When there is nothing to do, output: NOTHING_TO_DO
+1. Identify your harness and its CLI: the exact non-interactive / headless invocation (the
+   flag that runs a single prompt and exits) and the flag that AUTO-APPROVES tool use so it
+   never pauses for a permission prompt (e.g. an --auto-approve / --yes / --full-auto /
+   "skip confirmations" flag). The loop cannot answer prompts, so this flag is mandatory —
+   if you cannot find one, say so explicitly and stop, because unattended running is unsafe
+   without it.
 
-Also check your harness's config directory against .gitignore and add it if missing,
-then commit the .gitignore update before starting any other work.
+2. Generate a CONTEXT FILE named after your harness (e.g. AGENT-CONTEXT.md) by concatenating,
+   in order: a short header saying "You are an autonomous agent on a parallel team; GitHub
+   Issues are the shared brain; you have no memory between sessions; follow hackathon-session;
+   only Path E emits NOTHING_TO_DO or WAITING_FOR_PEERS", then AGENTS.md, then PLAN.md, then
+   every file in skills/. This is the equivalent of CLAUDE.md. Make your harness auto-load it.
 
-Begin: orient yourself by reading current GitHub issue state, then act.
+3. Configure GitHub access. If your harness supports MCP, configure the GitHub MCP server.
+   If not, the skills' `mcp__github__*` steps map to `gh` CLI commands (table in HARNESS.md);
+   ensure `gh auth login` is done. Either way: make all GitHub calls SEQUENTIALLY, never in
+   parallel.
+
+4. Generate a LOOP RUNNER script (e.g. run-<harness>.sh / .ps1) that:
+   - guards that the context file from step 2 exists, and exits with a clear message if not;
+   - in a loop, invokes your harness headless with the auto-approve flag from step 1, the
+     context file from step 2, and the prompt "Go", capturing combined output;
+   - tolerates a transient non-zero exit from the harness without dying (don't let one failed
+     invocation kill the loop);
+   - branches on the output, IN THIS ORDER:
+       * contains "NOTHING_TO_DO"     → count it; after 3 consecutive, print "done" and exit;
+                                         otherwise wait 60s and loop;
+       * contains "WAITING_FOR_PEERS" → reset the count, wait 30s, loop (NOT counted as idle);
+       * otherwise (did real work)    → reset the count, wait 3s, loop.
+
+5. Update .gitignore: add your harness's config/cache directory AND the generated context file
+   and runner from steps 2 and 4 (they are local, per-machine, and would cause CRLF conflicts
+   across OSes — never commit them). Commit ONLY the .gitignore change, nothing else.
+
+6. Report: the files you created, the GitHub access method, and the single command I run to
+   start the loop and walk away.
 ```
 
 ---
 
-To run continuously, wrap your agent invocation in a loop that:
-- Restarts the agent fresh for each unit of work (clear context between runs)
-- Waits 30s on `NOTHING_TO_DO` and retries up to 3 times before exiting
-- Does not exit while any `in-progress` issues still exist (peers may still be working)
-
-See `HARNESS.md` for a full loop script template and `gh` CLI equivalents for every
-GitHub MCP operation.
+After the agent finishes, you run the one script it generated — that's the walk-away loop.
+`HARNESS.md` has the same steps in long form, a ready-made loop template, and the full
+`gh` CLI equivalents for every GitHub MCP operation.
 
 ---
 
@@ -289,5 +316,5 @@ GitHub MCP operation.
 
 - Claude Code CLI (`claude`) — [install](https://docs.anthropic.com/claude-code)
 - Docker — for the GitHub MCP server
-- GitHub Personal Access Token per teammate (`repo` scope)
+- GitHub Personal Access Token per teammate (`repo` scope; add `read:org` for org-owned repos)
 - GitHub repo with Issues enabled

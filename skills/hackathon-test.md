@@ -30,15 +30,21 @@ Check in order:
 2. SPECS.md — setup or environment section
 3. Common defaults: `npm test`, `pytest`, `go test ./...`, `cargo test`, `bundle exec rspec`
 
-If no test command can be determined: output `NOTHING_TO_DO` and stop.
+If no test command can be determined: report "no test command found — cannot run the suite"
+and stop. Do not emit a loop signal — hackathon-session Path E owns the `NOTHING_TO_DO` /
+`WAITING_FOR_PEERS` decision. (A project with no test command should make establishing one
+its first task — see AGENTS.md Testing protocol.)
 
 ---
 
 ## Step 2 — Clean baseline
 
+Use fetch + fast-forward (never a plain `git pull`, which can create a merge commit):
+
 ```bash
+git fetch origin
 git checkout main
-git pull origin main
+git merge --ff-only origin/main
 ```
 
 ---
@@ -104,6 +110,10 @@ Test run complete.
   New bug issues created: <list of #N titles, or "none">
 ```
 
-If the suite is fully green and no new bugs were found: output `NOTHING_TO_DO` and stop.
+**Do not emit a loop signal from this skill.** When run inside the loop, return this result
+to hackathon-session: if new bugs were filed, that was the unit of work (the loop claims them
+next cycle); if the suite is fully green with no new bugs, Path E decides between
+`WAITING_FOR_PEERS` (peers still working) and `NOTHING_TO_DO` (project complete). Emitting
+`NOTHING_TO_DO` here would wrongly signal "done" while a peer is mid-task.
 
-Stop after reporting — do not claim any of the newly created bug issues in this invocation. The loop will pick them up on the next cycle.
+Stop after reporting — do not claim any of the newly created bug issues in this invocation.

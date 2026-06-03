@@ -74,6 +74,8 @@ no remaining questions.** A half-understood plan produces bad epics.
 - Scope boundaries: for each feature, what is explicitly out of scope?
 - Integration points: which features share code, schemas, or API contracts?
 - Acceptance bar: what would cause a PR review to fail for each feature?
+- Test command: what command runs the full test suite? This is required — agents run
+  it before every PR and when idle. If not decided, make this the first decision.
 
 **When you are done interrogating**, summarise back to the human what you understood
 before creating any issues. Ask for a final confirmation: "Does this capture everything
@@ -127,6 +129,53 @@ Create in priority order (dependency-first).
 
 ---
 
+## Step 4b — Create the mandatory E2E Verification epic
+
+After all feature epics are created, always create one final epic:
+
+**Title:** `[Epic] End-to-End Verification`
+
+**Body:**
+```
+## Goal
+Verify that the complete project works end-to-end and the demo goal from PLAN.md
+can be demonstrated without errors. This epic is the final gate before the project
+is considered done.
+
+## Demo Goal
+<copy verbatim from PLAN.md>
+
+## Context
+All feature epics must be complete before this epic begins. This epic verifies the
+integrated result — not individual features, but the full system working together.
+
+## Dependencies
+Depends on all other epics: #<n>, #<n>, ... (list every feature epic)
+
+## Acceptance Bar
+- Every acceptance criterion from every feature epic is met in the integrated system
+- The demo goal can be demonstrated from start to finish without errors
+- The full test suite passes on main with zero failures
+- No `bug`-labeled issues are open
+- Any edge cases identified during interrogation behave correctly end-to-end
+
+## Open Questions
+None — all decisions made during setup interrogation.
+
+## Child Issues
+<!-- Agents fill this in during decomposition. Do not edit manually. -->
+```
+
+**Labels:** `epic`, `needs-scoping`
+
+This epic is always the last to be worked. Its decomposition will produce tasks such as:
+- Write E2E tests covering the demo flow
+- Set up E2E test runner (if not already present)
+- Run and fix the full demo path
+- Document any remaining edge cases
+
+---
+
 ## Step 5 — Create tracking issue
 
 **Title:** `[Project] Tracking — <project name>`
@@ -142,9 +191,10 @@ Create in priority order (dependency-first).
 ## Epics
 - [ ] #<n> [Epic] <name>
 - [ ] #<n> [Epic] <name>
+- [ ] #<n> [Epic] End-to-End Verification  ← mandatory final epic
 
 ## Dependency Map
-<inter-epic dependencies, or "All epics can proceed in parallel once decomposed">
+<inter-epic dependencies. The E2E Verification epic always depends on all others.>
 
 ## Out of Scope
 <from PLAN.md>
@@ -165,13 +215,17 @@ Create in priority order (dependency-first).
 Epics created (<N> total):
   #1 · [Epic] <feature>
   ...
-Tracking issue: #<N>
+  #N · [Epic] End-to-End Verification  ← mandatory final gate
+Tracking issue: #<N+1>
 
 Recommended: enable branch protection on main
 (Settings → Branches → Require a pull request before merging)
 
-Teammates: run ./run.sh (Mac/Linux) or run.ps1 (Windows) from the project root.
-Agents will claim tasks, open PRs, review PRs, and implement feedback autonomously.
+Start the loop on each machine:
+  Mac/Linux: ./run.sh
+  Windows:   .\run.ps1
+
+For non-Claude Code harnesses: see HARNESS.md
 ```
 
 ---

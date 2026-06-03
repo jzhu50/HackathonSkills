@@ -38,7 +38,7 @@ Do not use the `gh` CLI, `curl`, or any Bash command for anything the MCP can ha
 
 Read all of the following via the GitHub MCP before forming any tasks:
 
-1. The epic issue itself — full body, all comments — via the MCP issue read tools
+1. The epic issue itself — full body, all comments
 2. `PLAN.md` — especially the relevant feature section and open questions
 3. `SPECS.md` if it exists — data models, routes, UI flows relevant to this epic
 4. Any issues referenced in the epic body (linked as `#X`)
@@ -61,13 +61,19 @@ A good task is:
 Break the epic into tasks along these lines. Use judgment:
 - If a task would take more than one session → split it further
 - If two tasks always need to happen together → merge them
-- If a task depends on an open question in PLAN.md → label it `blocked`, don't `ready`
+- If a task depends on a genuinely unresolvable open question → label it `blocked`,
+  not `ready`. **Do not stop to ask the human** — file a `blocked` issue, document
+  what you need resolved, and continue decomposing the rest. The AFK loop cannot
+  accommodate interactive clarification mid-run.
 
 Common decomposition patterns:
 - **Data layer first:** schema, migrations, models → then API → then UI
 - **Happy path first:** core feature working end-to-end → then edge cases → then polish
-- **Vertical slices:** one complete thin slice (data + API + UI) per task rather than
-  all-of-data then all-of-API then all-of-UI
+- **Vertical slices:** one complete thin slice (data + API + UI) per task
+
+**Always include a testing task** for each non-trivial feature. The test task may be
+folded into the implementation task (when the implementation is small) or created as
+its own task. Every task's acceptance criteria must include the testing bar.
 
 ---
 
@@ -100,7 +106,8 @@ What does done look like? What can you verify when it's complete?
 ## Acceptance Criteria
 - [ ] <specific, verifiable thing>
 - [ ] <specific, verifiable thing>
-- [ ] <specific, verifiable thing>
+- [ ] Tests written for new behavior (unit or integration, using the project's test framework)
+- [ ] Full test suite passes (`<test command from PLAN.md>`)
 
 ## Blocked By
 <If this task cannot start until another is done: "blocked-by: #<issue number>".
@@ -154,7 +161,7 @@ Epic #<n> decomposed: <N> tasks created, <M> ready to start, <K> blocked pending
 ## Step 6 — Return to session
 
 If this decomposition was triggered from within the session skill (no `ready` issues existed),
-return to Phase 2 of hackathon-session now. The tasks you just created are the new `ready`
+return to Phase 2 of hackathon-session. The tasks you just created are the new `ready`
 pool — claim one.
 
 ---
@@ -166,6 +173,7 @@ Before finishing, verify every task you created:
 - [ ] Is the output of this task verifiable? (not "work on auth" but "POST /login returns JWT")
 - [ ] Is the scope small enough to finish in one session?
 - [ ] Are dependencies between tasks correct and complete?
-- [ ] Did you capture any open questions you found as `blocked` issues or additions to PLAN.md?
+- [ ] Does every task include test criteria in its acceptance criteria?
+- [ ] Did you capture any open questions as `blocked` issues rather than leaving them implicit?
 
 If any task fails these checks, revise it before finishing.

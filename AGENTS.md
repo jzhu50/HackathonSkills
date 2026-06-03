@@ -60,7 +60,7 @@ permission prompt and require a full retry cycle.
 | `blocked` | Cannot proceed — comment on the issue explains why |
 | `in-review` | PR is open and unmerged — waiting for a review session |
 | `epic` | Parent container — work happens in child task issues |
-| `bug` | Something is broken |
+| `bug` | Something is broken — routed to hackathon-debug |
 
 An issue has exactly one of: `needs-scoping`, `ready`, `in-progress`, `blocked`, `in-review`.
 `epic` and `bug` are additive.
@@ -74,6 +74,7 @@ in any other situation. GitHub auto-removes it (by closing the issue) when the P
 
 Every issue gets its own branch created before any code is written:
 ```bash
+git checkout main && git pull origin main
 git checkout -b <issue-number>-<short-slug>
 ```
 
@@ -85,9 +86,9 @@ be rejected automatically.
 
 ## Claiming an issue
 
-Do all three steps **sequentially** via the GitHub MCP, with no other actions between them:
+Do all steps **sequentially** via the GitHub MCP, with no other actions between them:
 
-1. Assign yourself + change label to `in-progress`
+1. Add yourself as assignee + change label to `in-progress`
 2. Comment: `agent: claiming — [your github username] — [ISO timestamp]`
 
 **Collision check (multi-agent concurrent sessions only):** Re-read the issue. Two
@@ -117,6 +118,65 @@ before continuing:
 - Body: parent reference, goal, context, acceptance criteria
 - Label: `ready` / `needs-scoping` / `blocked` as appropriate
 
+**Never let discovered scope stay uncaptured.** Issue first, then continue working.
+Agents cannot ask humans mid-task in AFK mode — create a blocked issue and move on.
+
+---
+
+## Merge conflict protocol
+
+Merge conflicts happen when two agents modify the same files on separate branches.
+
+**Reviewer's role:** Before merging, check the PR's `mergeable` state via the GitHub MCP.
+If the PR conflicts with `main`:
+1. Post a comment on the PR: `agent: merge conflict — branch must be rebased onto main`
+2. Change the issue label from `in-review` → `ready` via the GitHub MCP
+3. Unassign the issue
+4. Comment on the issue with rebase instructions (branch name, PR number, what to do)
+
+**Next agent's role (Path A3 in hackathon-session):**
+The `agent: merge conflict` comment on a `ready` issue signals the rebase path.
+```bash
+git fetch origin
+git checkout <branch-name>
+git rebase origin/main
+# resolve conflicts if any
+git push --force-with-lease origin <branch-name>
+```
+After rebasing, comment on the PR and return the issue to `in-review`.
+
+---
+
+## Stale claim reclaim
+
+An agent that crashes mid-task leaves the issue `in-progress` indefinitely. This
+prevents the loop from claiming it.
+
+**Detection:** During Phase 1 orientation, an `in-progress` issue is stalled if its
+most recent agent comment is the original claiming comment with no subsequent activity,
+and that comment is more than 2 hours old.
+
+**Reclaim:** If no `ready` issues exist (Path A'), a stalled issue may be reclaimed:
+- Check whether the branch was pushed (`git fetch origin && git branch -r`)
+- If no branch: reclaim fresh — comment `agent: reclaiming — no branch found, restarting`, re-assign, start from scratch
+- If branch exists: check it out, read prior comments for context, continue from where the previous agent left off
+
+---
+
+## Testing protocol
+
+Tests are a first-class acceptance requirement, not an afterthought.
+
+- **During decomposition:** every task's acceptance criteria must include a test requirement
+  (`Tests written for new behavior` and `Full test suite passes`)
+- **During implementation:** write tests alongside the feature, not after
+- **Before opening a PR:** run the full test suite; fix any failures; note unfixed ones in the PR body
+- **During review:** a PR without the required tests does not meet acceptance criteria — request changes
+- **When idle (Path D):** run the test suite to discover pre-existing failures; create `bug` + `ready` issues
+
+The test command lives in `PLAN.md` (Stack table → Test command row). If it is not filled in,
+the first task for the project should be to establish one and add it.
+
 ---
 
 ## Closing out a task
@@ -126,7 +186,7 @@ before continuing:
 1. Push the feature branch
 2. Open a PR via the GitHub MCP — body must include `Closes #<n>` on its own line
 3. Change issue label to `in-review` via the GitHub MCP
-4. Comment on the issue: what was built, PR number, new issues created, reviewer notes
+4. Comment on the issue: what was built, PR number, new issues created, test suite status, reviewer notes
 5. Stop — do not pick up another task in this context
 
 **Do not close the issue manually.** GitHub closes it automatically on merge.
@@ -155,24 +215,18 @@ ones. Review what your MCP server exposes and tighten the allowlist if possible.
 
 ---
 
-## Non-Claude Code setup
-
-If your agent CLI does not auto-load files from the repo, paste this file as a system
-prompt before starting. Also paste the relevant skill file as additional context.
-
----
-
 ## Bootstrap
 
-Run the bootstrap script from the hackathon skills repo root before starting Claude Code:
+Run the bootstrap script once per project from the repo root after filling in `PLAN.md`:
 
-- **Windows:** `.\make-claude-md.ps1` (or `.\make-claude-md.ps1 C:\path\to\project`)
-- **Mac/Linux:** `./make-claude-md.sh` (or `./make-claude-md.sh /path/to/project`)
+- **Windows:** `.\make-claude-md.ps1`
+- **Mac/Linux:** `./make-claude-md.sh`
 
-The script:
-1. Copies each skill into `.claude/commands/` → slash commands (`/hackathon-setup`,
-   `/hackathon-session`, `/hackathon-decompose`, `/hackathon-review`)
-2. Generates `CLAUDE.md` at the project root
-3. Generates `.claude/settings.json` with `mcp__github__*` pre-approved
+The script generates:
+1. `CLAUDE.md` — full skill content for headless mode (`claude -p "Go"`)
+2. `.claude/commands/` — slash commands for interactive Claude Code sessions
+3. `.claude/settings.json` — GitHub MCP pre-approved (no permission prompts)
+4. `run.sh` / `run.ps1` — the autonomous loop
 
-For other agent CLIs, paste `AGENTS.md` as a system prompt instead of running the script.
+For other agent CLIs, paste `AGENTS.md` as a system prompt and individual skill files
+as additional context when invoking each one.

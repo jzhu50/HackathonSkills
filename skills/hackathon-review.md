@@ -65,7 +65,12 @@ Extract: Goal, Acceptance Criteria, the agent's close-out summary.
 ### 3b. Read the diff
 Via the GitHub MCP: get pull request files. Read every changed file.
 
-### 3c. Evaluate
+### 3c. Check for merge conflicts
+
+Check the PR's `mergeable` state via the GitHub MCP. If the PR cannot be merged cleanly
+due to conflicts with `main`, do **not** attempt to merge. Go to Phase 4 — Conflict.
+
+### 3d. Evaluate
 For each acceptance criterion, does the code satisfy it?
 
 Also check:
@@ -125,6 +130,32 @@ would cause the feature to fail its stated acceptance criteria.
    ```
    (The PR stays open. Pushing more commits to the branch will update it.)
 
+### Conflict
+
+The PR has merge conflicts and cannot be merged cleanly.
+
+1. Post a comment on the **PR** via the GitHub MCP:
+   ```
+   agent: merge conflict — cannot merge cleanly into main. Branch must be rebased.
+   ```
+
+2. Change the **issue** label from `in-review` → `ready` via the GitHub MCP.
+
+3. Unassign the issue via the GitHub MCP.
+
+4. Comment on the **issue** via the GitHub MCP:
+   ```
+   agent: merge conflict
+
+   Branch: <branch-name>
+   PR: #<pr-number>
+
+   Next agent: fetch origin, check out branch <branch-name>, run `git rebase origin/main`,
+   resolve any conflicts, then `git push --force-with-lease origin <branch-name>`.
+   Do not open a new PR — the existing one auto-updates.
+   ```
+   (The `hackathon-session` Path A3 handles this automatically on the next loop cycle.)
+
 ---
 
 ## Stop
@@ -132,6 +163,7 @@ would cause the feature to fail its stated acceptance criteria.
 Output what happened:
 - "PR #<n> merged. Issue #<n> closed." — if approved
 - "PR #<n> has changes requested. Issue #<n> returned to ready." — if rejected
+- "PR #<n> has merge conflicts. Issue #<n> returned to ready for rebase." — if conflicted
 
 Do not pick up another review. Stop.
 
@@ -140,6 +172,7 @@ Do not pick up another review. Stop.
 ## Rules
 
 - **One review per context.** Stop after the verdict.
+- **Check merge conflicts before approving.** Never approve a PR that cannot be merged.
 - **Never merge without reading the diff and checking acceptance criteria.**
 - **Never request changes for style.** Only for unmet acceptance criteria or clear bugs.
 - **Be specific.** Vague feedback is not implementable by the next agent.

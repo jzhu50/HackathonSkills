@@ -39,6 +39,7 @@ _TODO_
 | Auth | |
 | Hosting/deployment | |
 | Key external APIs / services | |
+| Test command | |
 
 ---
 

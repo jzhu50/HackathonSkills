@@ -69,18 +69,36 @@ All GitHub reads use the GitHub MCP.
 
 ---
 
+## Branch before you write code
+
+Every issue gets its own branch. Create it before touching any file:
+
+```bash
+git checkout -b <issue-number>-<short-slug>
+```
+
+Never commit to `main` directly. A PR is the only valid close-out path — it is the
+audit trail, the diff record, and the human review gate. Do not close issues manually;
+GitHub closes them automatically when the PR with `Closes #<n>` merges.
+
+---
+
 ## Claiming an issue
 
-All claim steps use the GitHub MCP. Do all three immediately, in order:
+All claim steps use the GitHub MCP. Make them **sequentially, not in parallel** —
+parallel MCP calls can stack at the permission prompt and require a full retry.
+
+Do all three in order:
 
 1. Assign yourself + change label to `in-progress` — via the GitHub MCP
 2. Comment: `agent: claiming — [your github username] — [ISO timestamp]` — via the GitHub MCP
 
-**Then verify via the GitHub MCP:** re-read the issue. Two assignees or two claiming comments
-within 2 minutes = collision. Back off: unassign, comment `agent: collision — backing off`,
-pick a different issue.
+**Collision check (multi-agent only):** Only do this step if multiple agents are running
+concurrently from different machines. Re-read the issue via the GitHub MCP. Two assignees
+or two claiming comments within 2 minutes = collision. Back off: unassign, comment
+`agent: collision — backing off`, pick a different issue.
 
-Never start coding without completing this sequence.
+Never start coding without completing the claim sequence above.
 
 ---
 
@@ -99,17 +117,20 @@ When you discover scope that isn't captured, create an issue via the GitHub MCP 
 All close-out steps use the GitHub MCP.
 
 **Work finished:**
-- Open PR via the GitHub MCP with `Closes #<n>` in body
-- Change label to `in-review` via the GitHub MCP
+- Push the feature branch, then open a PR via the GitHub MCP with `Closes #<n>` in body
+- Change label to `in-review` via the GitHub MCP — only when a PR is actually open
 - Comment via the GitHub MCP: what was built, PR number, new issues created, anything reviewers need to know
+- Do NOT manually close the issue — GitHub does it automatically on merge
 
 **Session ending, work unfinished:**
+- Push the branch so it isn't lost
 - Stay assigned, label stays `in-progress`
-- Comment via the GitHub MCP: what's done, what's left, exactly where to pick up
+- Comment via the GitHub MCP: branch name, what's done, what's left, exactly where to pick up
 
 **Abandoning an issue:**
+- Push the branch so work isn't lost
 - Unassign, change label back to `ready` via the GitHub MCP
-- Comment via the GitHub MCP: why, what state the code is in, what the next agent needs to know
+- Comment via the GitHub MCP: branch name, why abandoned, state of the code, what the next agent needs to know
 
 ---
 
@@ -117,6 +138,25 @@ All close-out steps use the GitHub MCP.
 
 If your work reveals that `PLAN.md` is wrong or incomplete, update it via the GitHub MCP
 and add a row to the Decisions Log. Never let the plan drift silently from the code.
+
+---
+
+## Security notes
+
+**PAT scope:** The GitHub Personal Access Token covers all repos the account has access
+to, not just this one. An agent can read and write issues, open PRs, and push code
+across any repo the token covers. Use fine-grained PATs scoped to this repo if possible.
+
+**CLAUDE.md is agent-editable:** An agent with write access to the repo can modify
+`CLAUDE.md` and `.claude/commands/`, which would rewrite skill instructions — including
+removing quality checks or changing the claiming sequence. If the repo is public, a PR
+that modifies these files is a prompt injection vector. Review CLAUDE.md changes in PRs
+with the same scrutiny as code changes.
+
+**Allowlist scope:** The `mcp__github__*` allowlist in `.claude/settings.json` covers
+all GitHub MCP tools, including destructive ones (label delete, issue close, force push
+if the token allows it). Review what your MCP server exposes and tighten the allowlist
+if your environment supports more granular patterns.
 
 ---
 

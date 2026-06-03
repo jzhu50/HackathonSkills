@@ -64,8 +64,18 @@ that are already defined, as these will enrich the epic bodies.
 
 ## Step 2 — Create labels
 
-Use `label_write` (or the equivalent MCP tool) with method `create` to create each label.
-If a label already exists, skip it silently (do not error).
+**Try** to create styled labels using the MCP's label management tool.
+Different MCP implementations expose this differently — attempt each label creation
+and handle the result:
+
+- If the tool exists and succeeds: labels are created with the correct colors
+- If the tool does not exist or returns an error: **skip this step entirely and continue**
+
+When the label tool is unavailable (e.g. GitHub Copilot MCP), GitHub will
+auto-create labels with default grey styling (`#ededed`) the first time they appear on an
+issue. This is acceptable — the labels function correctly, they just won't be colour-coded.
+Tell the human at the end of setup if this happened so they can style them manually
+via the GitHub web UI if desired.
 
 | name | color | description |
 |---|---|---|
@@ -82,7 +92,9 @@ If a label already exists, skip it silently (do not error).
 ## Step 3 — Create epic issues
 
 For each feature in the **Core features** section of `PLAN.md`, create one GitHub issue
-using the MCP's issue create tool.
+using the MCP's issue create tool. Create them **one at a time** — do not fire all
+creates in parallel, as simultaneous calls can trigger permission prompts and
+require a full retry cycle.
 
 **Title format:** `[Epic] <feature name>`
 
@@ -154,7 +166,7 @@ Reply with a setup summary in this format:
 ```
 ✓ Setup complete for <project name>
 
-Labels created: needs-scoping, ready, in-progress, blocked, in-review, epic, bug
+Labels: <"created with colours" | "auto-created unstyled — style via GitHub web UI if desired">
 
 Epics created (<N> total):
   #1 · [Epic] <feature 1>
@@ -175,6 +187,7 @@ No further setup needed. Agents take it from here.
 
 ## Error handling
 
+- **Label tool missing:** skip Step 2, note it in the summary, continue
 - **Label already exists:** skip silently, continue
 - **Issue creation fails:** report the specific issue title that failed, then continue with the rest
 - **PLAN.md is incomplete:** list exactly which sections are missing and stop — do not create

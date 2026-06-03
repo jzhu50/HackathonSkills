@@ -1,229 +1,255 @@
 ---
-description: Run one complete task — orient from GitHub state, claim one issue, do the work on a feature branch, open a PR, then stop. Triggered by "Go". One context = one task.
+description: One autonomous work unit — orient, claim the highest-value task or PR review, do the work, close out, then stop. Triggered by "Go". Designed to be called in a loop by run.sh.
 allowed-tools: mcp__github__*, Read, Write, Edit, Bash
 ---
 
 # Skill: hackathon-session
 
-**One context, one task.** This skill runs exactly one task per invocation:
-orient → claim one issue → work on a feature branch → open a PR → stop.
+**One context, one unit of work.** This skill is designed to be called repeatedly by
+`run.sh` in a tight loop. Each invocation:
 
-When the PR is open, this context ends. The human starts a new session for the next task.
-This keeps each agent's context clean and prevents long-running sessions from accumulating
-stale state about what other agents are doing.
+1. Reads current GitHub state (fresh — no memory of previous invocations)
+2. Routes to the highest-value work: task > review > nothing
+3. Does exactly one task or one PR review
+4. Closes out and stops
+
+When there is genuinely nothing to do, it outputs `NOTHING_TO_DO` so the loop knows
+to wait or exit. Context is automatically cleared between invocations because each
+`claude -p "Go"` call is a separate process.
 
 ---
 
 ## GitHub MCP — required for all GitHub operations
 
-Every GitHub operation in this skill **must** use the GitHub MCP (`mcp__github__*`).
-Do not use the `gh` CLI, `curl`, or any Bash command for GitHub operations the MCP
-can handle. Use Bash only for local operations: branching, file edits, running tests.
-
-Make MCP calls **sequentially, not in parallel.** Parallel calls stack at the permission
-prompt and require a full retry cycle.
+Every GitHub operation **must** use the GitHub MCP (`mcp__github__*`).
+Do not use `gh` CLI, `curl`, or Bash for GitHub operations.
+Use Bash only for local operations: branching, editing files, running tests.
+Make all MCP calls **sequentially, not in parallel.**
 
 ---
 
 ## Trigger
 
-A human says something like:
-- "Go"
-- "Start working"
-- "Pick up a task"
-- "What should I work on?"
-- Any instruction to begin coding on the shared project
+"Go", "Start working", "Pick up a task", or any instruction to do project work.
+In automated mode this trigger comes from `run.sh` — the agent should proceed
+immediately without asking for clarification.
 
 ---
 
-## Phase 1 — Orient (every session, no exceptions)
+## Phase 1 — Orient
 
-### 1a. Load project context
-Using the GitHub MCP `get_file_contents`, read sequentially:
-1. `AGENTS.md` — the full coordination protocol for this repo
-2. `PLAN.md` — vision, stack, features, decisions log
+Read sequentially via the GitHub MCP:
+1. `AGENTS.md` — coordination protocol
+2. `PLAN.md` — vision, stack, done criteria
 
-If either file is missing, stop and tell the human.
+Then, sequentially via the GitHub MCP:
+1. Search `[Project] Tracking is:open` — project overview
+2. List `in-progress` issues — what's being worked right now
+3. List `blocked` issues — anything you might unblock
+4. List `ready` issues, no assignee — task candidates
+5. List `needs-scoping` issues, no assignee — decomposition candidates
+6. List `in-review` issues — PR reviews waiting
 
-### 1b. Read current GitHub state
-Use the GitHub MCP sequentially, one call at a time:
-
-1. Search for `[Project] Tracking is:open` — read it for project overview
-2. List issues with label `in-progress` — know what's actively being worked
-3. List issues with label `blocked` — note anything you might unblock
-4. List issues with label `ready`, no assignee — your candidate pool
-5. List issues with label `needs-scoping`, no assignee — fallback if no `ready` issues
-
-### 1c. Synthesise
-State in 2–3 sentences: what is the team building, what's in flight, what you'll work on.
-Say this out loud before doing anything.
+Synthesise: what is the team building, what's in flight, what is the most valuable
+thing to do right now? State this in 2–3 sentences before acting.
 
 ---
 
-## Phase 2 — Claim one issue
+## Phase 2 — Route to work
 
-### 2a. Pick
-Priority order:
-1. Oldest `ready` issue with no assignee — prefer issues that unblock others
-2. If none: pick a `needs-scoping` epic and decompose it first (`/hackathon-decompose`)
-3. If nothing is ready or needs scoping: check `blocked` — can you resolve the blocker?
-4. If genuinely nothing: tell the human, ask them to resolve open questions in tracking
+Choose one path and follow it. Do not attempt more than one unit of work per invocation.
 
-### 2b. Claim — three steps, sequential, no other actions between them
-1. Update the issue via the GitHub MCP — add yourself as assignee
-2. Update the issue via the GitHub MCP — change label from `ready` → `in-progress`
-3. Add a comment via the GitHub MCP:
-   `agent: claiming — [your github username] — [ISO timestamp]`
+**Priority order:**
 
-### 2c. Collision check (multi-agent only — skip in single-agent sessions)
-Re-read the issue via the GitHub MCP. If there are two assignees or two claiming
-comments within 2 minutes: unassign yourself, comment `agent: collision — backing off`,
-go back to 2a.
+### Path A — Do a task (highest priority)
 
----
+Condition: there is at least one `ready` issue with no assignee.
 
-## Phase 3 — Work
+Pick the oldest `ready` issue, or one that unblocks other work.
 
-### 3a. Create a feature branch — before writing any code
-```bash
-git checkout -b <issue-number>-<short-slug>
-# e.g. git checkout -b 12-user-auth-endpoint
+**Before claiming:** check issue comments. If the issue has a comment of the form
+`agent: review — changes requested. Branch: <branch>. PR: #<n>`, this is a
+"fix review feedback" task — go to Path A2. Otherwise proceed to Path A1.
+
+**Path A1 — New task**
+
+1. Claim the issue (three sequential MCP calls, no other actions between):
+   - Add yourself as assignee
+   - Change label `ready` → `in-progress`
+   - Comment: `agent: claiming — [github username] — [ISO timestamp]`
+
+2. Collision check (multi-agent only — skip in single-agent sessions):
+   Re-read the issue. Two assignees or two claiming comments within 2 minutes
+   → unassign, comment `agent: collision — backing off`, pick a different issue.
+
+3. Create a feature branch before writing any code:
+   ```bash
+   git checkout -b <issue-number>-<short-slug>
+   ```
+
+4. Check environment: if the issue involves native packages or build tools,
+   verify they install cleanly before writing any code that depends on them.
+   If a dependency fails, create a `blocked` issue before continuing.
+
+5. Implement the issue. Reference `PLAN.md` and `SPECS.md` for intent. When a
+   design decision is unclear, take the simpler path and document it in an issue
+   comment via the GitHub MCP.
+
+6. Capture any discovered scope immediately — create an issue before continuing:
+   ```
+   ## Parent
+   #<current issue number>
+   ## Goal
+   <one sentence>
+   ## Context
+   <what you found>
+   ```
+   Label: `ready` / `needs-scoping` / `blocked`.
+
+7. If you get blocked:
+   - Change label to `blocked` via the GitHub MCP
+   - Comment explaining exactly what's blocking you
+   - Unassign yourself
+   - Go back to Phase 2 and pick a different issue
+
+8. Close out → go to Phase 3.
+
+**Path A2 — Fix review feedback**
+
+The issue was returned from review with specific changes requested. The previous
+PR is still open and needs more commits.
+
+1. Claim the issue (same three-step sequence as Path A1).
+
+2. Check out the existing branch (name is in the "changes requested" comment):
+   ```bash
+   git fetch origin
+   git checkout <branch-name>
+   ```
+
+3. Read the PR review comments via the GitHub MCP:
+   - Get the PR number from the issue comment
+   - Read all review comments on the PR
+   - Treat each review comment as a specific requirement to satisfy
+
+4. Implement the requested changes. Do not re-implement the whole feature —
+   address only what the review identified.
+
+5. Push the branch (the existing PR auto-updates — do not open a new PR):
+   ```bash
+   git push origin <branch-name>
+   ```
+
+6. Comment on the PR via the GitHub MCP:
+   `agent: changes implemented — re-requesting review`
+
+7. Change the issue label back to `in-review` via the GitHub MCP.
+
+8. Comment on the issue via the GitHub MCP:
+   ```
+   agent: review feedback implemented
+
+   Branch: <branch-name>
+   PR: #<pr-number>
+   Changes made: <what was fixed, one line per review comment addressed>
+   ```
+
+9. Stop. Do not merge — leave for a review session.
+
+### Path B — Decompose an epic (if no ready tasks)
+
+Condition: no `ready` issues, but there are `needs-scoping` issues.
+
+Invoke `/hackathon-decompose` or follow the hackathon-decompose skill steps directly.
+After decomposition, the new `ready` tasks will be picked up in the next invocation.
+Stop after decomposition — do not claim a task in the same invocation.
+
+### Path C — Do a PR review (if no tasks and no epics to decompose)
+
+Condition: no `ready` issues, no `needs-scoping` issues, but there are `in-review` PRs.
+
+Follow the hackathon-review skill steps exactly. Stop after the review.
+
+### Path D — Nothing to do
+
+Condition: no `ready` issues, no `needs-scoping` issues, no `in-review` PRs.
+
+Report current state briefly (how many issues are `in-progress`, how many are
+`blocked`, etc.). Then output exactly:
+
 ```
-Never write code on `main`. This branch is what the PR will be based on.
-
-### 3b. Check environment before coding
-If the issue involves dependencies or native packages:
-- Verify they install cleanly on this machine before writing code that depends on them
-- If a dependency fails (e.g. native compilation), create a `[Blocked]` issue before
-  continuing — do not silently switch to an alternative without capturing the decision
-
-### 3c. Implement the issue
-Reference `PLAN.md` and `SPECS.md` for intent. When in doubt about a design decision,
-take the simpler path and document it in an issue comment via the GitHub MCP.
-
-### Capture scope continuously
-When you discover work outside this issue's scope, **stop and create an issue via the
-GitHub MCP immediately** before continuing:
-
+NOTHING_TO_DO
 ```
-## Parent
-#<current issue number>
 
-## Goal
-<one sentence starting with a verb>
-
-## Context
-<what you found, relevant file paths, decisions already made>
-```
-Label: `ready` / `needs-scoping` / `blocked` as appropriate.
-
-### Track subtask progress
-If the issue has a `## Subtasks` checklist, update it via the GitHub MCP as you go.
-
-### If you get blocked
-1. Change label to `blocked` via the GitHub MCP
-2. Comment via the GitHub MCP — explain exactly what's blocking you
-3. Unassign yourself via the GitHub MCP
-4. Return to Phase 2 with a different issue
-
-### PLAN.md is wrong — do NOT edit it inline
-If you discover PLAN.md needs updating, **do not modify it in your task branch.**
-Two agents editing PLAN.md on different branches = guaranteed merge conflict on the
-most critical shared file.
-
-Instead:
-1. Create a `[Plan Update] <what changed>` issue via the GitHub MCP, labeled `ready`
-2. Add a comment to the `[Project] Tracking` issue describing the proposed change
-3. Continue your task with the current PLAN.md — the plan update is its own task
+The run script uses this signal to decide whether to wait or exit.
 
 ---
 
-## Phase 4 — Close out
+## Phase 3 — Close out a task
 
 **A PR is the only valid close-out path for completed work.**
-Never close an issue directly. Never leave completed work on a branch without a PR.
+Never close an issue directly. Never leave completed work without a PR.
 
-### 4a. Push the branch
-```bash
-git push -u origin <branch-name>
-```
+1. Push the feature branch:
+   ```bash
+   git push -u origin <branch-name>
+   ```
 
-### 4b. Open a PR via the GitHub MCP
-- Title: same as the issue title
-- Body: `Closes #<issue number>` on its own line, then a summary of what was built
-- Base: `main`
-- Do not merge it yourself — leave it open for a review session
+2. Open a PR via the GitHub MCP:
+   - Title: same as the issue title
+   - Body: `Closes #<issue number>` on its own line, then a 2–3 sentence summary
+   - Base: `main`
+   - Do not merge yourself
 
-### 4c. Label the issue `in-review` via the GitHub MCP
-`in-review` means exactly one thing: a PR is open and unmerged. Do not use it otherwise.
+3. Change the issue label to `in-review` via the GitHub MCP.
+   (`in-review` = PR open and unmerged. No other meaning.)
 
-### 4d. Comment on the issue via the GitHub MCP
-```
-agent: done — PR #<number> open for review
+4. Comment on the issue via the GitHub MCP:
+   ```
+   agent: done — PR #<number> open for review
 
-What was built: <2-3 sentences>
-New issues created: <list, or "none">
-Reviewers should know: <gotchas, tradeoffs, or "none">
-```
+   Branch: <branch-name>
+   What was built: <2–3 sentences>
+   New issues created: <list or "none">
+   Reviewers should know: <gotchas or "none">
+   ```
 
-### 4e. Stop
-This context is done. Tell the human: "PR #<number> is open. Start a new session to
-pick up another task, or start a review session to merge this one."
+5. If `PLAN.md` needs updating, create a `[Plan Update] <description>` issue
+   labeled `ready` and comment on the tracking issue. Never modify `PLAN.md` in
+   a task branch — it causes merge conflicts during parallel work.
 
-Do not pick up another task in this same context. Start fresh.
-
----
-
-## If the session ends before work is complete
-
-### Push what exists so it isn't lost
-```bash
-git push -u origin <branch-name>
-```
-
-### Leave breadcrumbs via the GitHub MCP
-- Leave issue labeled `in-progress`, yourself as assignee
-- Add a comment:
-  ```
-  agent: session end — work in progress
-
-  Branch: <branch-name>
-  Done so far: <what's complete>
-  Remaining: <what's left>
-  Next agent should: <exact file paths, where to pick up, anything non-obvious>
-  ```
-- Update the `## Subtasks` checklist in the issue body
+6. Stop. Output nothing else. The loop will invoke a new session for the next task.
 
 ---
 
-## If abandoning mid-session
+## Phase 4 — Session ended before work is complete
 
-### Push what exists
+Push what exists so it isn't lost:
 ```bash
 git push -u origin <branch-name>
 ```
 
-### Release the issue via the GitHub MCP
-- Unassign yourself, change label back to `ready`
-- Add a comment:
-  ```
-  agent: abandoning — returning to ready
+Leave the issue `in-progress`, yourself as assignee. Comment via the GitHub MCP:
+```
+agent: session end — work in progress
 
-  Branch: <branch-name> (pushed, not merged)
-  Reason: <why>
-  Code state: <what changed, what's broken>
-  Next agent should know: <context that saves them time>
-  ```
+Branch: <branch-name>
+Done so far: <what's complete>
+Remaining: <what's left>
+Next agent should: <file paths, where to pick up, anything non-obvious>
+```
+
+Update the `## Subtasks` checklist if the issue has one.
 
 ---
 
 ## Rules
 
-- **One task per context.** Stop after the PR. Start fresh for the next task.
-- **Never commit to `main` directly.** Create a branch before touching any code.
-- **Never close an issue without a PR.** The PR is the audit trail and review gate.
-- **`in-review` = PR open and unmerged.** Never apply it in any other situation.
-- **Never edit PLAN.md in a task branch.** Create a plan-update issue instead.
+- **One unit of work per invocation.** Stop after Phase 3 or after Phase C/D.
+- **Never commit to `main` directly.** Branch first, always.
+- **Never close an issue without a PR.** The PR is the audit trail.
+- **`in-review` = PR open and unmerged.** Never apply it any other way.
+- **Never edit `PLAN.md` in a task branch.** Create a plan-update issue instead.
 - **Never fire MCP calls in parallel.** Sequential only.
 - **Never go silent on a blocked issue.** Always comment and move on.
 - **Never let discovered scope stay uncaptured.** Issue first, then continue.

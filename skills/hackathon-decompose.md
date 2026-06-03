@@ -1,6 +1,6 @@
 ---
-name: hackathon-decompose
-description: Breaks a needs-scoping epic into concrete, ready task issues. Called automatically by the session skill when no ready issues exist, or triggered directly.
+description: Break a needs-scoping epic into concrete, ready task issues via the GitHub MCP. Called automatically by hackathon-session or triggered directly.
+allowed-tools: mcp__github__*
 ---
 
 # Skill: hackathon-decompose
@@ -11,6 +11,15 @@ actually pick up and complete in a single session.
 
 This skill is called from within hackathon-session when no `ready` issues exist,
 but can also be triggered directly by a human.
+
+---
+
+## GitHub MCP — required for all operations
+
+Every GitHub operation in this skill **must** use the GitHub MCP (`mcp__github__*`):
+reading issues, creating issues, updating issue bodies, adding labels, posting comments.
+
+Do not use the `gh` CLI, `curl`, or any Bash command for anything the MCP can handle.
 
 ---
 
@@ -27,15 +36,14 @@ but can also be triggered directly by a human.
 
 ## Step 1 — Load context
 
-Read all of the following before forming any tasks:
+Read all of the following via the GitHub MCP before forming any tasks:
 
-1. The epic issue itself — full body, all comments — using `issue_read` method `get`
-   and `issue_read` method `get_comments`
+1. The epic issue itself — full body, all comments — via the MCP issue read tools
 2. `PLAN.md` — especially the relevant feature section and open questions
 3. `SPECS.md` if it exists — data models, routes, UI flows relevant to this epic
 4. Any issues referenced in the epic body (linked as `#X`)
 5. If the epic touches existing code, use `get_file_contents` or `get_repository_tree`
-   to understand what already exists
+   (GitHub MCP) to understand what already exists
 
 Do not start decomposing until you have read all of the above.
 
@@ -65,7 +73,7 @@ Common decomposition patterns:
 
 ## Step 3 — Create task issues
 
-For each task, create a GitHub issue using `issue_write` method `create`:
+For each task, create a GitHub issue via the GitHub MCP:
 
 **Title format:** `[#<epic number>] <short imperative description>`
 Examples:
@@ -110,7 +118,7 @@ Otherwise delete this section.>
 
 ## Step 4 — Update the epic issue
 
-After all tasks are created, update the epic issue body using `issue_write` method `update`.
+After all tasks are created, update the epic issue body via the GitHub MCP.
 
 Add a `## Child Issues` section (or replace the placeholder if it exists):
 
@@ -121,9 +129,9 @@ Add a `## Child Issues` section (or replace the placeholder if it exists):
 - [ ] #<n> [#<epic>] <task title>
 ```
 
-Change the epic's labels: remove `needs-scoping`, keep `epic`.
+Change the epic's labels via the GitHub MCP: remove `needs-scoping`, keep `epic`.
 
-Add a comment to the epic:
+Add a comment to the epic via the GitHub MCP:
 ```
 agent: decomposed into <N> tasks
 Tasks: #<n>, #<n>, #<n>
@@ -134,9 +142,9 @@ First task to start: #<n> — <title>
 
 ## Step 5 — Update the tracking issue
 
-Find the `[Project] Tracking` issue using `search_issues` query `[Project] Tracking is:open`.
+Find the `[Project] Tracking` issue via the GitHub MCP search.
 
-Add a comment:
+Add a comment via the GitHub MCP:
 ```
 Epic #<n> decomposed: <N> tasks created, <M> ready to start, <K> blocked pending prior work.
 ```

@@ -1,6 +1,6 @@
 ---
-name: hackathon-session
-description: Runs a full working session — orients from GitHub state, claims an issue, does the work, captures new scope, and closes out. Triggered by "Go".
+description: Run a full working session — orient from GitHub state, claim an issue, do the work, capture new scope, close out. Triggered by "Go".
+allowed-tools: mcp__github__*, Read, Write, Edit, Bash
 ---
 
 # Skill: hackathon-session
@@ -9,6 +9,16 @@ Use this skill at the start of every working session. It covers the full loop:
 orient → claim → work → capture new scope → close out. Applies to any agent on
 any teammate's machine. GitHub is the source of truth — this skill tells you how
 to read and write it correctly so the team stays in sync.
+
+---
+
+## GitHub MCP — required for all GitHub operations
+
+Every GitHub operation in this skill **must** use the GitHub MCP (`mcp__github__*`):
+reading issues, writing issues, adding labels, assigning, commenting, opening PRs.
+
+Do not use the `gh` CLI, `curl`, or any Bash command for GitHub operations the MCP
+can handle. Use Bash only for local code operations (running tests, editing files, etc.).
 
 ---
 
@@ -27,7 +37,7 @@ A human says something like:
 ## Phase 1 — Orient (do this every session, no exceptions)
 
 ### 1a. Load project context
-Read these files with `get_file_contents`:
+Read these files using the GitHub MCP `get_file_contents` tool:
 1. `AGENTS.md` — the full coordination protocol for this repo
 2. `PLAN.md` — vision, stack, features, decisions log
 
@@ -36,21 +46,21 @@ If either file is missing, stop and tell the human. The repo was not set up corr
 ### 1b. Read current project state
 Use the GitHub MCP in this order:
 
-1. **Find the tracking issue** — `search_issues` query: `[Project] Tracking is:open`
+1. **Find the tracking issue** — search for `[Project] Tracking is:open`
    Read it for a fast overview of epics and open questions.
 
-2. **What's in flight** — `list_issues` with label `in-progress`
+2. **What's in flight** — list issues with label `in-progress`
    Know what teammates are actively doing. Do not duplicate their work.
 
-3. **What's stuck** — `list_issues` with label `blocked`
+3. **What's stuck** — list issues with label `blocked`
    Scan comments. If anything is blocked on work you're about to do, note it —
    you may be able to unblock it as a side effect.
 
-4. **What's available** — `list_issues` with label `ready`, no assignee
+4. **What's available** — list issues with label `ready`, no assignee
    These are your candidates. Sort by creation date (oldest first = highest priority)
    unless a milestone or explicit priority label says otherwise.
 
-5. **What needs decomposing** — `list_issues` with label `needs-scoping`, no assignee
+5. **What needs decomposing** — list issues with label `needs-scoping`, no assignee
    If there are no `ready` issues, you will decompose one of these instead.
 
 ### 1c. Synthesise before acting
@@ -68,7 +78,8 @@ State this out loud (in your response to the human) in 2-3 sentences before proc
 ### 2a. Pick an issue
 Priority order:
 1. A `ready` issue with no assignee — prefer oldest, prefer issues that unblock others
-2. If none: pick a `needs-scoping` epic and decompose it (see hackathon-decompose skill)
+2. If none: pick a `needs-scoping` epic and decompose it (invoke `/hackathon-decompose`
+   or follow the hackathon-decompose skill instructions directly)
 3. If nothing is ready or needs scoping: check `blocked` issues — can you resolve any blocker?
 4. If genuinely nothing to do: tell the human and ask them to resolve open questions in the
    tracking issue
@@ -76,17 +87,17 @@ Priority order:
 ### 2b. Claim atomically
 Do all three immediately, in order, with no other actions between them:
 
-1. `issue_write` method `update` — add yourself as assignee
-2. `issue_write` method `update` — change label from `ready` → `in-progress`
-3. `add_issue_comment` — post exactly:
+1. Update the issue via the GitHub MCP — add yourself as assignee
+2. Update the issue via the GitHub MCP — change label from `ready` → `in-progress`
+3. Add a comment via the GitHub MCP — post exactly:
    `agent: claiming — [your github username] — [ISO timestamp]`
 
 ### 2c. Check for collision
-After claiming, wait one moment then re-read the issue with `issue_read` method `get`.
+After claiming, re-read the issue via the GitHub MCP.
 
 If there are **two assignees** or **two claiming comments within 2 minutes of each other**:
-- Remove yourself as assignee (`issue_write` update, set assignees to remove yourself)
-- Comment: `agent: collision detected — backing off`
+- Remove yourself as assignee via the GitHub MCP
+- Comment via the GitHub MCP: `agent: collision detected — backing off`
 - Return to step 2a and pick a different issue
 
 ---
@@ -95,11 +106,13 @@ If there are **two assignees** or **two claiming comments within 2 minutes of ea
 
 ### Do the work
 Implement what the issue describes. Reference `PLAN.md` and `SPECS.md` for intent.
-When in doubt about a design decision, make the simpler choice and note it in a comment.
+Use `get_file_contents` (GitHub MCP) to read repo files; use local file tools or Bash
+to write and test code. When in doubt about a design decision, make the simpler choice
+and note it in a comment.
 
 ### Capture scope continuously
 Any time you discover work that isn't in the current issue, **stop and create an issue
-immediately** before continuing. Do not hold it in your head.
+via the GitHub MCP immediately** before continuing. Do not hold it in your head.
 
 New issue labels:
 - `needs-scoping` — large, unclear, multiple sessions of work
@@ -119,13 +132,13 @@ New issue body must include:
 ```
 
 ### Track subtask progress
-If the issue has a `## Subtasks` checklist, update it as you go using `issue_write`
-method `update` to edit the body. Teammates can see your progress without asking.
+If the issue has a `## Subtasks` checklist, update the issue body via the GitHub MCP
+as you go. Teammates can see your progress without asking.
 
 ### If you get blocked
-1. `issue_write` — change label to `blocked`
-2. `add_issue_comment` — explain exactly what's blocking you, reference any related issue
-3. Unassign yourself
+1. Change label to `blocked` via the GitHub MCP
+2. Add a comment via the GitHub MCP — explain exactly what's blocking you, reference any related issue
+3. Unassign yourself via the GitHub MCP
 4. Return to Phase 2 and claim a different issue
 5. Never sit idle on a blocked issue
 
@@ -135,14 +148,14 @@ method `update` to edit the body. Teammates can see your progress without asking
 
 ### When the work is done
 
-1. Open a PR with `create_pull_request`:
+1. Open a PR via the GitHub MCP:
    - Title: same as the issue title
    - Body must include `Closes #<issue number>` on its own line
    - Base: main (or whatever the default branch is)
 
-2. `issue_write` method `update` — change label to `in-review`
+2. Change label to `in-review` via the GitHub MCP
 
-3. `add_issue_comment` on the issue:
+3. Add a comment via the GitHub MCP on the issue:
    ```
    agent: done
    
@@ -152,13 +165,13 @@ method `update` to edit the body. Teammates can see your progress without asking
    Anything reviewers should know: <gotchas, tradeoffs, or "none">
    ```
 
-4. If the work revealed that `PLAN.md` is wrong or incomplete, update it now using
-   `create_or_update_file`. Add a row to the Decisions Log with today's date.
+4. If the work revealed that `PLAN.md` is wrong or incomplete, update it now via the
+   GitHub MCP `create_or_update_file` tool. Add a row to the Decisions Log with today's date.
 
 ### When the session ends but work is unfinished
 
 1. Leave the issue labeled `in-progress`, leave yourself as assignee
-2. `add_issue_comment`:
+2. Add a comment via the GitHub MCP:
    ```
    agent: session end — work in progress
    
@@ -166,12 +179,12 @@ method `update` to edit the body. Teammates can see your progress without asking
    Remaining: <what's left>
    Next agent should: <exactly where to pick up, file paths, anything non-obvious>
    ```
-3. Update the `## Subtasks` checklist in the issue body to reflect current state
+3. Update the `## Subtasks` checklist in the issue body via the GitHub MCP
 
 ### When abandoning an issue (switching to something else mid-session)
 
-1. `issue_write` — remove yourself as assignee, change label back to `ready`
-2. `add_issue_comment`:
+1. Remove yourself as assignee and change label back to `ready` via the GitHub MCP
+2. Add a comment via the GitHub MCP:
    ```
    agent: abandoning — returning to ready
    
@@ -189,3 +202,4 @@ method `update` to edit the body. Teammates can see your progress without asking
 - **Never let discovered scope stay uncaptured.** Create the issue before continuing.
 - **Never assume another agent's in-progress issue is abandoned.** Check the comments first.
 - **Never update PLAN.md silently.** Always note what changed and why in the Decisions Log.
+- **Never use Bash/gh CLI for GitHub operations.** Use the GitHub MCP for all of them.

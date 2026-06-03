@@ -28,10 +28,11 @@ agent, say "Go", and their agent picks up exactly where the team left off.
 1. Click "Use this template" → create a new public repo
 2. Fill in PLAN.md as a team (takes ~10 minutes)
 3. Fill in SPECS.md if you have data models or API contracts already decided
-4. Bootstrap Claude Code — from the hackathon skills repo root, run:
+4. Bootstrap your agent — from the hackathon skills repo root, run:
      Windows:   .\make-claude-md.ps1 C:\path\to\your\project
      Mac/Linux: ./make-claude-md.sh /path/to/your/project
-   This generates .claude/CLAUDE.md so Claude Code loads the skills automatically.
+   This installs the skills as Claude Code slash commands in .claude/commands/
+   and generates CLAUDE.md with the coordination context.
    For other agent CLIs, paste AGENTS.md as a system prompt instead.
 5. Configure GitHub MCP on each machine (see below)
 6. Tell your agent: "Set up the project"
@@ -102,8 +103,12 @@ This template works with three skills that live in `skills/` in the hackathon sk
 | `hackathon-session` | Every session — claim, work, capture scope, close out |
 | `hackathon-decompose` | On demand — breaks a needs-scoping epic into ready tasks |
 
-Run `make-claude-md.ps1` (Windows) or `make-claude-md.sh` (Mac/Linux) to load them
-into `.claude/CLAUDE.md` before starting Claude Code (see step 4 in Quickstart above).
+Run `make-claude-md.ps1` (Windows) or `make-claude-md.sh` (Mac/Linux) from the skills
+repo root. The script installs each skill as a Claude Code slash command in
+`.claude/commands/` and generates `CLAUDE.md` at the project root (see step 4 above).
+
+For other agent CLIs, paste `AGENTS.md` as a system prompt and paste individual skill
+files as additional context when invoking them.
 
 ---
 

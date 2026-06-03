@@ -1,6 +1,6 @@
 ---
-name: hackathon-setup
-description: Bootstraps a hackathon project by reading PLAN.md and creating GitHub labels and epic issues via MCP. Run once per hackathon.
+description: Bootstrap a hackathon project — reads PLAN.md and creates GitHub labels and epic issues via the GitHub MCP. Run once per hackathon.
+allowed-tools: mcp__github__*
 ---
 
 # Skill: hackathon-setup
@@ -11,6 +11,13 @@ it reads the plan, creates GitHub labels, and generates all epic issues so agent
 start working without any further human input.
 
 Do not run this skill if issues already exist in the repo — it will create duplicates.
+
+---
+
+## GitHub MCP — required for all operations
+
+Every GitHub operation in this skill **must** use the GitHub MCP (`mcp__github__*`).
+Do not use the `gh` CLI, `curl`, or any Bash command for anything the MCP can handle.
 
 ---
 
@@ -57,7 +64,7 @@ that are already defined, as these will enrich the epic bodies.
 
 ## Step 2 — Create labels
 
-Use `label_write` with method `create` to create each label below.
+Use `label_write` (or the equivalent MCP tool) with method `create` to create each label.
 If a label already exists, skip it silently (do not error).
 
 | name | color | description |
@@ -75,7 +82,7 @@ If a label already exists, skip it silently (do not error).
 ## Step 3 — Create epic issues
 
 For each feature in the **Core features** section of `PLAN.md`, create one GitHub issue
-using `issue_write` with method `create`.
+using the MCP's issue create tool.
 
 **Title format:** `[Epic] <feature name>`
 
@@ -130,7 +137,8 @@ Create one final issue that serves as the project dashboard:
 
 ## Open Questions
 <paste open questions from PLAN.md — agents update this as questions are resolved>
-If the Open Questions section of PLAN.md is empty or just a dash, write "None — all decisions made" here explicitly rather than leaving it blank.
+If the Open Questions section of PLAN.md is empty or just a dash, write
+"None — all decisions made" here explicitly rather than leaving it blank.
 ```
 
 **Labels:** `epic`

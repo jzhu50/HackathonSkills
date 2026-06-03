@@ -28,11 +28,16 @@ agent, say "Go", and their agent picks up exactly where the team left off.
 1. Click "Use this template" → create a new public repo
 2. Fill in PLAN.md as a team (takes ~10 minutes)
 3. Fill in SPECS.md if you have data models or API contracts already decided
-4. Configure GitHub MCP on each machine (see below)
-5. Tell your agent: "Set up the project"
+4. Bootstrap Claude Code — from the hackathon skills repo root, run:
+     Windows:   .\make-claude-md.ps1 C:\path\to\your\project
+     Mac/Linux: ./make-claude-md.sh /path/to/your/project
+   This generates .claude/CLAUDE.md so Claude Code loads the skills automatically.
+   For other agent CLIs, paste AGENTS.md as a system prompt instead.
+5. Configure GitHub MCP on each machine (see below)
+6. Tell your agent: "Set up the project"
 ```
 
-Step 5 triggers the `hackathon-setup` skill, which reads `PLAN.md` and automatically
+Step 6 triggers the `hackathon-setup` skill, which reads `PLAN.md` and automatically
 creates all labels and epic issues. No manual issue creation needed.
 
 ### Each session
@@ -87,15 +92,18 @@ The session skill will also instruct your agent to read it on startup.
 
 ---
 
-## Skills required
+## Skills
 
-This template is designed to work with three skills from the hackathon skills repo:
+This template works with three skills that live in `skills/` in the hackathon skills repo:
 
 | Skill | When it's used |
 |---|---|
 | `hackathon-setup` | Once — bootstraps labels and creates all epic issues from PLAN.md |
 | `hackathon-session` | Every session — claim, work, capture scope, close out |
 | `hackathon-decompose` | On demand — breaks a needs-scoping epic into ready tasks |
+
+Run `make-claude-md.ps1` (Windows) or `make-claude-md.sh` (Mac/Linux) to load them
+into `.claude/CLAUDE.md` before starting Claude Code (see step 4 in Quickstart above).
 
 ---
 
@@ -104,4 +112,4 @@ This template is designed to work with three skills from the hackathon skills re
 - GitHub Free, public repo, up to 3 collaborators
 - Docker (to run the GitHub MCP server)
 - GitHub Personal Access Token per teammate (`repo` scope)
-- Agent CLI with MCP support and access to the hackathon skills
+- Agent CLI with MCP support

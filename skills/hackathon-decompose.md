@@ -1,3 +1,8 @@
+---
+name: hackathon-decompose
+description: Breaks a needs-scoping epic into concrete, ready task issues. Called automatically by the session skill when no ready issues exist, or triggered directly.
+---
+
 # Skill: hackathon-decompose
 
 Use this skill whenever an issue labeled `needs-scoping` needs to be broken into

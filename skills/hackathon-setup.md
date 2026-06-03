@@ -1,3 +1,8 @@
+---
+name: hackathon-setup
+description: Bootstraps a hackathon project by reading PLAN.md and creating GitHub labels and epic issues via MCP. Run once per hackathon.
+---
+
 # Skill: hackathon-setup
 
 Use this skill exactly once per hackathon, immediately after the repo is created and
@@ -125,6 +130,7 @@ Create one final issue that serves as the project dashboard:
 
 ## Open Questions
 <paste open questions from PLAN.md — agents update this as questions are resolved>
+If the Open Questions section of PLAN.md is empty or just a dash, write "None — all decisions made" here explicitly rather than leaving it blank.
 ```
 
 **Labels:** `epic`

@@ -107,3 +107,19 @@ to the Decisions Log. Never let the plan drift silently from the code.
 If your agent CLI does not auto-load this file, paste the contents into your agent
 as a system prompt before starting. The session skill (`hackathon-session.md` in
 your skills repo) will instruct you to read this file — that instruction is your cue.
+
+---
+
+## Bootstrap
+
+Before starting Claude Code, generate `.claude/CLAUDE.md` in your project by running
+the appropriate script from the hackathon skills repo root:
+
+- **Windows:** `.\make-claude-md.ps1` (or `.\make-claude-md.ps1 C:\path\to\project`)
+- **Mac/Linux:** `./make-claude-md.sh` (or `./make-claude-md.sh /path/to/project`)
+
+This concatenates all files from `skills/` into `.claude/CLAUDE.md` so Claude Code
+picks up the skills automatically.
+
+For other agent CLIs that don't auto-load local files, paste `AGENTS.md` as a system
+prompt instead.

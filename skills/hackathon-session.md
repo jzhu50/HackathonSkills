@@ -1,3 +1,8 @@
+---
+name: hackathon-session
+description: Runs a full working session — orients from GitHub state, claims an issue, does the work, captures new scope, and closes out. Triggered by "Go".
+---
+
 # Skill: hackathon-session
 
 Use this skill at the start of every working session. It covers the full loop:
@@ -69,7 +74,7 @@ Priority order:
    tracking issue
 
 ### 2b. Claim atomically
-Do both of these immediately, back to back, with no other actions in between:
+Do all three immediately, in order, with no other actions between them:
 
 1. `issue_write` method `update` — add yourself as assignee
 2. `issue_write` method `update` — change label from `ready` → `in-progress`

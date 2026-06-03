@@ -10,16 +10,30 @@ in full as your system prompt before starting any session.
 
 GitHub is the team's shared brain. You have no memory between sessions — GitHub does.
 Every session starts by reading state from GitHub. Every session ends by writing state
-back to GitHub. A teammate's agent (or your own, tomorrow) will reconstruct everything
-it needs from what you leave behind.
+back to GitHub. A teammate's agent (or your own, in a new context) will reconstruct
+everything from what you leave behind.
 
 The coordination primitives are:
 - **Issues** = units of work
-- **Labels** = issue state
+- **Labels** = issue state machine
 - **Assignees** = who is working on what right now
 - **Comments** = handoff notes, status updates, blockers, rationale
-- **PLAN.md** = the living project brain
+- **PRs** = the only valid close-out path for completed work
+- **PLAN.md** = the living project brain (never modified during parallel work)
 - **SPECS.md** = implementation detail
+
+---
+
+## One context, one task
+
+Each agent session handles exactly one unit of work — one task or one PR review —
+then stops. The human starts a new session for the next unit.
+
+This keeps each context fresh (no stale state about what other agents did an hour ago),
+makes parallel agents safe (each works on its own branch), and produces a clean
+record of what each session accomplished.
+
+**Never pick up a second task in the same context.**
 
 ---
 
@@ -29,11 +43,10 @@ Use the **GitHub MCP** (`mcp__github__*`) for every GitHub operation:
 reading and writing issues, labels, assignees, comments, and pull requests.
 
 Do **not** use `gh`, `curl`, the GitHub REST API directly, or any Bash command for
-GitHub operations the MCP can handle. GitHub MCP calls are attributable and auditable;
-ad-hoc CLI calls break the team's shared state.
+GitHub operations the MCP can handle.
 
-This applies everywhere: session start, claiming, scope capture, close-out, and any
-time you interact with GitHub.
+Make MCP calls **sequentially, not in parallel.** Parallel calls stack at the
+permission prompt and require a full retry cycle.
 
 ---
 
@@ -43,68 +56,62 @@ time you interact with GitHub.
 |---|---|
 | `needs-scoping` | Too large or unclear to start — must be decomposed into tasks first |
 | `ready` | Scoped, unblocked, no assignee — available to claim |
-| `in-progress` | Actively being worked on — has an assignee |
+| `in-progress` | Actively being worked — has an assignee |
 | `blocked` | Cannot proceed — comment on the issue explains why |
-| `in-review` | PR is open, waiting for review or merge |
+| `in-review` | PR is open and unmerged — waiting for a review session |
 | `epic` | Parent container — work happens in child task issues |
 | `bug` | Something is broken |
 
 An issue has exactly one of: `needs-scoping`, `ready`, `in-progress`, `blocked`, `in-review`.
-`epic` and `bug` are additive — an epic can also be `in-progress`, a bug can be `ready`, etc.
+`epic` and `bug` are additive.
+
+`in-review` means exactly one thing: a PR is open and unmerged. Do not apply this label
+in any other situation. GitHub auto-removes it (by closing the issue) when the PR merges.
 
 ---
 
-## Session start sequence
+## Branch per issue — always
 
-Run these steps every session before touching any code.
-All GitHub reads use the GitHub MCP.
-
-1. Read `PLAN.md` via the GitHub MCP — understand vision, stack, current goals
-2. Read `SPECS.md` via the GitHub MCP if it exists — data models, API contracts, UI flows
-3. Search for `[Project] Tracking is:open` via the GitHub MCP — fast overview of epics and open questions
-4. List `in-progress` issues via the GitHub MCP — know what teammates are actively doing
-5. List `blocked` issues via the GitHub MCP — scan for anything you might unblock
-6. List `ready` issues with no assignee via the GitHub MCP — your candidate pool
-7. Synthesise: state out loud what the team is building and what you'll work on
-
----
-
-## Branch before you write code
-
-Every issue gets its own branch. Create it before touching any file:
-
+Every issue gets its own branch created before any code is written:
 ```bash
 git checkout -b <issue-number>-<short-slug>
 ```
 
-Never commit to `main` directly. A PR is the only valid close-out path — it is the
-audit trail, the diff record, and the human review gate. Do not close issues manually;
-GitHub closes them automatically when the PR with `Closes #<n>` merges.
+Never commit to `main` directly. With branch protection enabled on `main`
+(recommended — Settings → Branches → require PR before merging), direct pushes will
+be rejected automatically.
 
 ---
 
 ## Claiming an issue
 
-All claim steps use the GitHub MCP. Make them **sequentially, not in parallel** —
-parallel MCP calls can stack at the permission prompt and require a full retry.
+Do all three steps **sequentially** via the GitHub MCP, with no other actions between them:
 
-Do all three in order:
+1. Assign yourself + change label to `in-progress`
+2. Comment: `agent: claiming — [your github username] — [ISO timestamp]`
 
-1. Assign yourself + change label to `in-progress` — via the GitHub MCP
-2. Comment: `agent: claiming — [your github username] — [ISO timestamp]` — via the GitHub MCP
-
-**Collision check (multi-agent only):** Only do this step if multiple agents are running
-concurrently from different machines. Re-read the issue via the GitHub MCP. Two assignees
-or two claiming comments within 2 minutes = collision. Back off: unassign, comment
+**Collision check (multi-agent concurrent sessions only):** Re-read the issue. Two
+assignees or two claiming comments within 2 minutes = collision. Unassign, comment
 `agent: collision — backing off`, pick a different issue.
-
-Never start coding without completing the claim sequence above.
 
 ---
 
-## Creating issues during work
+## PLAN.md during parallel work
 
-When you discover scope that isn't captured, create an issue via the GitHub MCP before continuing:
+**Never modify PLAN.md in a task branch.** Two agents editing PLAN.md on separate
+branches guarantees a merge conflict on the most critical shared file.
+
+If your work reveals PLAN.md is wrong or incomplete:
+1. Create a `[Plan Update] <description>` issue via the GitHub MCP, labeled `ready`
+2. Add a comment to the `[Project] Tracking` issue describing the proposed change
+3. Continue with the current PLAN.md — the update is its own sequential task
+
+---
+
+## Capturing scope during work
+
+When you discover work outside your current issue, create an issue via the GitHub MCP
+before continuing:
 
 - Title: `[#parent] short imperative description`
 - Body: parent reference, goal, context, acceptance criteria
@@ -112,60 +119,46 @@ When you discover scope that isn't captured, create an issue via the GitHub MCP 
 
 ---
 
-## Closing out
+## Closing out a task
 
-All close-out steps use the GitHub MCP.
+**A PR is the only valid close-out path.**
 
-**Work finished:**
-- Push the feature branch, then open a PR via the GitHub MCP with `Closes #<n>` in body
-- Change label to `in-review` via the GitHub MCP — only when a PR is actually open
-- Comment via the GitHub MCP: what was built, PR number, new issues created, anything reviewers need to know
-- Do NOT manually close the issue — GitHub does it automatically on merge
+1. Push the feature branch
+2. Open a PR via the GitHub MCP — body must include `Closes #<n>` on its own line
+3. Change issue label to `in-review` via the GitHub MCP
+4. Comment on the issue: what was built, PR number, new issues created, reviewer notes
+5. Stop — do not pick up another task in this context
 
-**Session ending, work unfinished:**
-- Push the branch so it isn't lost
-- Stay assigned, label stays `in-progress`
-- Comment via the GitHub MCP: branch name, what's done, what's left, exactly where to pick up
-
-**Abandoning an issue:**
-- Push the branch so work isn't lost
-- Unassign, change label back to `ready` via the GitHub MCP
-- Comment via the GitHub MCP: branch name, why abandoned, state of the code, what the next agent needs to know
+**Do not close the issue manually.** GitHub closes it automatically on merge.
 
 ---
 
-## Updating PLAN.md
+## Session ending with work unfinished
 
-If your work reveals that `PLAN.md` is wrong or incomplete, update it via the GitHub MCP
-and add a row to the Decisions Log. Never let the plan drift silently from the code.
+1. Push the branch
+2. Leave the issue `in-progress`, yourself as assignee
+3. Comment via the GitHub MCP: branch name, what's done, what's left, exactly where to pick up
 
 ---
 
 ## Security notes
 
-**PAT scope:** The GitHub Personal Access Token covers all repos the account has access
-to, not just this one. An agent can read and write issues, open PRs, and push code
-across any repo the token covers. Use fine-grained PATs scoped to this repo if possible.
+**PAT scope:** A personal access token covers all repos the account can access, not
+just this one. Use fine-grained PATs scoped to this repo if your GitHub plan supports it.
 
-**CLAUDE.md is agent-editable:** An agent with write access to the repo can modify
-`CLAUDE.md` and `.claude/commands/`, which would rewrite skill instructions — including
-removing quality checks or changing the claiming sequence. If the repo is public, a PR
-that modifies these files is a prompt injection vector. Review CLAUDE.md changes in PRs
+**CLAUDE.md is agent-editable:** An agent with write access can modify `CLAUDE.md` and
+`.claude/commands/`, rewriting skill instructions. Treat changes to these files in PRs
 with the same scrutiny as code changes.
 
-**Allowlist scope:** The `mcp__github__*` allowlist in `.claude/settings.json` covers
-all GitHub MCP tools, including destructive ones (label delete, issue close, force push
-if the token allows it). Review what your MCP server exposes and tighten the allowlist
-if your environment supports more granular patterns.
+**Allowlist scope:** `mcp__github__*` covers all GitHub MCP tools, including destructive
+ones. Review what your MCP server exposes and tighten the allowlist if possible.
 
 ---
 
 ## Non-Claude Code setup
 
 If your agent CLI does not auto-load files from the repo, paste this file as a system
-prompt before starting. Also paste the relevant skill file (hackathon-session, etc.)
-as additional context. The session skill will instruct your agent to read this file —
-that instruction is your cue.
+prompt before starting. Also paste the relevant skill file as additional context.
 
 ---
 
@@ -177,9 +170,9 @@ Run the bootstrap script from the hackathon skills repo root before starting Cla
 - **Mac/Linux:** `./make-claude-md.sh` (or `./make-claude-md.sh /path/to/project`)
 
 The script:
-1. Copies each skill from `skills/` into `.claude/commands/` — these become Claude Code
-   slash commands (`/hackathon-setup`, `/hackathon-session`, `/hackathon-decompose`)
-2. Generates `CLAUDE.md` at the project root with the coordination context and GitHub MCP
-   instructions, so Claude Code loads them automatically on startup
+1. Copies each skill into `.claude/commands/` → slash commands (`/hackathon-setup`,
+   `/hackathon-session`, `/hackathon-decompose`, `/hackathon-review`)
+2. Generates `CLAUDE.md` at the project root
+3. Generates `.claude/settings.json` with `mcp__github__*` pre-approved
 
 For other agent CLIs, paste `AGENTS.md` as a system prompt instead of running the script.

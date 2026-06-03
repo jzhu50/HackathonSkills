@@ -1,14 +1,16 @@
 ---
-description: Bootstrap a hackathon project — reads PLAN.md and creates GitHub labels and epic issues via the GitHub MCP. Run once per hackathon.
+description: Bootstrap a hackathon project — interrogates the human to sharpen the plan, then creates GitHub labels and epic issues via the GitHub MCP. Run once per hackathon.
 allowed-tools: mcp__github__*
 ---
 
 # Skill: hackathon-setup
 
 Use this skill exactly once per hackathon, immediately after the repo is created and
-`PLAN.md` has been filled in by the team. This skill bootstraps the entire project:
-it reads the plan, creates GitHub labels, and generates all epic issues so agents can
-start working without any further human input.
+`PLAN.md` has been filled in by the team. This skill:
+
+1. Reads the plan and interrogates the human to surface ambiguities
+2. Creates GitHub labels
+3. Creates epic issues from the sharpened plan
 
 Do not run this skill if issues already exist in the repo — it will create duplicates.
 
@@ -47,7 +49,7 @@ If any check fails, stop and tell the human what's missing. Do not proceed.
 
 ## Step 1 — Read the plan
 
-Use `get_file_contents` to read `PLAN.md`.
+Use `get_file_contents` to read `PLAN.md` and `SPECS.md` (if it exists).
 
 Extract:
 - **Vision** — the one-paragraph description of what's being built
@@ -57,62 +59,87 @@ Extract:
 - **Out of scope** — explicit exclusions
 - **Open questions** — anything unresolved
 
-Also read `SPECS.md` if it exists — extract any data models, API routes, or UI flows
-that are already defined, as these will enrich the epic bodies.
+---
+
+## Step 2 — Interrogate the human before creating anything
+
+Before creating a single issue, surface every ambiguity that would affect how epics are
+written or ordered. Ask all questions in one message — do not trickle them out one at a time.
+
+Identify 3–7 questions from the list below that are actually unclear from the plan.
+Skip any question the plan already answers specifically. Do not invent vague questions.
+
+**Questions to ask (pick the ones that apply):**
+
+- What does "done" look like for [feature X]? Be specific enough that an agent can
+  verify it without asking a human.
+- What is the dependency order? Which feature must ship before another can start?
+- Which features are must-have for the demo vs. nice-to-have? If time runs short,
+  what gets cut first?
+- Are there any technical decisions still open that would change how a feature is built?
+  (e.g. "we might use Postgres or SQLite — TBD")
+- Is there any shared infrastructure (auth, database schema, API base) that must exist
+  before parallel work can begin? Who owns it?
+- Are there any environment dependencies or native packages agents will need?
+  (Prevents "better-sqlite3 doesn't compile on Windows" surprises mid-session.)
+- Should agents work in any particular order, or can all epics proceed in parallel once
+  decomposed into tasks?
+
+Wait for the human's answers before proceeding to Step 3.
+Incorporate the answers into the epic bodies — that is the whole point of asking.
 
 ---
 
-## Step 2 — Create labels
+## Step 3 — Create labels
 
-**Try** to create styled labels using the MCP's label management tool.
-Different MCP implementations expose this differently — attempt each label creation
-and handle the result:
+Attempt to create labels using the MCP's label management tool.
+Create them **one at a time** (not in parallel).
 
-- If the tool exists and succeeds: labels are created with the correct colors
-- If the tool does not exist or returns an error: **skip this step entirely and continue**
+- If the tool exists and succeeds: done
+- If the tool does not exist or fails: skip silently — GitHub auto-creates labels
+  (without colour) the first time they appear on an issue. Note this in the Step 5 summary.
 
-When the label tool is unavailable (e.g. GitHub Copilot MCP), GitHub will
-auto-create labels with default grey styling (`#ededed`) the first time they appear on an
-issue. This is acceptable — the labels function correctly, they just won't be colour-coded.
-Tell the human at the end of setup if this happened so they can style them manually
-via the GitHub web UI if desired.
+Labels needed:
 
-| name | color | description |
-|---|---|---|
-| `needs-scoping` | `FBCA04` | Too large or unclear — must be decomposed into tasks first |
-| `ready` | `0E8A16` | Scoped, unblocked, no assignee — available to claim |
-| `in-progress` | `0075CA` | Actively being worked — has an assignee |
-| `blocked` | `D93F0B` | Cannot proceed — see issue comment for reason |
-| `in-review` | `5319E7` | PR open, waiting for review or merge |
-| `epic` | `BFD4F2` | Parent container — work happens in child issues |
-| `bug` | `CC0000` | Something is broken |
+| name | meaning |
+|---|---|
+| `needs-scoping` | Too large or unclear — must be decomposed into tasks first |
+| `ready` | Scoped, unblocked, no assignee — available to claim |
+| `in-progress` | Actively being worked — has an assignee |
+| `blocked` | Cannot proceed — comment on issue explains why |
+| `in-review` | PR is open and unmerged, waiting for review |
+| `epic` | Parent container — work happens in child issues |
+| `bug` | Something is broken |
 
 ---
 
-## Step 3 — Create epic issues
+## Step 4 — Create epic issues
 
-For each feature in the **Core features** section of `PLAN.md`, create one GitHub issue
-using the MCP's issue create tool. Create them **one at a time** — do not fire all
-creates in parallel, as simultaneous calls can trigger permission prompts and
-require a full retry cycle.
+For each feature in **Core features**, create one GitHub issue using the MCP's issue
+create tool. Create them **one at a time** — parallel creates can stack at the permission
+prompt and require a full retry.
 
 **Title format:** `[Epic] <feature name>`
 
 **Body format:**
 ```
 ## Goal
-<one sentence: what does done look like for this feature?>
+<one sentence: what does done look like — specific enough for an agent to verify>
 
 ## Context
-<2-4 sentences synthesised from PLAN.md and SPECS.md relevant to this feature.
-Include stack choices, constraints, or decisions that affect implementation.>
+<2-4 sentences from PLAN.md, SPECS.md, and the human's answers in Step 2.
+Include stack choices, constraints, shared infrastructure dependencies, environment
+requirements, and any decisions that affect implementation.>
 
 ## Relevant Specs
-<If SPECS.md has data models, routes, or flows that apply to this epic, paste
-the relevant sections here verbatim. Leave blank if nothing applies.>
+<Paste relevant sections from SPECS.md verbatim. Leave blank if nothing applies.>
+
+## Dependencies
+<List any other epics that must be complete or in-flight before this one can start.
+Format: "Blocked by: [Epic] <name>". Write "None" if this epic can start immediately.>
 
 ## Open Questions
-<Any open questions from PLAN.md that block or affect this epic. If none, write "None".>
+<Unresolved questions from PLAN.md or Step 2 that affect this epic. Write "None" if clear.>
 
 ## Child Issues
 <!-- Agents fill this in during decomposition. Do not edit manually. -->
@@ -120,16 +147,16 @@ the relevant sections here verbatim. Leave blank if nothing applies.>
 
 **Labels:** `epic`, `needs-scoping`
 
-**Priority ordering:** create epics in the same order features appear in `PLAN.md`.
-The first epic created will be the first one agents decompose and work on.
+**Priority ordering:** create epics in the order features appear in `PLAN.md`, which
+should reflect the dependency order clarified in Step 2.
 
-After creating each epic, note its issue number — you'll need them for the summary.
+Note each epic's issue number — you'll need them for the tracking issue.
 
 ---
 
-## Step 4 — Create a tracking issue
+## Step 5 — Create a tracking issue
 
-Create one final issue that serves as the project dashboard:
+Create one final issue as the project dashboard:
 
 **Title:** `[Project] Tracking — <project name from PLAN.md>`
 
@@ -141,44 +168,45 @@ Create one final issue that serves as the project dashboard:
 ## Demo Goal
 <paste demo goal from PLAN.md>
 
-## Epics
-<list each epic as: - [ ] #<number> <feature name>>
+## Epics (in priority order)
+<list each epic as: - [ ] #<number> [Epic] <feature name>>
+
+## Dependency Map
+<list inter-epic dependencies surfaced in Step 2, or "None — all epics can run in parallel">
 
 ## Out of Scope
 <paste out of scope list from PLAN.md>
 
 ## Open Questions
-<paste open questions from PLAN.md — agents update this as questions are resolved>
-If the Open Questions section of PLAN.md is empty or just a dash, write
-"None — all decisions made" here explicitly rather than leaving it blank.
+<paste open questions, or "None — all decisions made" if none remain>
 ```
 
 **Labels:** `epic`
 
-Pin this issue mentally — agents read it during session start for a fast project overview.
-
 ---
 
-## Step 5 — Report to the human
-
-Reply with a setup summary in this format:
+## Step 6 — Report to the human
 
 ```
 ✓ Setup complete for <project name>
 
-Labels: <"created with colours" | "auto-created unstyled — style via GitHub web UI if desired">
+Labels: <"created" | "auto-created without colour (style via GitHub web UI if desired)">
 
-Epics created (<N> total):
+Epics created (<N> total, in priority order):
   #1 · [Epic] <feature 1>
   #2 · [Epic] <feature 2>
   ...
 
 Tracking issue: #<N>
 
+Recommended: enable branch protection on main (Settings → Branches → require PR before merging).
+This prevents agents from pushing directly to main and forces the PR workflow.
+
 Next steps:
   1. Each teammate: configure GitHub MCP with your own PAT (see AGENTS.md)
-  2. Each teammate: tell your agent "Go" — it will read AGENTS.md and start working
-  3. Humans: check back to resolve any open questions flagged in the tracking issue
+  2. Each teammate: say "Go" to start a session — agent claims one task, works it, opens a PR, stops
+  3. When PRs accumulate: say "Review" to start a review session — agent picks up a PR, reviews it, merges or requests changes, stops
+  4. Humans: resolve any open questions in the tracking issue as they come up
 
 No further setup needed. Agents take it from here.
 ```
@@ -187,9 +215,9 @@ No further setup needed. Agents take it from here.
 
 ## Error handling
 
-- **Label tool missing:** skip Step 2, note it in the summary, continue
-- **Label already exists:** skip silently, continue
-- **Issue creation fails:** report the specific issue title that failed, then continue with the rest
-- **PLAN.md is incomplete:** list exactly which sections are missing and stop — do not create
-  partial epics from an incomplete plan
+- **Label tool missing:** skip, note in summary, continue
+- **Issue creation fails:** report the specific title, continue with the rest
+- **PLAN.md is incomplete:** list missing sections and stop — do not create partial epics
+- **Human's Step 2 answers are still vague:** ask one follow-up, then proceed with best effort
+  and add remaining ambiguity to the relevant epic's Open Questions section
 - **MCP auth error:** tell the human to check their PAT has `repo` scope and Docker is running

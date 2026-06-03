@@ -44,7 +44,8 @@ Build the list of PRs with no existing `agent: reviewing` comment (unclaimed).
 
 ## Phase 2 — Claim
 
-Pick the oldest unclaimed `in-review` issue.
+Pick **at random** from the unclaimed `in-review` issues — not the oldest. Parallel
+machines would otherwise all claim the same item and collide.
 
 Add a comment to the **PR** (not the issue) via the GitHub MCP:
 ```

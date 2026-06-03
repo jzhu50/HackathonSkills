@@ -37,6 +37,28 @@ In automated mode this trigger comes from `run.sh` — proceed immediately witho
 
 ## Phase 1 — Orient
 
+**Git sync first — before reading any GitHub state:**
+
+```bash
+# Handle dirty state: a crashed previous session may have left uncommitted changes.
+# Push any in-progress branch so it is recoverable before touching main.
+CURRENT_BRANCH=$(git branch --show-current)
+if [ "$CURRENT_BRANCH" != "main" ] && [ -n "$(git status --porcelain)" ]; then
+  git add -A && git commit -m "agent: checkpoint — session restart" || true
+  git push -u origin "$CURRENT_BRANCH" || true
+fi
+
+# Sync main. --ff-only fails loud if local main diverged (surfaces bugs, doesn't hide them).
+git fetch origin && git remote prune origin
+git checkout main
+git merge --ff-only origin/main
+```
+
+If `git merge --ff-only` fails, local main has diverged from remote (should not happen
+under normal operation — agents never commit to main directly). If this occurs: comment
+on the tracking issue via the GitHub MCP describing the state, then stop and wait for a
+human to resolve it.
+
 Read sequentially via the GitHub MCP:
 1. `AGENTS.md` — coordination protocol
 2. `PLAN.md` — vision, stack, done criteria (note the Test command row)
@@ -53,6 +75,10 @@ Then, sequentially via the GitHub MCP:
 recent agent comment is the original claiming comment (no subsequent progress updates) and
 its timestamp is more than 2 hours ago, the issue is likely stalled. Note stalled issues —
 they are reclaim candidates in Phase 2.
+
+**Completed epic check:** For each open `epic`-labeled issue, check if all entries in its
+`## Child Issues` checklist are closed. Note any that are fully complete — verification
+(Path 0) is the highest-priority action.
 
 Synthesise: what is the team building, what's in flight, what is the most valuable thing
 to do right now? State this in 2–3 sentences before acting.
@@ -98,7 +124,10 @@ adding more features.
 
 **Condition:** at least one `ready` issue with no assignee.
 
-Pick the oldest `ready` issue, or one that unblocks other work.
+Pick **at random** from the available `ready` issues — not the oldest. In a parallel
+team all machines start simultaneously and would otherwise all claim the same item,
+collide, back off, and claim the same next item, creating a livelock. Randomisation
+breaks the symmetry. Prefer issues that unblock other work when all else is equal.
 
 **Detect the task type by scanning issue labels and comments:**
 
@@ -121,10 +150,10 @@ Pick the oldest `ready` issue, or one that unblocks other work.
 2. Collision check (multi-agent only): re-read the issue. Two assignees or two claiming comments
    within 2 minutes → unassign, comment `agent: collision — backing off`, pick a different issue.
 
-3. Create a feature branch before writing any code:
+3. Create a feature branch before writing any code. Handle the case where the branch
+   already exists (crashed session that was reclaimed may have left it):
    ```bash
-   git checkout main && git pull origin main
-   git checkout -b <issue-number>-<short-slug>
+   git checkout -b <issue-number>-<short-slug> 2>/dev/null || git checkout <issue-number>-<short-slug>
    ```
 
 4. Check environment: if the issue involves native packages or build tools, verify they install
@@ -286,15 +315,25 @@ on the next invocation. Stop after reporting.
 
 ### Path E — Nothing to do
 
-**Condition:** Path D test suite is fully green and no work exists in any state.
+**Condition:** Path D test suite is fully green AND no work exists in any state —
+including no `in-progress` issues.
 
-Report current state briefly. Then output exactly:
+**If `in-progress` issues exist:** peers are still working. Do not output `NOTHING_TO_DO`.
+Output instead:
+
+```
+Waiting — <N> task(s) still in progress. Peers may open PRs or create new tasks soon.
+```
+
+The loop will retry. This keeps machines in the pool while others are finishing.
+
+**If nothing is in-progress either:** report current state briefly, then output exactly:
 
 ```
 NOTHING_TO_DO
 ```
 
-The run script uses this signal to decide whether to wait or exit.
+The run script uses this signal to exit when the project is truly complete.
 
 ---
 

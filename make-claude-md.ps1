@@ -93,8 +93,8 @@ Write-Host "  CLAUDE.md written (full skill content for headless mode)"
 # Press Ctrl-C to stop early.
 
 $IDLE = 0
-$MAX_IDLE = 3
-$IDLE_WAIT = 30
+$MAX_IDLE = 3    # exit after this many consecutive NOTHING_TO_DO signals
+$IDLE_WAIT = 60  # seconds between idle retries
 
 Write-Host "Hackathon agent loop started. Press Ctrl-C to stop."
 Write-Host ""
@@ -114,6 +114,7 @@ while ($true) {
         Write-Host "Idle ($IDLE/$MAX_IDLE). Waiting ${IDLE_WAIT}s..."
         Start-Sleep -Seconds $IDLE_WAIT
     } else {
+        # "Waiting for peers" does not increment idle — only NOTHING_TO_DO counts.
         $IDLE = 0
         Start-Sleep -Seconds 3
     }

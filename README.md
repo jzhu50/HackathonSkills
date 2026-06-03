@@ -75,13 +75,16 @@ HARNESS.md                 — instructions for non-Claude Code harnesses
 .gitignore                 — covers secrets, harness dirs, build output
 ```
 
-The bootstrap script generates (do not edit these manually — re-run the script to update):
+The bootstrap script generates these **locally** (gitignored — never committed):
 ```
 CLAUDE.md                  — full skill content auto-loaded by claude -p
 .claude/commands/          — slash commands for interactive Claude Code
 .claude/settings.json      — GitHub MCP pre-approved (no permission prompts)
 run.sh / run.ps1           — the autonomous loop runner
 ```
+
+Every teammate must run the bootstrap script after cloning. The generated files stay
+local to each machine — committing them causes CRLF conflicts between Windows and Mac.
 
 ---
 
@@ -230,12 +233,55 @@ E  Test suite green, nothing left  → NOTHING_TO_DO (loop waits or exits)
 
 ## Non-Claude Code harnesses
 
-See `HARNESS.md` for a full guide on adapting this repo for Aider, Cursor, Gemini CLI,
-Codex, or any other agent harness. The coordination protocol (`AGENTS.md` + `skills/`)
-is harness-agnostic — only the invocation and context loading change.
+The coordination protocol (`AGENTS.md` + `skills/`) works with any agent harness.
+Only the invocation and context-loading differ. See `HARNESS.md` for the full guide.
 
-Multiple harnesses can coexist in the same repo. Each generates its own config files;
-`.gitignore` keeps them separate.
+Multiple harnesses can coexist in the same repo — each generates its own config files
+locally and `.gitignore` keeps them out of git.
+
+### Harness setup prompt (copy-paste into your agent, works mid-project too)
+
+If you are using a harness other than Claude Code, paste the following into your agent
+at the start of any session. It loads the full coordination context and orients the
+agent to current project state. Works whether the project just started or is halfway done.
+
+---
+
+```
+Read the following files in this repo in order:
+1. AGENTS.md — the full coordination protocol
+2. PLAN.md — project vision, stack, and features
+3. skills/hackathon-setup.md
+4. skills/hackathon-session.md
+5. skills/hackathon-decompose.md
+6. skills/hackathon-review.md
+7. skills/hackathon-debug.md
+8. skills/hackathon-test.md
+9. skills/hackathon-verify.md
+
+After reading all of the above:
+- You are an autonomous software agent on a parallel team.
+- GitHub Issues are the coordination layer. You have no memory between sessions.
+- Every action must go through the GitHub API (use the gh CLI if you have no MCP).
+- Make all GitHub API/CLI calls sequentially — never in parallel.
+- Follow the hackathon-session skill exactly to pick up the next unit of work.
+- When there is nothing to do, output: NOTHING_TO_DO
+
+Also check your harness's config directory against .gitignore and add it if missing,
+then commit the .gitignore update before starting any other work.
+
+Begin: orient yourself by reading current GitHub issue state, then act.
+```
+
+---
+
+To run continuously, wrap your agent invocation in a loop that:
+- Restarts the agent fresh for each unit of work (clear context between runs)
+- Waits 30s on `NOTHING_TO_DO` and retries up to 3 times before exiting
+- Does not exit while any `in-progress` issues still exist (peers may still be working)
+
+See `HARNESS.md` for a full loop script template and `gh` CLI equivalents for every
+GitHub MCP operation.
 
 ---
 

@@ -34,6 +34,23 @@ Do not use the `gh` CLI, `curl`, or any Bash command for anything the MCP can ha
 
 ---
 
+## Step 0 — Claim the epic before decomposing
+
+Two machines can both see the same `needs-scoping` epic and both start decomposing,
+producing duplicate task issues. Claim the epic first to prevent this.
+
+Pick one `needs-scoping` epic at **random** from those available — not the oldest.
+
+Three sequential MCP calls, no other actions between:
+1. Add yourself as assignee to the epic
+2. Add label `in-progress` to the epic (keep `needs-scoping` and `epic` labels for now)
+3. Comment on the epic: `agent: decomposing — [github username] — [ISO timestamp]`
+
+**Collision check:** re-read the epic. Two assignees or two decomposing comments within
+2 minutes → unassign, comment `agent: collision — backing off`, pick a different epic.
+
+---
+
 ## Step 1 — Load context
 
 Read all of the following via the GitHub MCP before forming any tasks:
@@ -136,7 +153,7 @@ Add a `## Child Issues` section (or replace the placeholder if it exists):
 - [ ] #<n> [#<epic>] <task title>
 ```
 
-Change the epic's labels via the GitHub MCP: remove `needs-scoping`, keep `epic`.
+Change the epic's labels via the GitHub MCP: remove `needs-scoping` and `in-progress`, keep `epic`. Unassign yourself from the epic.
 
 Add a comment to the epic via the GitHub MCP:
 ```

@@ -109,8 +109,8 @@ cat > "$RUN_SH" <<'RUNSH'
 set -euo pipefail
 
 IDLE=0
-MAX_IDLE=3      # stop after this many consecutive "nothing to do" responses
-IDLE_WAIT=30    # seconds to wait between idle retries
+MAX_IDLE=3      # stop after this many consecutive NOTHING_TO_DO signals
+IDLE_WAIT=60    # seconds between idle retries
 
 echo "Hackathon agent loop started. Press Ctrl-C to stop."
 echo ""
@@ -127,11 +127,12 @@ while true; do
       echo "Nothing to do for $MAX_IDLE consecutive checks. All done."
       break
     fi
-    echo "Idle ($IDLE/$MAX_IDLE). Waiting ${IDLE_WAIT}s — other agents may still be working..."
+    echo "Idle ($IDLE/$MAX_IDLE). Waiting ${IDLE_WAIT}s..."
     sleep "$IDLE_WAIT"
   else
+    # "Waiting for peers" output resets idle — only NOTHING_TO_DO counts.
     IDLE=0
-    sleep 3   # brief pause between sessions
+    sleep 3
   fi
 done
 RUNSH

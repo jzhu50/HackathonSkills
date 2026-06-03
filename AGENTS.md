@@ -70,12 +70,32 @@ in any other situation. GitHub auto-removes it (by closing the issue) when the P
 
 ---
 
+## Git sync — every session, before anything else
+
+At the start of every invocation, before reading GitHub state or touching any files:
+
+```bash
+# 1. Preserve any uncommitted work from a crashed previous session
+CURRENT_BRANCH=$(git branch --show-current)
+if [ "$CURRENT_BRANCH" != "main" ] && [ -n "$(git status --porcelain)" ]; then
+  git add -A && git commit -m "agent: checkpoint — session restart" || true
+  git push -u origin "$CURRENT_BRANCH" || true
+fi
+
+# 2. Sync main (--ff-only fails loud if local main diverged — surfaces bugs, doesn't hide them)
+git fetch origin && git remote prune origin
+git checkout main && git merge --ff-only origin/main
+```
+
+If `--ff-only` fails: local main diverged. This should never happen (agents never
+commit to main). Comment on the tracking issue and stop — do not proceed with stale state.
+
 ## Branch per issue — always
 
-Every issue gets its own branch created before any code is written:
+Every issue gets its own branch created before any code is written.
+Handle the case where the branch already exists (from a stalled reclaimed session):
 ```bash
-git checkout main && git pull origin main
-git checkout -b <issue-number>-<short-slug>
+git checkout -b <issue-number>-<short-slug> 2>/dev/null || git checkout <issue-number>-<short-slug>
 ```
 
 Never commit to `main` directly. With branch protection enabled on `main`
@@ -86,6 +106,11 @@ be rejected automatically.
 
 ## Claiming an issue
 
+**Always pick at random from available candidates — never the oldest.**
+In a parallel team, all machines start simultaneously and see the same issue list.
+"Oldest first" causes every machine to target the same item, collide, back off,
+and target the same next item — a livelock. Randomisation breaks the symmetry.
+
 Do all steps **sequentially** via the GitHub MCP, with no other actions between them:
 
 1. Add yourself as assignee + change label to `in-progress`
@@ -93,7 +118,7 @@ Do all steps **sequentially** via the GitHub MCP, with no other actions between 
 
 **Collision check (multi-agent concurrent sessions only):** Re-read the issue. Two
 assignees or two claiming comments within 2 minutes = collision. Unassign, comment
-`agent: collision — backing off`, pick a different issue.
+`agent: collision — backing off`, pick a different issue at random.
 
 ---
 

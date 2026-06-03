@@ -133,8 +133,8 @@ set -euo pipefail
 
 CONTEXT_FILE="YOUR_HARNESS.md"
 IDLE=0
-MAX_IDLE=3
-IDLE_WAIT=30
+MAX_IDLE=3     # exit after this many consecutive NOTHING_TO_DO signals
+IDLE_WAIT=60   # seconds between idle retries (longer = less wasted context)
 
 echo "Agent loop started. Press Ctrl-C to stop."
 while true; do
@@ -148,11 +148,17 @@ while true; do
     echo "Idle ($IDLE/$MAX_IDLE). Waiting ${IDLE_WAIT}s..."
     sleep "$IDLE_WAIT"
   else
+    # Waiting for peers is not idle — reset the counter.
     IDLE=0
     sleep 3
   fi
 done
 ```
+
+**Critical:** the session skill outputs "Waiting — N task(s) still in progress" (not
+`NOTHING_TO_DO`) when peers still have work. Your loop must NOT increment the idle
+counter on that output — only on a literal `NOTHING_TO_DO`. The grep above handles
+this correctly since `grep -qF 'NOTHING_TO_DO'` won't match the waiting message.
 
 Name it something distinct (e.g., `run-gemini.sh`) and add it to `.gitignore` if it
 contains harness-specific configuration.

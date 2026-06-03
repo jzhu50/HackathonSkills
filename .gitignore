@@ -5,10 +5,14 @@
 *.pem
 *.key
 
-# ── Claude Code (harness-specific — each user runs make-claude-md locally) ─
-# CLAUDE.md and run.sh/run.ps1 ARE committed — they are the shared agent config.
-# Only exclude the user-local settings override.
-.claude/settings.local.json
+# ── Claude Code — generated files (run make-claude-md.sh after cloning) ────
+# These are built locally from skills/*.md and AGENTS.md.
+# Never commit generated harness artifacts — CRLF/LF differences between
+# Windows and Mac teammates cause conflicts even on identical source.
+CLAUDE.md
+run.sh
+run.ps1
+.claude/
 
 # ── Other harness directories ───────────────────────────────────────────────
 # Each harness generates its own config directory. Keep those local.

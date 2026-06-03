@@ -32,10 +32,9 @@ Three sequential MCP calls, no other actions between them:
 
 Collision check (multi-agent only): re-read the issue. Two assignees or two claiming comments within 2 minutes → unassign, comment `agent: collision — backing off`, pick a different issue.
 
-Create a branch:
+Create a branch (main is already synced by session Phase 1):
 ```bash
-git checkout main && git pull origin main
-git checkout -b <issue-number>-bug-<short-slug>
+git checkout -b <issue-number>-bug-<short-slug> 2>/dev/null || git checkout <issue-number>-bug-<short-slug>
 ```
 
 ---

@@ -1,0 +1,83 @@
+# Project Plan
+
+> Fill this in as a team before running setup. Be specific — vague plans produce
+> vague code. Agents read this at the start of every session.
+>
+> When done, tell your agent: "Set up the project" and it will create all epics automatically.
+
+---
+
+## Vision
+
+<!-- One paragraph. What are we building and why? What problem does it solve?
+     What would a user say after using it for the first time? -->
+
+_TODO_
+
+---
+
+## Demo Goal
+
+<!-- The single most important sentence in this document.
+     Describe exactly what you want to be able to show or demo.
+     Format: "A user can [do X] and [see Y happen]." -->
+
+_TODO_
+
+---
+
+## Stack
+
+<!-- Fill in what's decided. Leave rows blank if genuinely undecided.
+     Agents will not make stack choices — they'll flag undecided rows as open questions. -->
+
+| Layer | Choice |
+|---|---|
+| Language | |
+| Framework | |
+| Database | |
+| Auth | |
+| Hosting/deployment | |
+| Key external APIs / services | |
+
+---
+
+## Core Features
+
+<!-- List the features needed to achieve the demo goal. Order by priority — agents
+     will work top to bottom. Each feature becomes one epic issue. Be specific enough
+     that an agent can understand what "done" means for each one. -->
+
+1. 
+2. 
+3. 
+
+---
+
+## Out of Scope
+
+<!-- Explicitly list what you are NOT building. This is as important as the feature list.
+     It prevents agents from gold-plating or going down rabbit holes. -->
+
+- 
+- 
+
+---
+
+## Open Questions
+
+<!-- Anything genuinely undecided. Agents will not guess on these — they will create
+     a blocked issue and wait for a human to resolve it here. -->
+
+- 
+
+---
+
+## Decisions Log
+
+<!-- Agents append here when PLAN.md changes during the project. Humans can also add
+     entries manually. Format: date | decision | reason. -->
+
+| Date | Decision | Reason |
+|---|---|---|
+| | | |

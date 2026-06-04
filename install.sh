@@ -55,64 +55,56 @@ _latest_tag() {
 _download() {
   local url="$1"
   local dest="$2"
+  local accept="${3:-application/vnd.github.v3.raw}"
   local auth_header=()
   if [[ -n "${GITHUB_TOKEN:-}" ]]; then
     auth_header=(-H "Authorization: token ${GITHUB_TOKEN}")
   fi
 
   if command -v curl &>/dev/null; then
-    curl -fsSL "${auth_header[@]}" -o "$dest" "$url"
+    curl -fsSL "${auth_header[@]}" -H "Accept: ${accept}" -o "$dest" "$url"
   else
     local wget_auth=()
     if [[ -n "${GITHUB_TOKEN:-}" ]]; then
       wget_auth=(--header="Authorization: token ${GITHUB_TOKEN}")
     fi
-    wget -qO "$dest" "${wget_auth[@]}" "$url"
-  fi
-}
-
-# -- PATH setup ----------------------------------------------------------------
-
-_add_to_path() {
-  local shell_rc=""
-  case "${SHELL:-}" in
-    */zsh)  shell_rc="${HOME}/.zshrc" ;;
-    */fish) shell_rc="${HOME}/.config/fish/config.fish" ;;
-    *)      shell_rc="${HOME}/.bashrc" ;;
-  esac
-
-  # shellcheck disable=SC2016  # intentional: literal string written to shell rc, expands at shell init
-  local export_line='export PATH="${HOME}/.local/bin:${PATH}"'
-  if [[ "$SHELL" == */fish ]]; then
-    export_line='fish_add_path ~/.local/bin'
-  fi
-
-  if [[ -f "$shell_rc" ]] && grep -qF ".local/bin" "$shell_rc"; then
-    _info "PATH already includes ~/.local/bin (${shell_rc})"
-  else
-    printf '\n# Added by hackathon-skills installer\n%s\n' "$export_line" >> "$shell_rc"
-    _info "Added ~/.local/bin to PATH in ${shell_rc}"
-    _info "Reload your shell or run:  source ${shell_rc}"
+    wget -qO "$dest" "${wget_auth[@]}" --header="Accept: ${accept}" "$url"
   fi
 }
 
 # -- install one script --------------------------------------------------------
 
 _install_script() {
-  local url="$1"
-  local dest="$2"
-  local label="$3"
+  local tag="$1"
+  local name="$2"
+  local dest="$3"
 
   local tmp
   tmp=$(mktemp /tmp/hs-XXXXXX.sh)
   # shellcheck disable=SC2064  # intentional: expand $tmp now to capture current value
   trap "rm -f '$tmp'" RETURN
 
-  _download "$url" "$tmp"
-  chmod +x "$tmp"
+  if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+    # Private repo: find asset API URL
+    local release_url="https://api.github.com/repos/${REPO}/releases/tags/${tag}"
+    local asset_url
+    asset_url=$(_download "$release_url" - "application/json" \
+      | grep -C 10 "\"name\": \"${name}\"" \
+      | grep "\"url\":" \
+      | head -1 \
+      | sed -E 's/.*"url": *"([^"]+)".*/\1/')
 
+    [[ -n "$asset_url" ]] || _die "could not find asset ${name} in release ${tag}"
+    _download "$asset_url" "$tmp" "application/octet-stream"
+  else
+    # Public repo: use standard download URL
+    local url="https://github.com/${REPO}/releases/download/${tag}/${name}"
+    _download "$url" "$tmp"
+  fi
+
+  chmod +x "$tmp"
   head -1 "$tmp" | grep -q 'bash\|sh'\
-    || _die "downloaded ${label} does not look like a shell script"
+    || _die "downloaded ${name} does not look like a shell script"
 
   mv "$tmp" "$dest"
   chmod +x "$dest"
@@ -135,11 +127,9 @@ printf '\n'
 
 mkdir -p "$INSTALL_DIR"
 
-BASE_URL="https://github.com/${REPO}/releases/download/${TAG}"
-
 printf 'Downloading...\n'
-_install_script "${BASE_URL}/runner.sh"         "$INSTALL_PATH"   "runner.sh"
-_install_script "${BASE_URL}/make-claude-md.sh" "$BOOTSTRAP_PATH" "make-claude-md.sh"
+_install_script "$TAG" "runner.sh"         "$INSTALL_PATH"
+_install_script "$TAG" "make-claude-md.sh" "$BOOTSTRAP_PATH"
 
 printf '\n'
 

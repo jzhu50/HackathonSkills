@@ -37,11 +37,12 @@ function Get-LatestTag {
     }
 }
 
-function Invoke-Download([string]$Url, [string]$Dest) {
+function Invoke-Download([string]$Url, [string]$Dest, [string]$Accept = "application/vnd.github.v3.raw") {
     $headers = @{}
     if ($env:GITHUB_TOKEN) {
         $headers["Authorization"] = "token $($env:GITHUB_TOKEN)"
     }
+    $headers["Accept"] = $Accept
     try {
         Invoke-WebRequest -Uri $Url -OutFile $Dest -UseBasicParsing -Headers $headers
     } catch {
@@ -50,14 +51,35 @@ function Invoke-Download([string]$Url, [string]$Dest) {
     }
 }
 
-function Install-Script([string]$Url, [string]$ScriptDst, [string]$WrapperDst, [string]$Label) {
+function Install-Script([string]$Tag, [string]$Name, [string]$ScriptDst, [string]$WrapperDst) {
     $Tmp = Join-Path $env:TEMP "hs-$([System.IO.Path]::GetRandomFileName()).ps1"
-    Invoke-Download -Url $Url -Dest $Tmp
+
+    if ($env:GITHUB_TOKEN) {
+        # Private repo: find asset API URL
+        $releaseUrl = "https://api.github.com/repos/$Repo/releases/tags/$Tag"
+        $headers = @{
+            "Authorization" = "token $($env:GITHUB_TOKEN)"
+            "Accept"        = "application/json"
+        }
+        try {
+            $resp = Invoke-RestMethod -Uri $releaseUrl -UseBasicParsing -Headers $headers
+            $asset = $resp.assets | Where-Object { $_.name -eq $Name }
+            if (-not $asset) { throw "Asset $Name not found in release $Tag" }
+            Invoke-Download -Url $asset.url -Dest $Tmp -Accept "application/octet-stream"
+        } catch {
+            Write-Error "Could not resolve asset $Name: $_"
+            exit 1
+        }
+    } else {
+        # Public repo: use standard download URL
+        $url = "https://github.com/$Repo/releases/download/$Tag/$Name"
+        Invoke-Download -Url $url -Dest $Tmp
+    }
 
     $firstLine = Get-Content $Tmp -TotalCount 1 -ErrorAction Stop
     if ($firstLine -notmatch '(?i)(param|#|function)') {
         Remove-Item $Tmp -Force -ErrorAction SilentlyContinue
-        Write-Error "Downloaded $Label does not look like a PowerShell script."
+        Write-Error "Downloaded $Name does not look like a PowerShell script."
         exit 1
     }
 
@@ -107,21 +129,19 @@ if (-not (Test-Path $InstallDir)) {
     New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
 }
 
-$BaseUrl = "https://github.com/$Repo/releases/download/$Tag"
-
 Write-Host "Downloading..."
 
 Install-Script `
-    -Url        "$BaseUrl/runner.ps1" `
+    -Tag        $Tag `
+    -Name       "runner.ps1" `
     -ScriptDst  (Join-Path $InstallDir "hackathon-skills.ps1") `
-    -WrapperDst (Join-Path $InstallDir "hackathon-skills.cmd") `
-    -Label      "runner.ps1"
+    -WrapperDst (Join-Path $InstallDir "hackathon-skills.cmd")
 
 Install-Script `
-    -Url        "$BaseUrl/make-claude-md.ps1" `
+    -Tag        $Tag `
+    -Name       "make-claude-md.ps1" `
     -ScriptDst  (Join-Path $InstallDir "hackathon-bootstrap.ps1") `
-    -WrapperDst (Join-Path $InstallDir "hackathon-bootstrap.cmd") `
-    -Label      "make-claude-md.ps1"
+    -WrapperDst (Join-Path $InstallDir "hackathon-bootstrap.cmd")
 
 Write-Host ""
 

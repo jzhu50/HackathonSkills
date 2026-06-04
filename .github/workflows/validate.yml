@@ -27,6 +27,9 @@ jobs:
           bash -n runner.sh
           echo "Shell syntax OK"
 
+      - name: ShellCheck
+        run: shellcheck make-claude-md.sh install.sh runner.sh
+
       - name: Check template files exist
         run: |
           failed=0
@@ -104,6 +107,14 @@ jobs:
           # 'true' exits immediately; the PTY master gets EIO and the runner exits 0.
           bash runner.sh --cli true
           echo "runner.sh PTY spawn OK"
+
+  # ── workflow linting (actionlint) ────────────────────────────────────────────
+  actionlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: actionlint
+        uses: rhysd/actionlint@v1
 
   # ── PowerShell bootstrap (Windows) ───────────────────────────────────────────
   validate-windows:

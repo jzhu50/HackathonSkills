@@ -15,7 +15,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
       - name: Create release with assets
         env:
@@ -39,7 +39,7 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
       - name: Install via install.sh (Linux / macOS)
         if: runner.os != 'Windows'
@@ -50,7 +50,7 @@ jobs:
           # Retry up to 5 times with 10s gaps before failing.
           success=false
           for i in 1 2 3 4 5; do
-            if bash install.sh "${{ github.ref_name }}"; then
+            if bash install.sh --tag "${{ github.ref_name }}"; then
               success=true
               break
             fi

@@ -35,7 +35,7 @@ jobs:
         cli: [claude, aider, codex, antigravity]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
       - name: Setup Python
         uses: actions/setup-python@v5

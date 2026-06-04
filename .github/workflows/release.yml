@@ -25,8 +25,8 @@ jobs:
           if gh release view "${{ github.ref_name }}" > /dev/null 2>&1; then
             gh release upload "${{ github.ref_name }}" "${ASSETS[@]}" --clobber
           else
-            gh release create "${{ github.ref_name }}" "${ASSETS[@]}"\
-              --title "${{ github.ref_name }}"\
+            gh release create "${{ github.ref_name }}" "${ASSETS[@]}" \
+              --title "${{ github.ref_name }}" \
               --generate-notes
           fi
 

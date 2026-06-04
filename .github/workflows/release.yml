@@ -29,3 +29,71 @@ jobs:
               --title "${{ github.ref_name }}" \
               --generate-notes
           fi
+
+  # ── post-publish smoke test (all three platforms) ────────────────────────────
+  smoke-test:
+    needs: release
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install via install.sh (Linux / macOS)
+        if: runner.os != 'Windows'
+        run: bash install.sh "${{ github.ref_name }}"
+
+      - name: Smoke test — bootstrap after install (Linux / macOS)
+        if: runner.os != 'Windows'
+        run: |
+          # Run the globally-installed hackathon-bootstrap from within the repo clone
+          # (which provides skills/ via the cwd fallback added to make-claude-md.sh).
+          tmp=$(mktemp -d)
+          ~/.local/bin/hackathon-bootstrap "$tmp"
+
+          [[ -s "$tmp/CLAUDE.md" ]] || { echo "FAIL: CLAUDE.md missing or empty"; exit 1; }
+
+          skill_count=$(ls skills/*.md | wc -l | tr -d ' ')
+          cmd_count=$(ls "$tmp/.claude/commands/"*.md 2>/dev/null | wc -l | tr -d ' ')
+          [[ "$skill_count" -eq "$cmd_count" ]] \
+            || { echo "FAIL: $skill_count skills but $cmd_count commands"; exit 1; }
+
+          python3 -c "import json; json.load(open('$tmp/.claude/settings.json'))" \
+            || { echo "FAIL: settings.json not valid JSON"; exit 1; }
+
+          echo "Smoke test OK (${{ matrix.os }}, ${{ github.ref_name }})"
+
+      - name: Install via install.ps1 (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: .\install.ps1 -Tag "${{ github.ref_name }}"
+
+      - name: Smoke test — bootstrap after install (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $tmp = Join-Path $env:TEMP "hs-smoke-$([System.IO.Path]::GetRandomFileName())"
+          New-Item -ItemType Directory -Force -Path $tmp | Out-Null
+
+          # Run the globally-installed hackathon-bootstrap.ps1 from within the repo clone.
+          $bootstrap = Join-Path $env:LOCALAPPDATA "hackathon-skills\bin\hackathon-bootstrap.ps1"
+          & $bootstrap $tmp
+          if ($LASTEXITCODE -ne 0) { Write-Host "FAIL: bootstrap exited $LASTEXITCODE"; exit 1 }
+
+          $claudeMd = Join-Path $tmp "CLAUDE.md"
+          if (-not (Test-Path $claudeMd) -or (Get-Item $claudeMd).Length -eq 0) {
+            Write-Host "FAIL: CLAUDE.md missing or empty"; exit 1
+          }
+
+          $skillCount = (Get-ChildItem skills\*.md).Count
+          $cmdCount   = (Get-ChildItem (Join-Path $tmp ".claude\commands\*.md") -ErrorAction SilentlyContinue).Count
+          if ($skillCount -ne $cmdCount) {
+            Write-Host "FAIL: $skillCount skills but $cmdCount commands"; exit 1
+          }
+
+          try { $null = Get-Content (Join-Path $tmp ".claude\settings.json") -Raw | ConvertFrom-Json }
+          catch { Write-Host "FAIL: settings.json not valid JSON: $_"; exit 1 }
+
+          Write-Host "Smoke test OK (${{ matrix.os }}, ${{ github.ref_name }})"

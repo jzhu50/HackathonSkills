@@ -15,13 +15,19 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TARGET_DIR="${1:-$(pwd)}"
+# When installed globally (e.g. ~/.local/bin/hackathon-bootstrap), the script lives
+# outside the project. Fall back to the calling directory so bootstrap works from
+# inside any clone of the template repo.
 SKILLS_DIR="$SCRIPT_DIR/skills"
+if [ ! -d "$SKILLS_DIR" ]; then
+  SKILLS_DIR="$(pwd)/skills"
+fi
 COMMANDS_DIR="$TARGET_DIR/.claude/commands"
 SETTINGS_PATH="$TARGET_DIR/.claude/settings.json"
 CLAUDE_MD="$TARGET_DIR/CLAUDE.md"
 
 if [ ! -d "$SKILLS_DIR" ]; then
-  echo "Error: skills/ not found at $SKILLS_DIR" >&2; exit 1
+  echo "Error: skills/ not found — run from inside a clone of the template repo" >&2; exit 1
 fi
 
 skills=("$SKILLS_DIR"/*.md)

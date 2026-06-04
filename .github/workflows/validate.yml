@@ -27,18 +27,41 @@ jobs:
           bash -n runner.sh
           echo "Shell syntax OK"
 
+      - name: Check template files exist
+        run: |
+          failed=0
+          for f in PLAN.md SPECS.md AGENTS.md hackathon.config.yml; do
+            [[ -f "$f" ]] || { echo "MISSING: $f"; failed=1; }
+          done
+          [[ $failed -eq 0 ]] && echo "Template files OK"
+          exit $failed
+
+      - name: Check hackathon.config.yml structure
+        run: |
+          failed=0
+          for key in project_breakdown epic_breakdown task_breakdown task_completion code_review epic_review; do
+            grep -q "${key}:" hackathon.config.yml \
+              || { echo "MISSING key: $key in hackathon.config.yml"; failed=1; }
+          done
+          [[ $failed -eq 0 ]] && echo "hackathon.config.yml structure OK"
+          exit $failed
+
+      - name: Check issue template frontmatter
+        run: |
+          failed=0
+          for f in .github/ISSUE_TEMPLATE/*.md; do
+            grep -q '^name:'  "$f" || { echo "MISSING name: in $f";  failed=1; }
+            grep -q '^about:' "$f" || { echo "MISSING about: in $f"; failed=1; }
+          done
+          [[ $failed -eq 0 ]] && echo "Issue template frontmatter OK"
+          exit $failed
+
       - name: Check skill frontmatter
         run: |
           failed=0
           for f in skills/*.md; do
-            if ! grep -q '^description:' "$f"; then
-              echo "MISSING description: in $f"
-              failed=1
-            fi
-            if ! grep -q '^allowed-tools:' "$f"; then
-              echo "MISSING allowed-tools: in $f"
-              failed=1
-            fi
+            grep -q '^description:'   "$f" || { echo "MISSING description: in $f";   failed=1; }
+            grep -q '^allowed-tools:' "$f" || { echo "MISSING allowed-tools: in $f"; failed=1; }
           done
           [[ $failed -eq 0 ]] && echo "Skill frontmatter OK ($(ls skills/*.md | wc -l | tr -d ' ') skills)"
           exit $failed
@@ -48,10 +71,8 @@ jobs:
           tmp=$(mktemp -d)
           bash make-claude-md.sh "$tmp"
 
-          # CLAUDE.md must exist and be non-empty
           [[ -s "$tmp/CLAUDE.md" ]] || { echo "FAIL: CLAUDE.md missing or empty"; exit 1; }
 
-          # command count must match skill count
           skill_count=$(ls skills/*.md | wc -l | tr -d ' ')
           cmd_count=$(ls "$tmp/.claude/commands/"*.md 2>/dev/null | wc -l | tr -d ' ')
           if [[ "$skill_count" -ne "$cmd_count" ]]; then
@@ -59,28 +80,83 @@ jobs:
             exit 1
           fi
 
-          # settings.json must exist and be valid JSON
           [[ -f "$tmp/.claude/settings.json" ]] \
             || { echo "FAIL: .claude/settings.json not generated"; exit 1; }
-          python3 -c "import json,sys; json.load(open('$tmp/.claude/settings.json'))" \
+          python3 -c "import json; json.load(open('$tmp/.claude/settings.json'))" \
             || { echo "FAIL: .claude/settings.json is not valid JSON"; exit 1; }
 
-          # CLAUDE.md must contain a section for every skill
           for f in skills/*.md; do
             name=$(basename "$f" .md)
-            if ! grep -q "# Skill: $name" "$tmp/CLAUDE.md"; then
-              echo "FAIL: CLAUDE.md missing section for $name"
-              exit 1
-            fi
+            grep -q "# Skill: $name" "$tmp/CLAUDE.md" \
+              || { echo "FAIL: CLAUDE.md missing section for $name"; exit 1; }
           done
 
           echo "Bootstrap OK — $skill_count skills, CLAUDE.md $(wc -c < "$tmp/CLAUDE.md" | tr -d ' ') bytes"
+
+      - name: runner.sh --help exits 0
+        run: |
+          bash runner.sh --help
+          echo "runner.sh --help OK"
+
+      - name: runner.sh PTY spawn with mock CLI
+        run: |
+          # Spawns the full Python PTY path with 'true' as the CLI.
+          # 'true' exits immediately; the PTY master gets EIO and the runner exits 0.
+          bash runner.sh --cli true
+          echo "runner.sh PTY spawn OK"
 
   # ── PowerShell bootstrap (Windows) ───────────────────────────────────────────
   validate-windows:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Check template files exist
+        shell: pwsh
+        run: |
+          $failed = 0
+          foreach ($f in @("PLAN.md", "SPECS.md", "AGENTS.md", "hackathon.config.yml")) {
+            if (-not (Test-Path $f)) { Write-Host "MISSING: $f"; $failed = 1 }
+          }
+          if ($failed -eq 0) { Write-Host "Template files OK" }
+          exit $failed
+
+      - name: Check hackathon.config.yml structure
+        shell: pwsh
+        run: |
+          $content = Get-Content hackathon.config.yml -Raw
+          $failed = 0
+          foreach ($key in @("project_breakdown", "epic_breakdown", "task_breakdown",
+                             "task_completion", "code_review", "epic_review")) {
+            if ($content -notmatch "${key}:") { Write-Host "MISSING key: $key"; $failed = 1 }
+          }
+          if ($failed -eq 0) { Write-Host "hackathon.config.yml structure OK" }
+          exit $failed
+
+      - name: Check issue template frontmatter
+        shell: pwsh
+        run: |
+          $failed = 0
+          foreach ($f in (Get-ChildItem .github\ISSUE_TEMPLATE\*.md)) {
+            $content = Get-Content $f.FullName -Raw
+            if ($content -notmatch '(?m)^name:')  { Write-Host "MISSING name: in $($f.Name)";  $failed = 1 }
+            if ($content -notmatch '(?m)^about:') { Write-Host "MISSING about: in $($f.Name)"; $failed = 1 }
+          }
+          if ($failed -eq 0) { Write-Host "Issue template frontmatter OK" }
+          exit $failed
+
+      - name: Check skill frontmatter
+        shell: pwsh
+        run: |
+          $failed = 0
+          foreach ($f in (Get-ChildItem skills\*.md)) {
+            $content = Get-Content $f.FullName -Raw
+            if ($content -notmatch '(?m)^description:')   { Write-Host "MISSING description: in $($f.Name)";   $failed = 1 }
+            if ($content -notmatch '(?m)^allowed-tools:') { Write-Host "MISSING allowed-tools: in $($f.Name)"; $failed = 1 }
+          }
+          $count = (Get-ChildItem skills\*.md).Count
+          if ($failed -eq 0) { Write-Host "Skill frontmatter OK ($count skills)" }
+          exit $failed
 
       - name: Validate PowerShell script syntax
         shell: pwsh
@@ -110,41 +186,44 @@ jobs:
           & .\make-claude-md.ps1 $tmp
           if ($LASTEXITCODE -ne 0) { Write-Host "FAIL: make-claude-md.ps1 exited $LASTEXITCODE"; exit 1 }
 
-          # CLAUDE.md must exist and be non-empty
           $claudeMd = Join-Path $tmp "CLAUDE.md"
           if (-not (Test-Path $claudeMd) -or (Get-Item $claudeMd).Length -eq 0) {
             Write-Host "FAIL: CLAUDE.md missing or empty"; exit 1
           }
 
-          # command count must match skill count
-          $skillCount  = (Get-ChildItem skills\*.md).Count
-          $cmdCount    = (Get-ChildItem (Join-Path $tmp ".claude\commands\*.md") -ErrorAction SilentlyContinue).Count
+          $skillCount = (Get-ChildItem skills\*.md).Count
+          $cmdCount   = (Get-ChildItem (Join-Path $tmp ".claude\commands\*.md") -ErrorAction SilentlyContinue).Count
           if ($skillCount -ne $cmdCount) {
-            Write-Host "FAIL: $skillCount skills but $cmdCount commands in .claude\commands\"; exit 1
+            Write-Host "FAIL: $skillCount skills but $cmdCount commands"; exit 1
           }
 
-          # settings.json must exist and be valid JSON
           $settingsPath = Join-Path $tmp ".claude\settings.json"
-          if (-not (Test-Path $settingsPath)) {
-            Write-Host "FAIL: .claude\settings.json not generated"; exit 1
-          }
-          try {
-            $null = Get-Content $settingsPath -Raw | ConvertFrom-Json
-          } catch {
-            Write-Host "FAIL: .claude\settings.json is not valid JSON: $_"; exit 1
-          }
+          if (-not (Test-Path $settingsPath)) { Write-Host "FAIL: settings.json not generated"; exit 1 }
+          try { $null = Get-Content $settingsPath -Raw | ConvertFrom-Json }
+          catch { Write-Host "FAIL: settings.json not valid JSON: $_"; exit 1 }
 
-          # CLAUDE.md must contain a section for every skill
           $claudeContent = Get-Content $claudeMd -Raw
           $missing = 0
           foreach ($skill in Get-ChildItem skills\*.md) {
-            $name = $skill.BaseName
-            if ($claudeContent -notmatch "# Skill: $name") {
-              Write-Host "FAIL: CLAUDE.md missing section for $name"
+            if ($claudeContent -notmatch "# Skill: $($skill.BaseName)") {
+              Write-Host "FAIL: CLAUDE.md missing section for $($skill.BaseName)"
               $missing = 1
             }
           }
           if ($missing) { exit 1 }
 
-          $bytes = (Get-Item $claudeMd).Length
-          Write-Host "Bootstrap OK — $skillCount skills, CLAUDE.md $bytes bytes"
+          Write-Host "Bootstrap OK — $skillCount skills, CLAUDE.md $((Get-Item $claudeMd).Length) bytes"
+
+      - name: runner.ps1 -Help exits 0
+        shell: pwsh
+        run: |
+          & .\runner.ps1 -Help
+          Write-Host "runner.ps1 -Help OK"
+
+      - name: runner.ps1 spawn with mock CLI
+        shell: pwsh
+        run: |
+          # Spawns cmd.exe as a mock AI CLI — exits immediately with code 0.
+          # Exercises the ConPTY console-resize + process-management path.
+          & .\runner.ps1 -Cli cmd -CliArgs @("/c", "exit", "0")
+          Write-Host "runner.ps1 spawn OK"

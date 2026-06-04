@@ -11,12 +11,18 @@
 
 param([string]$TargetDir = (Get-Location).Path)
 
-$SkillsDir    = Join-Path $PSScriptRoot "skills"
+# When installed globally (e.g. %LOCALAPPDATA%\hackathon-skills\bin\hackathon-bootstrap.ps1),
+# the script lives outside the project. Fall back to the calling directory so bootstrap
+# works from inside any clone of the template repo.
+$SkillsDir = Join-Path $PSScriptRoot "skills"
+if (-not (Test-Path $SkillsDir)) {
+    $SkillsDir = Join-Path (Get-Location).Path "skills"
+}
 $CommandsDir  = Join-Path $TargetDir ".claude\commands"
 $SettingsPath = Join-Path $TargetDir ".claude\settings.json"
 $ClaudeMdPath = Join-Path $TargetDir "CLAUDE.md"
 
-if (-not (Test-Path $SkillsDir)) { Write-Error "skills/ not found at $SkillsDir"; exit 1 }
+if (-not (Test-Path $SkillsDir)) { Write-Error "skills/ not found — run from inside a clone of the template repo"; exit 1 }
 $skills = Get-ChildItem -Path $SkillsDir -Filter "*.md" | Sort-Object Name
 if ($skills.Count -eq 0) { Write-Error "No .md files in $SkillsDir"; exit 1 }
 

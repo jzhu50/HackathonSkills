@@ -84,10 +84,11 @@ agent: epic branch created — epic-<n>-<slug>
 Read all of the following via the GitHub MCP before forming any tasks:
 
 1. The epic issue itself — full body, all comments
-2. `PLAN.md` — especially the relevant feature section and open questions
-3. `SPECS.md` if it exists — data models, routes, UI flows relevant to this epic
-4. Any issues referenced in the epic body (linked as `#X`)
-5. Existing code relevant to this epic (via `get_file_contents` or `get_repository_tree`)
+2. `SPECS.md` if it exists — data models, routes, UI flows relevant to this epic
+3. Any issues referenced in the epic body (linked as `#X`)
+4. Existing code relevant to this epic (via `get_file_contents` or `get_repository_tree`)
+
+(`PLAN.md` was already loaded in Phase 1 — do not re-fetch it.)
 
 Do not start decomposing until you have read all of the above.
 
@@ -146,7 +147,7 @@ Epic acceptance bar: (copy verbatim from the epic issue)
 - [ ] Epic branch rebased onto latest main
 - [ ] Full test suite passes
 - [ ] Every item in the epic's Acceptance Bar verified
-- [ ] PR opened from epic branch to main with `Closes #<verify-task-number>`
+- [ ] PR opened from epic branch to main with `Closes #<epic-number>` and `Closes #<verify-task-number>`
 
 ## Blocked By
 blocked-by: #<task-1>, #<task-2>, ... (all other child tasks for this epic)
@@ -191,6 +192,13 @@ Examples:
 
 **Labels:**
 - `needs-human-review` — all tasks start here; human approves before work begins
+- If the task has a `## Blocked By` section: also add `blocked`
+
+A task with both `needs-human-review` and `blocked` is waiting for two things: a
+dependency to close (removes `blocked`) AND human approval (removes `needs-human-review`
+and adds `ai-approved`). The dependency unblock sweep in hackathon-session removes the
+`blocked` label when all referenced issues close; the human then approves the now-visible
+task.
 
 **Do not assign** any tasks — agents claim them during session start.
 

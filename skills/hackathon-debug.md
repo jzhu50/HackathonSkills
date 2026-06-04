@@ -147,12 +147,20 @@ fix it and note it in the PR body.
 
 ### B7. Close out
 
+Also update the issue body via the GitHub MCP to add a `## Status` section:
+```
+## Status
+Root cause: <one sentence>
+Fix: <one sentence>
+Branch: <branch-name>
+```
+
 Follow hackathon-session Phase 3:
 1. Push the branch
 2. Open a PR via the GitHub MCP:
    - Title: `Fix: <bug title>`
    - Body: `Closes #<issue number>`, then: root cause, fix summary, regression test location
-   - Base: the **epic branch** for this issue
+   - Base: the **epic branch** — read `Epic branch:` from the issue's `## Context` section
 3. Change issue label to `in-review`
 4. Comment on the issue:
    ```

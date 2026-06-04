@@ -83,7 +83,9 @@ permission prompt and require a full retry cycle.
 | `bug` | Something is broken — routed to hackathon-debug |
 
 An issue has exactly one of: `needs-human-review`, `ai-approved`, `in-progress`,
-`blocked`, `in-review`. `epic` and `bug` are additive.
+`blocked`, `in-review`. `epic`, `bug`, and `blocked` are additive — `blocked` may
+coexist with `needs-human-review` on tasks that have an unmet dependency AND still
+need human approval before work begins.
 
 `in-review` means exactly one thing: a PR is open and unmerged. Do not apply it
 in any other situation.
@@ -109,7 +111,7 @@ Every epic gets its own branch. Every task gets a branch off its epic branch.
 2. Task branches fork off the epic branch.
 3. Task PRs merge into the epic branch (human reviews and merges).
 4. The verify task is the last child — it opens a PR from the epic branch to main.
-5. Merging the epic→main PR closes the epic.
+5. The PR body contains `Closes #<epic>` and `Closes #<verify-task>` — GitHub auto-closes both on merge.
 
 **Before the verify task opens the epic→main PR,** it rebases the epic branch onto the
 latest main to incorporate any other epics that have merged since the epic branch was created.
@@ -123,10 +125,11 @@ latest main to incorporate any other epics that have merged since the epic branc
 ```bash
 # Preserve any uncommitted work from a crashed previous session
 CURRENT_BRANCH=$(git branch --show-current)
-if [ "$CURRENT_BRANCH" != "main" ] && [ -n "$(git status --porcelain)" ]; then
+if [ -n "$CURRENT_BRANCH" ] && [ "$CURRENT_BRANCH" != "main" ] && [ -n "$(git status --porcelain)" ]; then
   git add -A && git commit -m "agent: checkpoint — session restart" || true
   git push -u origin "$CURRENT_BRANCH" || true
 fi
+# Note: empty CURRENT_BRANCH means detached HEAD — skip checkpoint, cannot push.
 
 # Sync main
 git fetch origin && git remote prune origin
@@ -166,9 +169,9 @@ pick a different issue.
 ## Dependency unblocking — every session, during orientation
 
 For each `blocked` issue, read the issue numbers referenced in its `## Blocked By`
-section. If every referenced issue is now closed, change the label `blocked` → `needs-human-review`
-(not directly to `ai-approved` — a human should confirm the unblocked issue before it's
-worked) and comment `agent: dependency closed — moved to needs-human-review for human review`.
+section. If every referenced issue is now closed, **remove the `blocked` label** (do not
+touch `needs-human-review` if present — it stays until a human approves). Comment:
+`agent: dependency closed — removed blocked label, awaiting human review`.
 
 ---
 

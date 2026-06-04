@@ -122,6 +122,7 @@ For each criterion, record: PASS or FAIL and a one-line note.
    - Title: `[Epic #<n>] <epic title> — ready to merge`
    - Body:
      ```
+     Closes #<epic-number>
      Closes #<verify-task-number>
 
      All acceptance criteria for Epic #<n> are met on the rebased epic branch.
@@ -159,8 +160,12 @@ For each failure:
    **Title:** `[Epic #<n> verify] <short failure description>`
    **Body:**
    ```
-   ## Linked Epic
+   ## Parent
    #<epic number>
+
+   ## Context
+   Epic branch: epic-<n>-<slug>
+   Filed during verification of Epic #<n>.
 
    ## Failure
    <what failed — test name or acceptance criterion>
@@ -197,7 +202,10 @@ For each failure:
 5. Change the verify task label back to `ai-approved` (it will be re-worked after
    bugs are fixed). Unassign yourself from the verify task.
 
-6. Return to hackathon-session (which will see no `ai-approved` tasks and report to human).
+6. Return to hackathon-session. The session will see the verify task as `ai-approved`
+   but Step 1 will immediately block on the open bug issues — it will then reach Phase 4
+   and report to the human. This is expected: the human reviews and approves the bug
+   fixes, the worker implements them, and verify runs again once all siblings are closed.
 
 ---
 
@@ -207,4 +215,4 @@ For each failure:
 - **Always rebase onto main first.** The epic may be out of date with other merged epics.
 - **Never skip the test suite.**
 - **File bugs as needs-human-review.** Human decides priority before the worker picks them up.
-- **Do not close the epic manually.** It closes automatically when the PR merges.
+- **Do not close the epic manually.** GitHub auto-closes it via `Closes #<epic-number>` in the PR body.

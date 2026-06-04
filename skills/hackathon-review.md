@@ -52,22 +52,28 @@ Note the PR's base branch (epic branch or main).
 
 ### 2c. Check for merge conflicts
 
-Check the PR's `mergeable` state via the GitHub MCP. If conflicted:
-- Post on PR: `agent: merge conflict — branch must be rebased onto <base>`
-- Change issue label `in-review` → `ai-approved`
-- Unassign the issue
-- Comment on issue:
-  ```
-  agent: merge conflict
+Check the PR's `mergeable` state via the GitHub MCP.
 
-  Branch: <branch-name>
-  PR: #<pr-number>
-  Base: <epic-branch or main>
+- If **`null` or `UNKNOWN`** (GitHub is still computing): wait 10 seconds and re-check
+  once. If still null after the retry, report to the human:
+  `"PR #<n> mergeability is still computing — re-run review in a moment."` and stop.
+- If **conflicted**:
+  - Post on PR: `agent: merge conflict — branch must be rebased onto <base>`
+  - Change issue label `in-review` → `ai-approved`
+  - Unassign the issue
+  - Comment on issue:
+    ```
+    agent: merge conflict
 
-  Next agent: fetch origin, checkout <branch-name>, rebase onto <base>,
-  push --force-with-lease, then return this issue to in-review.
-  ```
-- Stop. Report the conflict to the human.
+    Branch: <branch-name>
+    PR: #<pr-number>
+    Base: <epic-branch or main>
+
+    Next agent: fetch origin, checkout <branch-name>, rebase onto <base>,
+    push --force-with-lease, then return this issue to in-review.
+    ```
+  - Stop. Report the conflict to the human.
+- If **clean**: proceed to 2d.
 
 ### 2d. Evaluate
 

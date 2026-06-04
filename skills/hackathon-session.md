@@ -33,10 +33,11 @@ Make all MCP calls **sequentially, not in parallel.**
 **Git sync:**
 ```bash
 CURRENT_BRANCH=$(git branch --show-current)
-if [ "$CURRENT_BRANCH" != "main" ] && [ -n "$(git status --porcelain)" ]; then
+if [ -n "$CURRENT_BRANCH" ] && [ "$CURRENT_BRANCH" != "main" ] && [ -n "$(git status --porcelain)" ]; then
   git add -A && git commit -m "agent: checkpoint — session restart" || true
   git push -u origin "$CURRENT_BRANCH" || true
 fi
+# Note: if CURRENT_BRANCH is empty (detached HEAD), skip — cannot push to a detached HEAD.
 git fetch origin && git remote prune origin
 git checkout main && git merge --ff-only origin/main
 ```
@@ -48,8 +49,9 @@ Read sequentially via the GitHub MCP:
 2. `PLAN.md` — vision, stack, done criteria (note the Test command row)
 
 **Dependency unblock sweep:** For each `blocked` issue, check if every issue in its
-`## Blocked By` section is now closed. If all are closed, change label `blocked` →
-`needs-human-review` and comment `agent: dependency closed — moved to needs-human-review`.
+`## Blocked By` section is now closed. If all are closed, **remove the `blocked` label**
+(keep `needs-human-review` if present — do not add or change it). Comment:
+`agent: dependency closed — removed blocked label, awaiting human review`.
 
 ---
 
@@ -115,10 +117,11 @@ Call `hackathon-test` with mode `baseline`. Record which tests were passing and
 which were already failing. **Do not treat pre-existing failures as your problem**
 unless the task explicitly asks you to fix them.
 
-Comment on the issue:
+Comment on the issue and update the issue body via the GitHub MCP to add a `## Status` section:
 ```
-agent: baseline test run complete
-Passing: <N>  Failing: <M>  (pre-existing failures noted — not caused by this task)
+## Status
+Branch: <issue-number>-<short-slug>
+Baseline: <N> passing, <M> pre-existing failures
 ```
 
 #### N3. Implement
@@ -156,8 +159,11 @@ Body: ## Parent / ## Goal / ## Context / ## Acceptance Criteria
 <test command>
 ```
 
-All tests that were passing at baseline must still be passing. If a regression remains
-after debugging, note it explicitly in the PR body — do not hide it.
+All tests that were passing at baseline must still be passing. Document the results
+explicitly in the PR body — include the baseline count, current count, and any
+regressions with their test names. If a regression remains after debugging, note it
+explicitly — do not hide it. The PR body must answer: "what was passing before, what
+is passing now, and what changed?"
 
 #### N6. Close out → Phase 3
 
@@ -191,13 +197,18 @@ existing branch (do not open a new PR).
 
 1. Read the comment and the PR review comments for the exact changes needed.
 2. Check out the existing branch.
-3. Implement only the requested changes — do not re-implement the whole feature.
-4. Run the full test suite. Fix any failures.
-5. Push to the existing branch.
-6. Comment on PR: `agent: changes implemented — re-requesting review`
-7. Change issue label back to `in-review`.
-8. Comment on issue: what was fixed.
-9. Continue loop.
+3. Run the full test suite to establish the current baseline before touching anything:
+   ```bash
+   <test command from PLAN.md>
+   ```
+   Record which tests are passing now — this is your pre-fix baseline.
+4. Implement only the requested changes — do not re-implement the whole feature.
+5. Run the full test suite. All tests passing at the pre-fix baseline must still pass.
+6. Push to the existing branch.
+7. Comment on PR: `agent: changes implemented — re-requesting review`
+8. Change issue label back to `in-review`.
+9. Comment on issue: what was fixed, test results before and after.
+10. Continue loop.
 
 ---
 
@@ -217,7 +228,16 @@ existing branch (do not open a new PR).
 
 3. Change the issue label to `in-review` via the GitHub MCP.
 
-4. Comment on the issue:
+4. Update the issue body via the GitHub MCP — add or update the `## Status` section:
+   ```
+   ## Status
+   Branch: <branch-name>
+   PR: #<number> (base: epic-<n>-<slug>)
+   Tests: <N passing at baseline> → <N passing now> (<any regressions noted in PR>)
+   New issues: <list or "none">
+   ```
+
+5. Comment on the issue:
    ```
    agent: done — PR #<number> open for review
 
@@ -229,13 +249,26 @@ existing branch (do not open a new PR).
    Reviewers should know: <gotchas or "none">
    ```
 
-5. Return to Phase 2 — Task loop.
+6. Return to Phase 2 — Task loop.
 
 ---
 
 ## Phase 4 — No more ai-approved tasks
 
-When the task list is empty, report:
+**First, check for stale `in-progress` tasks.** An `in-progress` issue is stalled if
+its most recent agent comment is the original claiming comment (no subsequent progress
+updates) and that comment is more than 30 minutes old. If any stalled issues exist:
+
+- Check whether the branch was pushed:
+  ```bash
+  git fetch origin && git branch -r | grep <branch-name>
+  ```
+- If no branch: reclaim fresh — comment `agent: reclaiming stalled work — no branch found, restarting`, re-assign, route through the appropriate path.
+- If branch exists: check it out, read issue comments for context, continue from where the previous agent left off.
+
+Only proceed to the report below if no stalled tasks exist.
+
+When the task list is empty and no stalled tasks, report:
 
 ```
 Session complete. No more ai-approved tasks.

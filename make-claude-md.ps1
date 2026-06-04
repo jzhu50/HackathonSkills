@@ -60,13 +60,17 @@ This project has a human review gate between every major AI step.
 No AI agent merges anything without explicit human instruction.
 
 Workflow:
-  hackathon-setup     → creates epics (needs-human-review)
+  hackathon-setup       → wizard: configure oversight, scaffold PLAN.md
+  hackathon-plan        → Phase 1: PLAN.md → GitHub Projects + generate SPECS.md
+  Human approves projects (ai-approved)
+  hackathon-epics       → Phase 2: Projects → Epic issues on GitHub
   Human approves epics (ai-approved)
-  hackathon-decompose → creates tasks (needs-human-review)
+  hackathon-decompose   → Phase 3: Epics → Task issues + epic branches
   Human approves tasks (ai-approved)
-  hackathon-session   → implements tasks in a loop, opens PRs (in-review)
+  hackathon-session     → Phase 4: Tasks → code + PRs (in-review)
   Human triggers hackathon-review → AI posts findings → human decides
-  hackathon-verify    → last task per epic; opens epic→main PR
+  hackathon-verify      → last task per epic; opens epic→main PR
+  hackathon-projects    → track completion; close GitHub Project when all epics merge
 
 ## GitHub MCP — use for all GitHub operations
 

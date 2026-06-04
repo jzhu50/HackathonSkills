@@ -53,12 +53,24 @@ Concatenate the following into a single file your harness reads as a system prom
 ```
 AGENTS.md
 skills/hackathon-setup.md
+skills/hackathon-plan.md
+skills/hackathon-epics.md
 skills/hackathon-decompose.md
 skills/hackathon-session.md
+skills/hackathon-add.md
+skills/hackathon-projects.md
 skills/hackathon-review.md
 skills/hackathon-debug.md
 skills/hackathon-test.md
 skills/hackathon-verify.md
+skills/hackathon-grilling.md
+skills/hackathon-frontend.md
+skills/hackathon-auth.md
+skills/hackathon-database-schema.md
+skills/hackathon-deploy.md
+skills/hackathon-seed-demo-data.md
+skills/hackathon-security-audit.md
+skills/hackathon-docs-demo-script.md
 ```
 
 **Header to prepend:**
@@ -67,14 +79,18 @@ skills/hackathon-verify.md
 # Agent Coordination Context
 
 You are a software agent working on a hackathon project with human review at every
-major step. GitHub is the coordination layer — all state lives in GitHub Issues.
-You have no memory between sessions.
+major step. GitHub is the coordination layer — all state lives in GitHub Issues
+and GitHub Projects. You have no memory between sessions.
 
-Workflow:
-- hackathon-setup: run once, creates epics (needs-human-review)
-- hackathon-decompose: run after human approves epics (ai-approved); creates tasks (needs-human-review)
-- hackathon-session: run after human approves tasks (ai-approved); implements and PRs
-- hackathon-review: human-triggered; review one PR and post findings; human decides merge/changes
+Four-phase workflow:
+- hackathon-setup:      run once; configure oversight, scaffold PLAN.md
+- hackathon-plan:       Phase 1 — PLAN.md → GitHub Projects + generate SPECS.md
+- hackathon-epics:      Phase 2 — Projects → Epic issues on GitHub
+- hackathon-decompose:  Phase 3 — Epics → Task issues + epic branches
+- hackathon-session:    Phase 4 — Tasks → code + PRs (loops until queue empty)
+- hackathon-add:        add features/hardening/refactoring to a running project
+- hackathon-projects:   check completion; close GitHub Project when all epics merge
+- hackathon-review:     human-triggered; review one PR, post findings, human decides merge/changes
 - hackathon-debug/test/verify: called automatically by hackathon-session
 
 Labels:
@@ -120,12 +136,15 @@ If your harness does not support MCP:
 This system is **human-paced**, not autonomous loop-based. The agent does not need
 a runner script — a human invokes each skill when appropriate:
 
-1. Human runs `hackathon-setup` once to create epics
-2. Human approves epics, then invokes `hackathon-decompose`
-3. Human approves tasks, then invokes `hackathon-session`
-4. `hackathon-session` loops internally until no `ai-approved` tasks remain
-5. Human invokes `hackathon-review` for each PR when ready
-6. Human merges or requests changes; session picks up fixes automatically on next run
+1. Human runs `hackathon-setup` once to configure oversight and scaffold `PLAN.md`
+2. Human runs `hackathon-plan` — scopes `PLAN.md` into GitHub Projects and generates `SPECS.md`
+3. Human approves projects, then invokes `hackathon-epics`
+4. Human approves epics, then invokes `hackathon-decompose`
+5. Human approves tasks, then invokes `hackathon-session`
+6. `hackathon-session` loops internally until no `ai-approved` tasks remain
+7. Human invokes `hackathon-review` for each PR when ready
+8. Human merges or requests changes; session picks up fixes automatically on next run
+9. Human runs `hackathon-projects` to track cross-project completion
 
 **For other harnesses:** invoke `hackathon-session` (or equivalent) when you want
 the agent to work through the current `ai-approved` task queue.

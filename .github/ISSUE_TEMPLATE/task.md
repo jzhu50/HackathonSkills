@@ -4,6 +4,9 @@ about: A concrete unit of work completable in a single agent session
 labels: needs-human-review
 ---
 
+## Project
+<!-- GitHub Project this task belongs to (inherited from parent epic) -->
+
 ## Parent
 <!-- Link to parent epic: #X -->
 

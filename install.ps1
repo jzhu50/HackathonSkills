@@ -24,8 +24,12 @@ function Write-Step([string]$Msg) { Write-Host "  $Msg" }
 
 function Get-LatestTag {
     $url = "https://api.github.com/repos/$Repo/releases/latest"
+    $headers = @{}
+    if ($env:GITHUB_TOKEN) {
+        $headers["Authorization"] = "token $($env:GITHUB_TOKEN)"
+    }
     try {
-        $resp = Invoke-RestMethod -Uri $url -UseBasicParsing
+        $resp = Invoke-RestMethod -Uri $url -UseBasicParsing -Headers $headers
         return $resp.tag_name
     } catch {
         Write-Error "Could not fetch latest release tag: $_"
@@ -34,8 +38,12 @@ function Get-LatestTag {
 }
 
 function Invoke-Download([string]$Url, [string]$Dest) {
+    $headers = @{}
+    if ($env:GITHUB_TOKEN) {
+        $headers["Authorization"] = "token $($env:GITHUB_TOKEN)"
+    }
     try {
-        Invoke-WebRequest -Uri $Url -OutFile $Dest -UseBasicParsing
+        Invoke-WebRequest -Uri $Url -OutFile $Dest -UseBasicParsing -Headers $headers
     } catch {
         Write-Error "Download failed from ${Url}: $_"
         exit 1

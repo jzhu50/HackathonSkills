@@ -43,14 +43,24 @@ jobs:
 
       - name: Install via install.sh (Linux / macOS)
         if: runner.os != 'Windows'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           # GitHub's CDN can take a few seconds after release creation to serve assets.
           # Retry up to 5 times with 10s gaps before failing.
+          success=false
           for i in 1 2 3 4 5; do
-            bash install.sh "${{ github.ref_name }}" && break
+            if bash install.sh "${{ github.ref_name }}"; then
+              success=true
+              break
+            fi
             echo "Attempt $i failed - waiting 10s before retry..."
             sleep 10
           done
+          if [ "$success" = false ]; then
+            echo "FAIL: Installation failed after 5 attempts"
+            exit 1
+          fi
 
       - name: Smoke test - bootstrap after install (Linux / macOS)
         if: runner.os != 'Windows'
@@ -64,10 +74,10 @@ jobs:
 
           skill_count=$(find skills -maxdepth 1 -name '*.md' | wc -l | tr -d ' ')
           cmd_count=$(find "$tmp/.claude/commands/" -maxdepth 1 -name '*.md' 2>/dev/null | wc -l | tr -d ' ')
-          [[ "$skill_count" -eq "$cmd_count" ]]\
+          [[ "$skill_count" -eq "$cmd_count" ]] \
             || { echo "FAIL: $skill_count skills but $cmd_count commands"; exit 1; }
 
-          python3 -c "import json; json.load(open('$tmp/.claude/settings.json'))"\
+          python3 -c "import json; json.load(open('$tmp/.claude/settings.json'))" \
             || { echo "FAIL: settings.json not valid JSON"; exit 1; }
 
           echo "Smoke test OK (${{ matrix.os }}, ${{ github.ref_name }})"
@@ -75,16 +85,22 @@ jobs:
       - name: Install via install.ps1 (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           # GitHub's CDN can take a few seconds after release creation to serve assets.
           # Retry up to 5 times with 10s gaps before failing.
           $tag = "${{ github.ref_name }}"
+          $success = $false
           for ($i = 1; $i -le 5; $i++) {
             & .\install.ps1 -Tag $tag
-            if ($LASTEXITCODE -eq 0) { break }
-            if ($i -eq 5) { Write-Host "All install attempts failed"; exit 1 }
+            if ($LASTEXITCODE -eq 0) { $success = $true; break }
             Write-Host "Attempt $i failed - waiting 10s before retry..."
             Start-Sleep 10
+          }
+          if (-not $success) {
+            Write-Host "FAIL: Installation failed after 5 attempts"
+            exit 1
           }
 
       - name: Smoke test - bootstrap after install (Windows)

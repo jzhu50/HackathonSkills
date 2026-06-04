@@ -28,12 +28,21 @@ _info() { printf '  %s\n' "$*"; }
 
 _latest_tag() {
   local url="https://api.github.com/repos/${REPO}/releases/latest"
+  local auth_header=()
+  if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+    auth_header=(-H "Authorization: token ${GITHUB_TOKEN}")
+  fi
+
   if command -v curl &>/dev/null; then
-    curl -fsSL "$url"\
+    curl -fsSL "${auth_header[@]}" "$url"\
       | grep '"tag_name"'\
       | sed -E 's/.*"tag_name": *"([^"]+)".*/\1/'
   elif command -v wget &>/dev/null; then
-    wget -qO- "$url"\
+    local wget_auth=()
+    if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+      wget_auth=(--header="Authorization: token ${GITHUB_TOKEN}")
+    fi
+    wget -qO- "${wget_auth[@]}" "$url"\
       | grep '"tag_name"'\
       | sed -E 's/.*"tag_name": *"([^"]+)".*/\1/'
   else
@@ -46,10 +55,19 @@ _latest_tag() {
 _download() {
   local url="$1"
   local dest="$2"
+  local auth_header=()
+  if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+    auth_header=(-H "Authorization: token ${GITHUB_TOKEN}")
+  fi
+
   if command -v curl &>/dev/null; then
-    curl -fsSL -o "$dest" "$url"
+    curl -fsSL "${auth_header[@]}" -o "$dest" "$url"
   else
-    wget -qO "$dest" "$url"
+    local wget_auth=()
+    if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+      wget_auth=(--header="Authorization: token ${GITHUB_TOKEN}")
+    fi
+    wget -qO "$dest" "${wget_auth[@]}" "$url"
   fi
 }
 

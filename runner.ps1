@@ -140,13 +140,21 @@ function Invoke-SpawnPty {
     # Record our PID so the next invocation can stop this session
     $PID | Out-File -FilePath $PidFile -Encoding utf8 -NoNewline
 
+    $exitCode = 1
     try {
         if ($ExtraArgs.Count -gt 0) {
             & $AiCli @ExtraArgs
         } else {
             & $AiCli
         }
-        $exitCode = $LASTEXITCODE
+        if ($LASTEXITCODE -ne $null) {
+            $exitCode = $LASTEXITCODE
+        } else {
+            $exitCode = 0
+        }
+    } catch {
+        Write-Error "Failed to run AI CLI '$AiCli': $_"
+        $exitCode = 1
     } finally {
         Remove-Item $PidFile -Force -ErrorAction SilentlyContinue
     }

@@ -192,9 +192,18 @@ function Install-HackathonSkills {
             # Verify checksum if available
             if ($HasChecksums) {
                 Write-Info "Verifying checksum for $AssetName..."
-                $ExpectedHash = (Get-Content $TempChecksum | 
-                    Where-Object { $_ -match [regex]::Escape($AssetName) } |
-                    ForEach-Object { ($_ -split '\s+')[0] }).ToLower()
+                $ExpectedHash = $null
+                foreach ($Line in (Get-Content $TempChecksum)) {
+                    if ([string]::IsNullOrWhiteSpace($Line)) { continue }
+                    $Parts = $Line -split '\s+'
+                    if ($Parts.Count -ge 2) {
+                        $File = $Parts[1].Trim().TrimStart('*')
+                        if ($File -eq $AssetName) {
+                            $ExpectedHash = $Parts[0].ToLower()
+                            break
+                        }
+                    }
+                }
                 
                 if (-not [string]::IsNullOrWhiteSpace($ExpectedHash)) {
                     $ActualHash = Get-FileHash256 -Path $TempFile
@@ -233,15 +242,20 @@ powershell.exe -NoLogo -ExecutionPolicy Bypass -File "%~dp0$BaseName.ps1" %*
     
     # Add to PATH if needed
     $UserPath = [Environment]::GetEnvironmentVariable("Path", "User")
-    if ($UserPath -notlike "*$InstallDir*") {
+    $NormalizedInstallDir = $InstallDir.Trim().TrimEnd('\')
+    $PathList = if ([string]::IsNullOrWhiteSpace($UserPath)) { @() } else { $UserPath -split ';' | ForEach-Object { $_.Trim().TrimEnd('\') } }
+    if ($PathList -notcontains $NormalizedInstallDir) {
         Write-Host ""
         Write-Info "Adding $InstallDir to PATH..."
         
-        $NewPath = "$InstallDir;$UserPath"
+        $NewPath = if ([string]::IsNullOrWhiteSpace($UserPath)) { $InstallDir } else { "$InstallDir;$UserPath" }
         [Environment]::SetEnvironmentVariable("Path", $NewPath, "User")
         
-        # Update current session
-        $env:Path = "$InstallDir;$env:Path"
+        # Update current session if not already in session path
+        $EnvPathList = if ([string]::IsNullOrWhiteSpace($env:Path)) { @() } else { $env:Path -split ';' | ForEach-Object { $_.Trim().TrimEnd('\') } }
+        if ($EnvPathList -notcontains $NormalizedInstallDir) {
+            $env:Path = "$InstallDir;$env:Path"
+        }
         
         Write-Success "PATH updated. You may need to restart your terminal."
     }

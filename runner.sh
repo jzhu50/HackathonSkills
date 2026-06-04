@@ -148,7 +148,11 @@ def main():
             "COLUMNS": str(COLS),
             "ROWS":    str(ROWS),
         })
-        os.execvp(args[0], args)
+        try:
+            os.execvp(args[0], args)
+        except Exception as e:
+            sys.stderr.write(f"Error: Failed to execute {args[0]}: {e}\n")
+            sys.stderr.flush()
         os._exit(1)
 
     # parent - I/O relay

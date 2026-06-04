@@ -225,9 +225,9 @@ OVERRIDE_CLI=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --reconfigure)   RECONFIGURE=true; shift ;;
-    --cli)           OVERRIDE_CLI="${2:?--cli requires a value}"; shift 2 ;;
-    --help|-h)
+    --reconfigure|-reconfigure)   RECONFIGURE=true; shift ;;
+    --cli|-cli)                   OVERRIDE_CLI="${2:?--cli requires a value}"; shift 2 ;;
+    --help|-h|-help)
       cat <<EOF
 Usage: hackathon-skills [--cli <name>] [--reconfigure] [args...]
 

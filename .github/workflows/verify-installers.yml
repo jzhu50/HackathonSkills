@@ -49,7 +49,8 @@ jobs:
       - name: Start local server
         shell: bash
         run: |
-          python3 -m http.server 8000 --directory dist &
+          # Use 'python' which is more portable on Windows/Unix in GH Actions
+          python -m http.server 8000 --directory dist &
           echo "SERVER_PID=$!" >> $GITHUB_ENV
           # Give it a moment to start
           for i in {1..10}; do
@@ -57,7 +58,7 @@ jobs:
               echo "Server is up"
               break
             fi
-            echo "Waiting for server..."
+            echo "Waiting for server... ($i/10)"
             sleep 1
           done
 
@@ -72,7 +73,9 @@ jobs:
         shell: pwsh
         run: |
           .\install.ps1 -BaseUrl http://localhost:8000
-          echo "$env:LOCALAPPDATA\hackathon-skills\bin" >> $GITHUB_PATH
+          # Ensure UTF-8 and no BOM for GITHUB_PATH
+          $binDir = "$env:LOCALAPPDATA\hackathon-skills\bin"
+          $binDir | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Verify installed files (Unix)
         if: runner.os != 'Windows'
@@ -103,12 +106,17 @@ EOF
 @echo off
 echo Mock ${{ matrix.cli }} called with args: %*
 EOF
+            # Convert Unix path to Windows path for GITHUB_PATH
+            MOCK_PATH=$(pwd -W)/mock_bin
+            echo "$MOCK_PATH" >> $GITHUB_PATH
+          else
+            echo "$(pwd)/mock_bin" >> $GITHUB_PATH
           fi
-          echo "$(pwd)/mock_bin" >> $GITHUB_PATH
 
       - name: Test runner with ${{ matrix.cli }}
+        shell: bash
         run: |
-          # The installer and mock_bin should be in PATH via $GITHUB_PATH
+          # Use bash for both so --cli works as expected, and it's PATH-aware
           hackathon-skills --cli ${{ matrix.cli }} -- test-arg
 
       - name: Cleanup server

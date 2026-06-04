@@ -96,27 +96,28 @@ jobs:
         shell: bash
         run: |
           mkdir -p mock_bin
-          printf "#!/usr/bin/env bash\necho \"Mock ${{ matrix.cli }} called with args: \$@\"\n" > "mock_bin/${{ matrix.cli }}"
+          echo '#!/usr/bin/env bash' > "mock_bin/${{ matrix.cli }}"
+          echo "echo \"Mock ${{ matrix.cli }} called with args: \$@\"" >> "mock_bin/${{ matrix.cli }}"
           chmod +x "mock_bin/${{ matrix.cli }}"
           if [[ "${{ runner.os }}" == "Windows" ]]; then
-            printf "@echo off\necho Mock ${{ matrix.cli }} called with args: %%*\n" > "mock_bin/${{ matrix.cli }}.cmd"
+            echo '@echo off' > "mock_bin/${{ matrix.cli }}.cmd"
+            echo "echo Mock ${{ matrix.cli }} called with args: %*" >> "mock_bin/${{ matrix.cli }}.cmd"
             # Convert Unix path to Windows path for GITHUB_PATH
             MOCK_PATH=$(pwd -W)/mock_bin
-            echo "$MOCK_PATH" >> $GITHUB_PATH
+            echo "$MOCK_PATH" >> "$GITHUB_PATH"
           else
-            echo "$(pwd)/mock_bin" >> $GITHUB_PATH
+            echo "$(pwd)/mock_bin" >> "$GITHUB_PATH"
           fi
 
       - name: Test runner with ${{ matrix.cli }}
         shell: bash
         run: |
-          # Use bash for both so --cli works as expected, and it's PATH-aware
           hackathon-skills --cli ${{ matrix.cli }} -- test-arg
 
       - name: Cleanup server
-        if: ${{ always() }}
+        if: always()
         shell: bash
         run: |
-          if [[ -n "$SERVER_PID" ]]; then
+          if [[ -n "${SERVER_PID:-}" ]]; then
             kill "$SERVER_PID"
           fi

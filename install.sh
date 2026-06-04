@@ -110,6 +110,7 @@ trap cleanup EXIT
 # -- Installation -------------------------------------------------------------
 
 main() {
+    local args=("$@")
     echo ""
     echo -e "${CYAN}${TOOL_NAME} installer${NC}"
     echo -e "${CYAN}========================${NC}"
@@ -135,7 +136,7 @@ main() {
     
     # Optional: Download checksums
     local checksum_url
-    if [[ -n "$BASE_URL" ]]; then
+    if [[ -n "${BASE_URL:-}" ]]; then
         checksum_url="${BASE_URL}/checksums.sha256"
     else
         checksum_url="https://github.com/${REPO}/releases/download/${version}/checksums.sha256"
@@ -160,7 +161,7 @@ main() {
         local asset_name="${asset_pair%%:*}"
         local target_name="${asset_pair##*:}"
         local download_url
-        if [[ -n "$BASE_URL" ]]; then
+        if [[ -n "${BASE_URL:-}" ]]; then
             download_url="${BASE_URL}/${asset_name}"
         else
             download_url="https://github.com/${REPO}/releases/download/${version}/${asset_name}"
@@ -176,7 +177,8 @@ main() {
         if [[ "$has_checksums" == "true" ]]; then
             info "Verifying checksum for ${asset_name}..."
             local expected_hash
-            expected_hash=$(grep "${asset_name}" "${TEMP_DIR}/checksums.sha256" | awk '{print $1}' | tr '[:upper:]' '[:lower:]' || true)
+            # Use grep -F and anchor to avoid partial matches
+            expected_hash=$(grep -F "  ${asset_name}" "${TEMP_DIR}/checksums.sha256" | awk '{print $1}' | tr '[:upper:]' '[:lower:]' || true)
             
             if [[ -n "$expected_hash" ]]; then
                 local actual_hash=""

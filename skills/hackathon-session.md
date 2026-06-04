@@ -1,21 +1,16 @@
 ---
-description: One autonomous work unit — orient, claim the highest-value task or PR review, do the work, close out, then stop. Triggered by "Go". Designed to be called in a loop by run.sh.
+description: Loop through all ai-approved tasks — claim, test, implement, debug if needed, open PR. Runs until no ai-approved tasks remain. Context grows across tasks.
 allowed-tools: mcp__github__*, Read, Write, Edit, Bash
 ---
 
 # Skill: hackathon-session
 
-**One context, one unit of work.** This skill is designed to be called repeatedly by
-`run.sh` in a tight loop. Each invocation:
+**One growing context, all ai-approved tasks.** This skill orients once, then loops:
+claim an `ai-approved` task → run baseline tests → implement → run tests throughout →
+debug if tests fail unexpectedly → open PR → repeat until no tasks remain.
 
-1. Reads current GitHub state (fresh — no memory of previous invocations)
-2. Routes to the highest-value work available
-3. Does exactly one task or one PR review
-4. Closes out and stops
-
-When there is genuinely nothing to do, it outputs `NOTHING_TO_DO` so the loop knows
-to wait or exit. Context is automatically cleared between invocations because each
-`claude -p "Go"` call is a separate process.
+The context accumulates across tasks. This is intentional — the human controls the
+pace by deciding which tasks to approve.
 
 ---
 
@@ -23,377 +18,192 @@ to wait or exit. Context is automatically cleared between invocations because ea
 
 Every GitHub operation **must** use the GitHub MCP (`mcp__github__*`).
 Do not use `gh` CLI, `curl`, or Bash for GitHub operations.
-Use Bash only for local operations: branching, editing files, running tests.
 Make all MCP calls **sequentially, not in parallel.**
 
 ---
 
 ## Trigger
 
-"Go", "Start working", "Pick up a task", or any instruction to do project work.
-In automated mode this trigger comes from `run.sh` — proceed immediately without asking for clarification.
+"Go", "Work on tasks", "Start implementing", or any instruction to do project work.
 
 ---
 
-## Phase 1 — Orient
+## Phase 1 — Orient (once, at session start)
 
-**Git sync first — before reading any GitHub state:**
-
+**Git sync:**
 ```bash
-# Handle dirty state: a crashed previous session may have left uncommitted changes.
-# Push any in-progress branch so it is recoverable before touching main.
 CURRENT_BRANCH=$(git branch --show-current)
 if [ "$CURRENT_BRANCH" != "main" ] && [ -n "$(git status --porcelain)" ]; then
   git add -A && git commit -m "agent: checkpoint — session restart" || true
   git push -u origin "$CURRENT_BRANCH" || true
 fi
-
-# Sync main. --ff-only fails loud if local main diverged (surfaces bugs, doesn't hide them).
 git fetch origin && git remote prune origin
-git checkout main
-git merge --ff-only origin/main
+git checkout main && git merge --ff-only origin/main
 ```
 
-If `git merge --ff-only` fails, local main has diverged from remote (should not happen
-under normal operation — agents never commit to main directly). If this occurs: comment
-on the tracking issue via the GitHub MCP describing the state, then stop and wait for a
-human to resolve it.
+If `--ff-only` fails: local main diverged. Comment on the tracking issue and stop.
 
 Read sequentially via the GitHub MCP:
 1. `AGENTS.md` — coordination protocol
 2. `PLAN.md` — vision, stack, done criteria (note the Test command row)
 
-Then, sequentially via the GitHub MCP:
-1. Search `[Project] Tracking is:open` — project overview
-2. List `in-progress` issues — what is being worked right now
-3. List `blocked` issues — anything you might unblock
-4. List `ready` issues, no assignee — task candidates
-5. List `needs-scoping` issues, no assignee — decomposition candidates
-6. List `in-review` issues — PR reviews waiting
-
-**Dependency unblock sweep (bookkeeping — not your unit of work):** For each `blocked`
-issue, read the issue numbers it references in its `## Blocked By` section, a
-`blocked-by: #<n>` comment, or a `## Depends on` / `## Dependencies` section. If **every**
-referenced issue is now closed, change its label `blocked` → `ready` via the GitHub MCP
-and comment `agent: unblocked — all dependencies closed`. Do only the label flips, then
-continue. This is what makes the dependency graph flow — without it, blocked work and the
-E2E epic stall forever. Two machines flipping the same issue is harmless (idempotent).
-
-**Stale in-progress check:** For each `in-progress` issue, read its comments. If the most
-recent agent comment is the original claiming comment (no subsequent progress updates) and
-its timestamp is more than 30 minutes ago, the issue is likely stalled. Note stalled issues —
-they are reclaim candidates in Phase 2.
-
-**Completed epic check:** For each open `epic`-labeled issue, check whether every issue
-number listed in its `## Child Issues` section is closed (compare the linked issue numbers
-against actual closed-issue state — not the `[ ]`/`[x]` checkbox glyph, which is not kept
-in sync). Note any epic that is fully complete — verification (Path 0) is the highest-priority
-action **unless** the epic already carries an `agent: verifying` comment less than 30 minutes
-old (another machine is verifying it; leave it alone).
-
-Synthesise: what is the team building, what's in flight, what is the most valuable thing
-to do right now? State this in 2–3 sentences before acting.
+**Dependency unblock sweep:** For each `blocked` issue, check if every issue in its
+`## Blocked By` section is now closed. If all are closed, change label `blocked` →
+`needs-human-review` and comment `agent: dependency closed — moved to needs-human-review`.
 
 ---
 
-## Phase 2 — Route to work
+## Phase 2 — Task loop
 
-Choose exactly one path. Do not attempt more than one unit of work per invocation.
+Repeat until no `ai-approved` tasks remain:
 
-### Priority order
+### Step 1 — Find and claim a task
 
-```
-0  → epic with all children closed, unclaimed   (verify before starting new work)
-A  → ready issue exists                          (highest value)
-A' → stalled in-progress / stale review exists   (crash recovery, only if no ready issues)
-B  → needs-scoping epic with deps met exists     (unblock future work)
-C  → actionable in-review PR exists              (unclaimed or stale review)
-D  → none of the above                           (run test suite to find bugs)
-E  → nothing actionable                          (WAITING_FOR_PEERS or NOTHING_TO_DO)
-```
+List all `ai-approved` issues with no assignee via the GitHub MCP.
 
-**Only Path E emits the loop signals `WAITING_FOR_PEERS` and `NOTHING_TO_DO`.** The
-sub-skills (test, review, verify) never emit them — they report their result and the
-routing here decides whether the machine waits for peers or the project is truly done.
+**Special routing by issue content:**
 
----
-
-### Path 0 — Verify a completed epic
-
-**Condition:** any `epic`-labeled issue is open AND every issue listed in its
-`## Child Issues` section is closed AND it has no `agent: verifying` comment newer than
-30 minutes (an existing fresh claim means another machine is already verifying it).
-
-Detection: during Phase 1 orient, read each open `epic` issue and its Child Issues
-section. Compare each linked issue number against actual closed-issue state.
-
-Follow `hackathon-verify` skill steps exactly — that skill **claims the epic first**
-(assignee + `agent: verifying` comment + collision check) so parallel machines don't all
-verify the same epic. Stop after the verdict (pass or bug filing). Do not pick up a ready
-task in the same invocation.
-
-**Why this is highest priority:** a passing epic is a shippable unit. An unverified
-epic can contain integration failures invisible at the task level. Verify before
-adding more features.
-
----
-
-### Path A — Do a task
-
-**Condition:** at least one `ready` issue with no assignee.
-
-Pick **at random** from the available `ready` issues — not the oldest. In a parallel
-team all machines start simultaneously and would otherwise all claim the same item,
-collide, back off, and claim the same next item, creating a livelock. Randomisation
-breaks the symmetry. Prefer issues that unblock other work when all else is equal.
-
-**Detect the task type by scanning issue labels and comments:**
-
-| Signal | Type | Path |
+| Signal | Type | Action |
 |---|---|---|
-| Comment `agent: merge conflict` | Rebase branch onto main | A3 |
-| Comment `agent: review — changes requested` | Fix review feedback | A2 |
-| Label `bug` | Debug and fix | A-bug |
-| None of the above | New feature/task | A1 |
+| Comment `agent: merge conflict` | Merge conflict | Path R — rebase |
+| Comment `agent: review — changes requested` | Fix feedback | Path F — fix feedback |
+| Label `bug` | Bug fix | Call hackathon-debug |
+| Verify task title | Verify epic | Call hackathon-verify |
+| None of the above | New task | Path N — new task |
+
+Pick **at random** from the available issues — not the oldest. If all issues are
+one type, pick from that type.
+
+**Claim the chosen issue** (three sequential MCP calls, no other actions between):
+1. Add yourself as assignee
+2. Change label `ai-approved` → `in-progress`
+3. Comment: `agent: claiming — [github username] — [ISO timestamp]`
+
+**Collision check:** re-read the issue. Two assignees or two claiming comments
+within 2 minutes → both back off: unassign, reset label `in-progress` → `ai-approved`,
+comment `agent: collision — backing off`, pick a different issue.
 
 ---
 
-#### Path A1 — New task
+### Path N — New task
 
-1. Claim the issue (three sequential MCP calls, no other actions between):
-   - Add yourself as assignee
-   - Change label `ready` → `in-progress`
-   - Comment: `agent: claiming — [github username] — [ISO timestamp]`
+#### N1. Sync to the epic branch and create task branch
 
-2. Collision check (multi-agent only): re-read the issue. Two assignees or two claiming comments
-   within 2 minutes → both agents back off: unassign, **reset the label `in-progress` → `ready`**
-   (so the issue isn't stranded with no owner), comment `agent: collision — backing off`, then
-   pick a different issue.
+Read the task's `## Context` section to find the epic branch name (`epic-<n>-<slug>`).
 
-3. Create a feature branch before writing any code. Handle the case where the branch
-   already exists (crashed session that was reclaimed may have left it):
-   ```bash
-   git checkout -b <issue-number>-<short-slug> 2>/dev/null || git checkout <issue-number>-<short-slug>
-   ```
+```bash
+git fetch origin
+git checkout epic-<n>-<slug>
+git merge --ff-only origin/epic-<n>-<slug>
+git checkout -b <issue-number>-<short-slug> 2>/dev/null || git checkout <issue-number>-<short-slug>
+```
 
-4. Check environment: if the issue involves native packages or build tools, verify they install
-   cleanly before writing code. If a dependency fails, create a `blocked` issue before continuing.
+If the epic branch does not exist locally or remotely: comment on the task that the
+epic branch is missing, change label to `blocked`, unassign, and continue to the
+next issue.
 
-5. Implement the issue. Reference `PLAN.md` and `SPECS.md` for intent. When a design decision is
-   unclear, take the simpler path and document it in an issue comment via the GitHub MCP.
+#### N2. Run baseline tests
 
-6. Capture any discovered scope immediately — create an issue before continuing:
-   ```
-   ## Parent
-   #<current issue number>
-   ## Goal
-   <one sentence>
-   ## Context
-   <what you found>
-   ```
-   Label: `ready` / `needs-scoping` / `blocked`.
+Before writing any code, run the full test suite to establish what was already
+broken before you touched anything:
 
-7. If blocked: change label to `blocked`, comment explaining what's blocking you, unassign, go
-   back to Phase 2 and pick a different issue.
+```bash
+<test command from PLAN.md>
+```
 
-8. Close out → Phase 3.
+Call `hackathon-test` with mode `baseline`. Record which tests were passing and
+which were already failing. **Do not treat pre-existing failures as your problem**
+unless the task explicitly asks you to fix them.
+
+Comment on the issue:
+```
+agent: baseline test run complete
+Passing: <N>  Failing: <M>  (pre-existing failures noted — not caused by this task)
+```
+
+#### N3. Implement
+
+Reference `PLAN.md`, `SPECS.md`, and the issue body. When a design decision is
+unclear, take the simpler path and document it in an issue comment.
+
+**As you implement, run tests progressively.** After each meaningful piece of work:
+
+```bash
+<test command>
+```
+
+For each test, note:
+- What you expected it to show
+- What actually happened
+
+If a test that was **passing at baseline** is now **failing**: stop implementing and
+call `hackathon-debug`. Do not open a PR over a regression you introduced.
+
+If a test is failing that was **already failing at baseline**: note it but continue.
+
+#### N4. Capture discovered scope
+
+When you find work outside this issue, create an issue via the GitHub MCP:
+```
+Title: [#<parent>] <short imperative description>
+Labels: needs-human-review
+Body: ## Parent / ## Goal / ## Context / ## Acceptance Criteria
+```
+
+#### N5. Run the full test suite before PR
+
+```bash
+<test command>
+```
+
+All tests that were passing at baseline must still be passing. If a regression remains
+after debugging, note it explicitly in the PR body — do not hide it.
+
+#### N6. Close out → Phase 3
 
 ---
 
-#### Path A2 — Fix review feedback
+### Path R — Rebase after merge conflict
 
-The issue was returned from review. The previous PR is still open; add commits to it.
+The issue has an `agent: merge conflict` comment. Rebase the branch onto its target.
 
-1. Claim the issue (same three-step sequence as Path A1).
-
-2. Check out the existing branch (name is in the `agent: review — changes requested` comment):
+1. Read the comment for the branch name and PR number.
+2. Check out and rebase:
    ```bash
    git fetch origin
    git checkout <branch-name>
+   git rebase origin/<target-branch>   # epic branch, not main
    ```
-
-3. Read all PR review comments via the GitHub MCP. Treat each as a specific requirement.
-
-4. Implement only the requested changes — do not re-implement the whole feature.
-
-5. Push to the existing branch (the open PR auto-updates — do not open a new PR):
-   ```bash
-   git push origin <branch-name>
-   ```
-
-6. Comment on the PR via the GitHub MCP: `agent: changes implemented — re-requesting review`
-
-7. Change issue label back to `in-review` via the GitHub MCP.
-
-8. Comment on the issue:
-   ```
-   agent: review feedback implemented
-
-   Branch: <branch-name>
-   PR: #<pr-number>
-   Changes made: <what was fixed, one line per review comment addressed>
-   ```
-
-9. Stop. Do not merge — leave for a review session.
+3. Resolve conflicts file by file. Favour this branch's changes; note each resolution.
+4. Push: `git push --force-with-lease origin <branch-name>`
+5. Comment on PR: `agent: rebased — conflicts resolved`
+6. Change issue label to `in-review` via the GitHub MCP.
+7. Comment on issue: branch, PR, files resolved.
+8. **Do not merge** — leave for review.
+9. Continue loop.
 
 ---
 
-#### Path A3 — Rebase after merge conflict
+### Path F — Fix review feedback
 
-The PR could not be merged because it conflicts with `main`. Rebase the branch and push.
+The issue has an `agent: review — changes requested` comment. Fix and push to the
+existing branch (do not open a new PR).
 
-1. Claim the issue (same three-step sequence as Path A1).
-
-2. Check out the branch (name is in the `agent: merge conflict` comment):
-   ```bash
-   git fetch origin
-   git checkout <branch-name>
-   git rebase origin/main
-   ```
-
-3. If rebase has conflicts: resolve them file by file. When in doubt about intent, favour
-   preserving the changes from this branch and note each resolution in the PR comment.
-
-4. Push the rebased branch:
-   ```bash
-   git push --force-with-lease origin <branch-name>
-   ```
-
-5. Comment on the PR via the GitHub MCP: `agent: rebased onto main — conflicts resolved`
-
-6. Change issue label back to `in-review` via the GitHub MCP.
-
-7. Comment on the issue:
-   ```
-   agent: rebase complete
-
-   Branch: <branch-name>
-   PR: #<pr-number>
-   Conflicts resolved: <list of files, or "none">
-   ```
-
-8. Stop. Do not merge — leave for a review session.
+1. Read the comment and the PR review comments for the exact changes needed.
+2. Check out the existing branch.
+3. Implement only the requested changes — do not re-implement the whole feature.
+4. Run the full test suite. Fix any failures.
+5. Push to the existing branch.
+6. Comment on PR: `agent: changes implemented — re-requesting review`
+7. Change issue label back to `in-review`.
+8. Comment on issue: what was fixed.
+9. Continue loop.
 
 ---
 
-#### Path A-bug — Debug and fix a bug
-
-The issue has the `bug` label. Follow `hackathon-debug` skill steps exactly:
-reproduce → diagnose → fix → regression test → suite green → PR. Then stop.
-
----
-
-### Path A' — Reclaim stalled work
-
-**Condition:** no `ready` issues, but a claim is stale (the most recent claiming comment
-is > 30 minutes old with no follow-up). This covers two crash cases — a crashed implementer
-and a crashed reviewer — both of which otherwise wedge the loop forever.
-
-**Stalled `in-progress` task** (last comment is `agent: claiming…`, > 30 min, no progress).
-Pick the stalest:
-
-1. Check whether the branch was pushed:
-   ```bash
-   git fetch origin
-   git branch -r | grep <branch-name>
-   ```
-
-2. If no branch exists (agent crashed before pushing): reclaim the issue fresh as Path A1.
-   Comment before starting: `agent: reclaiming stalled work — no branch found, restarting`
-
-3. If the branch exists: check out the branch and continue where the previous agent left off.
-   Read the issue comments for context on what was done and what remains.
-   Comment: `agent: reclaiming stalled work — continuing from existing branch`
-
-4. Complete the work and close out → Phase 3.
-
-**Stalled `in-review` review** (the PR has an `agent: reviewing` comment > 30 min old with
-no verdict after it — `reviewed and merged` / `changes requested` / `merge conflict`): the
-reviewer crashed mid-review and the PR would otherwise sit forever. Route to Path C and
-follow `hackathon-review`; that skill treats a stale review claim as unclaimed and re-reviews.
-
----
-
-### Path B — Decompose an epic
-
-**Condition:** no `ready` issues, no stalled work, but a `needs-scoping` epic exists **whose
-dependency epics (its `## Dependencies` list) are all closed**. An epic whose dependencies
-are still open is not yet decomposable — skip it (this is what keeps the E2E Verification
-epic from being broken into tasks before the features it depends on exist).
-
-Follow `hackathon-decompose` skill steps exactly. After decomposition, stop — do not claim a
-task in the same invocation (decomposition is itself the one unit of work for this session).
-
----
-
-### Path C — Do a PR review
-
-**Condition:** no `ready` issues, no stalled work, no decomposable `needs-scoping` epics, but
-an **actionable** `in-review` PR exists — one with no `agent: reviewing` comment, or whose
-`agent: reviewing` comment is stale (> 30 min, no verdict after it). A PR freshly claimed by
-a peer is **not** actionable; if every `in-review` PR is freshly claimed, fall through to Path D.
-
-Follow `hackathon-review` skill steps exactly. Stop after the review.
-
----
-
-### Path D — Run the test suite
-
-**Condition:** nothing actionable in Paths 0/A/A'/B/C.
-
-Follow `hackathon-test` skill steps exactly. It runs the suite and files a `bug` + `ready`
-issue per new failure, then **reports its result back here** — it does not emit any loop
-signal itself. Then:
-
-- **New bug issues were filed** → report them and stop. They are the new `ready` pool; the
-  loop picks them up next cycle. (This counts as a unit of work — you found and filed bugs.)
-- **Suite green, no new bugs** → continue to Path E to make the idle decision.
-
----
-
-### Path E — Idle decision (the only place loop signals are emitted)
-
-Reached only when nothing is actionable and the test suite is green. Decide which signal to
-emit based on whether **peers are still working** — i.e. any `in-progress` issue exists, or any
-`in-review` PR is freshly claimed by a peer (an `agent: reviewing` comment < 30 min old):
-
-**Peers are still working** → a PR may merge or new tasks may appear soon, so stay in the
-pool. Report state briefly, then output exactly (machine-readable sentinel on its own line):
-
-```
-WAITING_FOR_PEERS — <N> task(s) in progress, <M> PR(s) under review.
-```
-
-The loop sleeps briefly and retries **without** counting this as idle.
-
-**Nothing is in flight anywhere** (no in-progress, no in-review, suite green) → the project
-is truly complete. Report state briefly, then output exactly:
-
-```
-NOTHING_TO_DO
-```
-
-The run script counts consecutive `NOTHING_TO_DO` signals and exits when the project is done.
-
-> These two sentinels are emitted **only here**. `hackathon-test`, `hackathon-review`, and
-> `hackathon-verify` never print `NOTHING_TO_DO` or `WAITING_FOR_PEERS` — they return their
-> result to this routing step, which owns the idle decision.
-
----
-
-## Phase 3 — Close out a task
+## Phase 3 — Close out a task (Path N only)
 
 **A PR is the only valid close-out path for completed work.**
-Never close an issue directly. Never leave completed work without a PR.
-
-**Before opening the PR — run the test suite:**
-```bash
-<test command from PLAN.md Stack table>
-```
-
-If tests fail: fix them before opening the PR. If you cannot fix them within reasonable
-effort, open the PR anyway and note the failures explicitly in the PR body so the reviewer
-is not surprised.
 
 1. Push the feature branch:
    ```bash
@@ -403,38 +213,54 @@ is not surprised.
 2. Open a PR via the GitHub MCP:
    - Title: same as the issue title
    - Body: `Closes #<issue number>` on its own line, then a 2–3 sentence summary
-   - Base: `main`
-   - Do not merge yourself
+   - Base: the **epic branch** (e.g. `epic-<n>-<slug>`) — NOT main
 
 3. Change the issue label to `in-review` via the GitHub MCP.
-   (`in-review` = PR open and unmerged. No other meaning.)
 
-4. Comment on the issue via the GitHub MCP:
+4. Comment on the issue:
    ```
    agent: done — PR #<number> open for review
 
    Branch: <branch-name>
+   PR base: epic-<n>-<slug>
    What was built: <2–3 sentences>
    New issues created: <list or "none">
-   Test suite: <passing / N failures noted in PR>
+   Test suite: <N passing / N failing — any failures noted in PR>
    Reviewers should know: <gotchas or "none">
    ```
 
-5. If `PLAN.md` needs updating, create a `[Plan Update] <description>` issue labeled `ready`
-   and comment on the tracking issue. Never modify `PLAN.md` in a task branch.
-
-6. Stop. Output nothing else. The loop will invoke a new session for the next task.
+5. Return to Phase 2 — Task loop.
 
 ---
 
-## Phase 4 — Session ended before work is complete
+## Phase 4 — No more ai-approved tasks
+
+When the task list is empty, report:
+
+```
+Session complete. No more ai-approved tasks.
+
+PRs open for review: <list of in-review issues and their PR numbers>
+Tasks still needs-human-review: <count>
+Blocked tasks: <count>
+
+Next steps for the human:
+- Review open PRs with hackathon-review
+- Approve more tasks with `ai-approved` label to continue implementation
+```
+
+Stop.
+
+---
+
+## Phase 5 — Session ended before task is complete
 
 Push what exists so it isn't lost:
 ```bash
 git push -u origin <branch-name>
 ```
 
-Leave the issue `in-progress`, yourself as assignee. Comment via the GitHub MCP:
+Leave the issue `in-progress`, yourself as assignee. Comment:
 ```
 agent: session end — work in progress
 
@@ -442,23 +268,18 @@ Branch: <branch-name>
 Done so far: <what's complete>
 Remaining: <what's left>
 Next agent should: <file paths, where to pick up, anything non-obvious>
+Baseline test state: <what was passing/failing at start>
 ```
-
-Update the `## Subtasks` checklist if the issue has one.
 
 ---
 
 ## Rules
 
-- **One unit of work per invocation.** Stop after Phase 3 or after Path B/C/D/E.
-- **Never commit to `main` directly.** Branch first, always.
-- **Never close an issue without a PR.** The PR is the audit trail.
-- **`in-review` = PR open and unmerged.** Never apply it any other way.
-- **Never edit `PLAN.md` in a task branch.** Create a plan-update issue instead.
-- **Never fire MCP calls in parallel.** Sequential only.
-- **Never go silent on a blocked issue.** Always comment and move on.
+- **Never commit to main or the epic branch directly.** Always branch.
+- **Never open a PR against main** (except the verify task which opens the epic→main PR).
+- **Never close an issue without a PR.**
+- **Never let a regression go undetected.** Run baseline tests before starting.
+- **Debug before PR if tests regressed.** Call hackathon-debug automatically.
+- **Never edit PLAN.md in a task branch.** Create a plan-update issue instead.
+- **Never fire MCP calls in parallel.**
 - **Never let discovered scope stay uncaptured.** Issue first, then continue.
-- **Never use `gh` CLI or Bash for GitHub operations.** GitHub MCP only.
-- **Run tests before opening a PR.** Note any failures explicitly — do not hide them.
-- **Only Path E emits `NOTHING_TO_DO` / `WAITING_FOR_PEERS`.** Sub-skills report; routing decides.
-- **Reset the label on collision back-off.** Don't strand an issue claimed-but-unowned.

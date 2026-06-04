@@ -7,7 +7,7 @@ allowed-tools: mcp__github__*
 
 Use this skill exactly once per hackathon, immediately after the repo is created and
 `PLAN.md` has been filled in. This skill interrogates the human until the plan is fully
-clear, then creates all labels and epics so agents can start working autonomously.
+clear, then creates all labels and epics so the team can start working.
 
 Do not run if issues already exist — it will create duplicates.
 
@@ -58,24 +58,19 @@ genuinely confident that any agent could start working without asking a human.
 **Never stop interrogating because you have "enough" questions — stop when you have
 no remaining questions.** A half-understood plan produces bad epics.
 
-**Types of ambiguity to surface (not an exhaustive list — use your judgment):**
+**Types of ambiguity to surface (not exhaustive — use your judgment):**
 
 - Done criteria: what does "done" look like for each feature, specifically enough
   that an agent can verify it without asking a human?
-- Dependencies: which features must exist before others can start? Is there shared
-  infrastructure (auth, DB schema, API base) that serialises work?
+- Dependencies: which features must exist before others can start?
 - Priority and cuts: if time runs out, what gets dropped first?
-- Technical decisions still open: stack choices, library choices, service choices that
-  would change how a feature is built
+- Technical decisions still open: stack choices, library choices, service choices
 - Environment requirements: native packages, build tools, OS-specific dependencies
-  that agents will need to resolve before coding
-- Data and state: where does data live? Is it shared across machines? (e.g. SQLite
-  is per-machine — is that intentional?)
+- Data and state: where does data live? Is it shared across machines?
 - Scope boundaries: for each feature, what is explicitly out of scope?
 - Integration points: which features share code, schemas, or API contracts?
 - Acceptance bar: what would cause a PR review to fail for each feature?
-- Test command: what command runs the full test suite? This is required — agents run
-  it before every PR and when idle. If not decided, make this the first decision.
+- Test command: what command runs the full test suite? This is required.
 
 **When you are done interrogating**, summarise back to the human what you understood
 before creating any issues. Ask for a final confirmation: "Does this capture everything
@@ -88,8 +83,8 @@ correctly?" If they correct anything, loop once more. Then proceed.
 Attempt to create labels one at a time via the GitHub MCP label tool.
 If the tool is missing: skip silently — GitHub auto-creates labels on first use.
 
-Labels needed: `needs-scoping`, `ready`, `in-progress`, `blocked`, `in-review`,
-`epic`, `bug`
+Labels needed: `needs-human-review`, `ai-approved`, `in-progress`, `blocked`,
+`in-review`, `epic`, `bug`
 
 ---
 
@@ -111,7 +106,7 @@ stack choices, constraints, shared infrastructure, environment requirements,
 decisions already made, integration points with other epics>
 
 ## Dependencies
-<other epics that must be complete or in-flight before this starts, or "None">
+<other epics that must be closed before this can be decomposed, as #<n>, or "None">
 
 ## Acceptance Bar
 <what would cause a PR review to fail for this feature>
@@ -123,56 +118,9 @@ decisions already made, integration points with other epics>
 <!-- Agents fill this in during decomposition. Do not edit manually. -->
 ```
 
-**Labels:** `epic`, `needs-scoping`
+**Labels:** `epic`, `needs-human-review`
 
 Create in priority order (dependency-first).
-
----
-
-## Step 4b — Create the mandatory E2E Verification epic
-
-After all feature epics are created, always create one final epic:
-
-**Title:** `[Epic] End-to-End Verification`
-
-**Body:**
-```
-## Goal
-Verify that the complete project works end-to-end and the demo goal from PLAN.md
-can be demonstrated without errors. This epic is the final gate before the project
-is considered done.
-
-## Demo Goal
-<copy verbatim from PLAN.md>
-
-## Context
-All feature epics must be complete before this epic begins. This epic verifies the
-integrated result — not individual features, but the full system working together.
-
-## Dependencies
-Depends on all other epics: #<n>, #<n>, ... (list every feature epic)
-
-## Acceptance Bar
-- Every acceptance criterion from every feature epic is met in the integrated system
-- The demo goal can be demonstrated from start to finish without errors
-- The full test suite passes on main with zero failures
-- No `bug`-labeled issues are open
-- Any edge cases identified during interrogation behave correctly end-to-end
-
-## Open Questions
-None — all decisions made during setup interrogation.
-
-## Child Issues
-<!-- Agents fill this in during decomposition. Do not edit manually. -->
-```
-
-**Labels:** `epic`, `needs-scoping`
-
-This epic is always the last to be worked. Its decomposition will produce tasks such as:
-- Write E2E tests covering the demo flow
-- Set up E2E test runner (if not already present)
-- Run and fix the full demo path
-- Document any remaining edge cases
 
 ---
 
@@ -191,10 +139,9 @@ This epic is always the last to be worked. Its decomposition will produce tasks 
 ## Epics
 - [ ] #<n> [Epic] <name>
 - [ ] #<n> [Epic] <name>
-- [ ] #<n> [Epic] End-to-End Verification  ← mandatory final epic
 
 ## Dependency Map
-<inter-epic dependencies. The E2E Verification epic always depends on all others.>
+<inter-epic dependencies>
 
 ## Out of Scope
 <from PLAN.md>
@@ -215,17 +162,16 @@ This epic is always the last to be worked. Its decomposition will produce tasks 
 Epics created (<N> total):
   #1 · [Epic] <feature>
   ...
-  #N · [Epic] End-to-End Verification  ← mandatory final gate
+
 Tracking issue: #<N+1>
+
+Next steps for the human:
+1. Review each epic issue (#1–#N).
+2. Add the `ai-approved` label to any epic you are satisfied with.
+3. Once epics are approved, run hackathon-decompose to break them into tasks.
 
 Recommended: enable branch protection on main
 (Settings → Branches → Require a pull request before merging)
-
-Start the loop on each machine:
-  Mac/Linux: ./run.sh
-  Windows:   .\run.ps1
-
-For non-Claude Code harnesses: see HARNESS.md
 ```
 
 ---
@@ -236,4 +182,4 @@ For non-Claude Code harnesses: see HARNESS.md
 - **Issue creation fails:** report it, continue with the rest
 - **Plan is incomplete after interrogation:** document remaining gaps in the tracking
   issue Open Questions section and proceed — agents will create `blocked` issues
-- **MCP auth error:** check PAT has `repo` scope and Docker is running
+- **MCP auth error:** check PAT has `repo` scope

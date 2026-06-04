@@ -1,64 +1,85 @@
 ---
-description: Break a needs-scoping epic into concrete, ready task issues via the GitHub MCP. Called automatically by hackathon-session or triggered directly.
-allowed-tools: mcp__github__*
+description: Loop through all ai-approved epics and break each into concrete tasks with needs-human-review. Creates the epic branch and a mandatory verify task per epic. Run after human approves epics.
+allowed-tools: mcp__github__*, Bash
 ---
 
 # Skill: hackathon-decompose
 
-Use this skill whenever an issue labeled `needs-scoping` needs to be broken into
-concrete, workable tasks. This is what turns a vague epic into things agents can
-actually pick up and complete in a single session.
-
-This skill is called from within hackathon-session when no `ready` issues exist,
-but can also be triggered directly by a human.
+**One growing context, all ai-approved epics.** This skill loops through every epic
+labeled `ai-approved` whose dependencies are met, decomposes it into tasks, and
+continues until none remain. Tasks are created with `needs-human-review` — a human
+must approve them before the task worker can pick them up.
 
 ---
 
-## GitHub MCP — required for all operations
+## GitHub MCP — required for all GitHub operations
 
-Every GitHub operation in this skill **must** use the GitHub MCP (`mcp__github__*`):
-reading issues, creating issues, updating issue bodies, adding labels, posting comments.
-
-Do not use the `gh` CLI, `curl`, or any Bash command for anything the MCP can handle.
+Every GitHub operation **must** use the GitHub MCP (`mcp__github__*`).
+Do not use `gh` CLI, `curl`, or Bash for GitHub operations.
+Make all MCP calls **sequentially, not in parallel.**
 
 ---
 
 ## Trigger
 
-- The session skill reaches Phase 2 and finds no `ready` issues — only `needs-scoping`
-- A human says something like:
-  - "Break down this epic"
-  - "Decompose issue #X"
-  - "Turn this into tasks"
-  - "What are the subtasks for #X?"
+- "Decompose the epics", "Break down the approved epics", "Create tasks"
+- Or any instruction to decompose after human has approved epics.
 
 ---
 
-## Step 0 — Claim the epic before decomposing
+## Phase 1 — Orient
 
-Two machines can both see the same `needs-scoping` epic and both start decomposing,
-producing duplicate task issues. Claim the epic first to prevent this.
+Git sync:
+```bash
+git fetch origin && git remote prune origin
+git checkout main && git merge --ff-only origin/main
+```
 
-**Pick from decomposable epics only.** From the `needs-scoping` epics, exclude any whose
-`## Dependencies` list still has open epics — decomposing an epic before its dependencies
-exist produces tasks no one can start (this is what keeps the **E2E Verification epic**, which
-depends on every feature epic, from being broken up before the features are built). From the
-remainder, pick one at **random** — not the oldest. If none are decomposable, return to
-hackathon-session Phase 2 (Path C/D).
+If `--ff-only` fails: local main diverged. Comment on the tracking issue and stop.
+
+Read sequentially via the GitHub MCP:
+1. `AGENTS.md` — coordination protocol
+2. `PLAN.md` — vision, stack, features
+
+Then list all open `epic`-labeled issues:
+- **Decomposable:** labeled `ai-approved`, AND every issue in `## Dependencies` is closed
+- **Skip:** labeled `needs-human-review` (awaiting human approval)
+- **Skip:** labeled `in-progress` (already decomposed or being decomposed)
+- **Skip:** dependencies still open
+
+If no decomposable epics exist: report state and stop.
+
+---
+
+## Phase 2 — Decompose loop
+
+Repeat for each decomposable epic (pick in dependency order, earliest deps first):
+
+### Step 0 — Claim the epic
 
 Three sequential MCP calls, no other actions between:
-1. Add yourself as assignee to the epic
-2. Add label `in-progress` to the epic (keep `needs-scoping` and `epic` labels for now)
-3. Comment on the epic: `agent: decomposing — [github username] — [ISO timestamp]`
+1. Add yourself as assignee
+2. Change label `ai-approved` → `in-progress` (keep `epic`)
+3. Comment: `agent: decomposing — [github username] — [ISO timestamp]`
 
-**Collision check:** re-read the epic. Two assignees or two decomposing comments within
-2 minutes → both back off: unassign, **remove the `in-progress` label** (leave it
-`needs-scoping` so it returns to the decomposable pool), comment `agent: collision —
-backing off`, pick a different epic.
+**Collision check:** re-read the epic. Two assignees or two decomposing comments
+within 2 minutes → both back off: unassign, reset label `in-progress` → `ai-approved`,
+comment `agent: collision — backing off`, skip to the next epic.
 
----
+### Step 1 — Create the epic branch
 
-## Step 1 — Load context
+```bash
+git checkout main
+git checkout -b epic-<n>-<slug>
+git push -u origin epic-<n>-<slug>
+```
+
+Post a comment on the epic via the GitHub MCP:
+```
+agent: epic branch created — epic-<n>-<slug>
+```
+
+### Step 2 — Load context
 
 Read all of the following via the GitHub MCP before forming any tasks:
 
@@ -66,14 +87,11 @@ Read all of the following via the GitHub MCP before forming any tasks:
 2. `PLAN.md` — especially the relevant feature section and open questions
 3. `SPECS.md` if it exists — data models, routes, UI flows relevant to this epic
 4. Any issues referenced in the epic body (linked as `#X`)
-5. If the epic touches existing code, use `get_file_contents` or `get_repository_tree`
-   (GitHub MCP) to understand what already exists
+5. Existing code relevant to this epic (via `get_file_contents` or `get_repository_tree`)
 
 Do not start decomposing until you have read all of the above.
 
----
-
-## Step 2 — Identify tasks
+### Step 3 — Identify tasks
 
 A good task is:
 - **Completable in one agent session** (a few hours of focused work)
@@ -82,34 +100,68 @@ A good task is:
   and the linked PLAN.md/SPECS.md sections, nothing else
 - **Has clear dependencies** — you know exactly what must be done before it can start
 
-Break the epic into tasks along these lines. Use judgment:
+Break the epic into tasks. Use judgment:
 - If a task would take more than one session → split it further
-- If two tasks always need to happen together → merge them
-- If a task depends on a genuinely unresolvable open question → label it `blocked`,
-  not `ready`. **Do not stop to ask the human** — file a `blocked` issue, document
-  what you need resolved, and continue decomposing the rest. The AFK loop cannot
-  accommodate interactive clarification mid-run.
+- If two tasks always happen together → merge them
+- If a task depends on an unresolvable open question → label it `blocked`
 
 Common decomposition patterns:
 - **Data layer first:** schema, migrations, models → then API → then UI
-- **Happy path first:** core feature working end-to-end → then edge cases → then polish
-- **Vertical slices:** one complete thin slice (data + API + UI) per task
+- **Happy path first:** core feature end-to-end → then edge cases → then polish
+- **Vertical slices:** one thin slice (data + API + UI) per task
 
-**Always include a testing task** for each non-trivial feature. The test task may be
-folded into the implementation task (when the implementation is small) or created as
-its own task. Every task's acceptance criteria must include the testing bar.
+**Every non-trivial feature must have a test task** (or test criteria folded into
+the implementation task). Every task's acceptance criteria must include the testing bar.
 
----
+**Reserve the last task slot for the mandatory verify task** (Step 4 below).
 
-## Step 3 — Create task issues
+### Step 4 — Create the mandatory verify task
 
-For each task, create a GitHub issue via the GitHub MCP:
+The last task for every epic is always the verify task. Create it after all other
+tasks are created, so its `## Blocked By` can reference all sibling tasks.
+
+**Title:** `[#<epic>] Verify epic end-to-end and merge to main`
+
+**Body:**
+```
+## Parent
+#<epic issue number>
+
+## Goal
+Verify that the entire epic delivers its acceptance bar end-to-end on the epic branch,
+then open a PR from the epic branch to main for human review and merge.
+
+## Context
+This is the final task for this epic. It runs after all other child tasks are merged
+into the epic branch. Before opening the PR:
+- Rebase the epic branch onto the latest main (to incorporate other merged epics)
+- Run the full test suite on the rebased epic branch
+- Verify every item in the epic's Acceptance Bar
+- If anything fails: file bug issues (needs-human-review), add to epic Child Issues
+
+Epic branch: epic-<n>-<slug>
+Epic acceptance bar: (copy verbatim from the epic issue)
+
+## Acceptance Criteria
+- [ ] Epic branch rebased onto latest main
+- [ ] Full test suite passes
+- [ ] Every item in the epic's Acceptance Bar verified
+- [ ] PR opened from epic branch to main with `Closes #<verify-task-number>`
+
+## Blocked By
+blocked-by: #<task-1>, #<task-2>, ... (all other child tasks for this epic)
+```
+
+**Labels:** `needs-human-review`
+
+### Step 5 — Create all other task issues
+
+For each task (except the verify task), create a GitHub issue via the GitHub MCP:
 
 **Title format:** `[#<epic number>] <short imperative description>`
 Examples:
 - `[#3] Create users table and migration`
 - `[#3] Implement POST /api/auth/login endpoint`
-- `[#3] Build login form component`
 
 **Body format:**
 ```
@@ -117,89 +169,89 @@ Examples:
 #<epic issue number>
 
 ## Goal
-<One sentence. Start with a verb. "Implement...", "Create...", "Add...", "Fix...">
-What does done look like? What can you verify when it's complete?
+<One sentence starting with a verb. What does done look like?>
 
 ## Context
-<Everything the next agent needs to start cold. Be specific:
+<Everything the next agent needs to start cold:
+- Epic branch: epic-<n>-<slug>
 - Relevant file paths
 - Which part of PLAN.md / SPECS.md applies
 - Decisions already made that constrain this task
-- What the task above this one in the dependency chain will have left in place>
+- What the task above this one will have left in place>
 
 ## Acceptance Criteria
 - [ ] <specific, verifiable thing>
 - [ ] <specific, verifiable thing>
-- [ ] Tests written for new behavior (unit or integration, using the project's test framework)
-- [ ] Full test suite passes (`<test command from PLAN.md>`)
+- [ ] Tests written for new behavior
+- [ ] Full test suite passes
 
 ## Blocked By
-<If this task cannot start until another is done: "blocked-by: #<issue number>".
-Otherwise delete this section.>
+<If blocked: blocked-by: #<issue number>. Otherwise delete this section.>
 ```
 
 **Labels:**
-- `ready` — if this task can be started immediately (no blockers)
-- `blocked` — if it depends on another task that isn't done yet; add a comment:
-  `blocked-by: #<issue number>`
+- `needs-human-review` — all tasks start here; human approves before work begins
 
 **Do not assign** any tasks — agents claim them during session start.
 
----
-
-## Step 4 — Update the epic issue
+### Step 6 — Update the epic issue
 
 After all tasks are created, update the epic issue body via the GitHub MCP.
 
-Add a `## Child Issues` section (or replace the placeholder if it exists):
+Add or replace `## Child Issues`:
 
 ```
 ## Child Issues
 - [ ] #<n> [#<epic>] <task title>
 - [ ] #<n> [#<epic>] <task title>
-- [ ] #<n> [#<epic>] <task title>
+- [ ] #<n> [#<epic>] Verify epic end-to-end and merge to main
 ```
 
-Change the epic's labels via the GitHub MCP: remove `needs-scoping` and `in-progress`, keep `epic`. Unassign yourself from the epic.
+Epic label stays `in-progress` (children are being worked). Unassign yourself.
 
-Add a comment to the epic via the GitHub MCP:
+Comment on the epic:
 ```
 agent: decomposed into <N> tasks
-Tasks: #<n>, #<n>, #<n>
-First task to start: #<n> — <title>
+Epic branch: epic-<n>-<slug>
+Tasks (all need-human-review): #<n>, #<n>, ...
+Verify task (last): #<n>
+Human: review and approve tasks with `ai-approved` label when ready
+```
+
+### Step 7 — Update the tracking issue
+
+Comment via the GitHub MCP:
+```
+Epic #<n> decomposed: <N> tasks created. All labeled needs-human-review.
+Epic branch: epic-<n>-<slug>
 ```
 
 ---
 
-## Step 5 — Update the tracking issue
+## Phase 3 — After all epics decomposed
 
-Find the `[Project] Tracking` issue via the GitHub MCP search.
+Report:
 
-Add a comment via the GitHub MCP:
 ```
-Epic #<n> decomposed: <N> tasks created, <M> ready to start, <K> blocked pending prior work.
+Decomposition complete.
+
+Epics processed: <list>
+Total tasks created: <N> (all labeled needs-human-review)
+
+Next steps for the human:
+Review each task issue and add `ai-approved` to any task ready to be implemented.
+Blocked tasks will unblock automatically when their dependencies close; they will
+then be moved to needs-human-review for your review.
 ```
 
 ---
 
-## Step 6 — Stop
+## Quality bar
 
-Decomposition is itself one full unit of work. **Do not claim one of the tasks you just
-created in this same invocation** — that would violate one-context-one-task and let a
-decomposer race its own freshly-created tasks against peers. Stop here. The tasks you
-created are the new `ready` pool; the next loop cycle (a fresh context, here or on a peer
-machine) claims one.
-
----
-
-## Quality bar for decomposition
-
-Before finishing, verify every task you created:
+Before finishing each epic's decomposition, verify every task:
 - [ ] Can an agent start this with zero additional context beyond the issue + PLAN.md?
-- [ ] Is the output of this task verifiable? (not "work on auth" but "POST /login returns JWT")
+- [ ] Is the output of this task verifiable?
 - [ ] Is the scope small enough to finish in one session?
 - [ ] Are dependencies between tasks correct and complete?
-- [ ] Does every task include test criteria in its acceptance criteria?
-- [ ] Did you capture any open questions as `blocked` issues rather than leaving them implicit?
-
-If any task fails these checks, revise it before finishing.
+- [ ] Does every task include test criteria?
+- [ ] Is the verify task last, blocked by every other task?

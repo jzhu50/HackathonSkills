@@ -1,11 +1,17 @@
 ---
-description: Run the test suite when the loop is idle — discovers bugs and creates ready issues for each failure. Called from hackathon-session Path D when no tasks, epics, or PRs exist.
+description: Run the test suite and report results with expected vs actual output per test. Called by hackathon-session at baseline (before implementation) and throughout implementation. Also callable by humans.
 allowed-tools: mcp__github__*, Read, Bash
 ---
 
 # Skill: hackathon-test
 
-When the agent loop has nothing to claim (no `ready` tasks, no `needs-scoping` epics, no `in-review` PRs), run the full test suite to proactively discover broken behavior. Create a `bug` + `ready` issue for each new failure.
+Run the full test suite and report results clearly — what was expected, what actually
+happened, which tests are new failures vs pre-existing. When called with mode `baseline`,
+establishes the pre-implementation snapshot. When called with mode `check`, compares
+against the baseline.
+
+This skill **reports results and returns** — it does not close out, file issues, or
+make any decisions. The caller (`hackathon-session`) acts on the results.
 
 ---
 
@@ -18,102 +24,75 @@ Make all MCP calls sequentially, not in parallel.
 
 ## Trigger
 
-- `hackathon-session` Phase 2 Path D (nothing else to do)
-- Human: "Run the tests", "Check for bugs", "What's broken"
+- `hackathon-session` at start of each task (mode: `baseline`)
+- `hackathon-session` during or after implementation (mode: `check`)
+- Human: "Run the tests", "Check what's failing", "What's the test status"
 
 ---
 
 ## Step 1 — Find the test command
 
 Check in order:
-1. PLAN.md Stack table — "Test command" row
-2. SPECS.md — setup or environment section
+1. `PLAN.md` Stack table — "Test command" row
+2. `SPECS.md` — setup or environment section
 3. Common defaults: `npm test`, `pytest`, `go test ./...`, `cargo test`, `bundle exec rspec`
 
-If no test command can be determined: report "no test command found — cannot run the suite"
-and stop. Do not emit a loop signal — hackathon-session Path E owns the `NOTHING_TO_DO` /
-`WAITING_FOR_PEERS` decision. (A project with no test command should make establishing one
-its first task — see AGENTS.md Testing protocol.)
+If no test command can be determined: report "no test command found" and stop.
+(A project with no test command should make establishing one its first task.)
 
 ---
 
-## Step 2 — Clean baseline
-
-Use fetch + fast-forward (never a plain `git pull`, which can create a merge commit):
-
-```bash
-git fetch origin
-git checkout main
-git merge --ff-only origin/main
-```
-
----
-
-## Step 3 — Run the suite
+## Step 2 — Run the suite
 
 ```bash
 <test command>
 ```
 
-Capture all output. For each failing test, extract:
+Capture all output. For each test, extract:
 - Test name or description
-- Error message and assertion failure
-- File path and line number (if shown)
+- Status: PASS or FAIL
+- If FAIL: error message, assertion failure, file path, line number
 
 ---
 
-## Step 4 — Deduplicate against existing issues
+## Step 3 — Report
 
-For each failing test, search via the GitHub MCP for an existing open issue that already describes this failure (to avoid duplicates). Search by test name or error keyword.
+Output the results in this format:
+
+```
+Test run — <mode: baseline / check>
+Command: <test command>
+Result: <N> passing, <M> failing, <K> skipped
+
+[If M > 0:]
+FAILING TESTS:
+- <test name>
+  Expected: <what the test asserts>
+  Actual:   <what happened — error/assertion output>
+  File:     <path:line if available>
+
+- <test name>
+  Expected: <what the test asserts>
+  Actual:   <what happened>
+  ...
+
+[If mode is "check" and baseline exists:]
+NEW FAILURES (were passing at baseline):
+  <list of test names — these need debugging>
+
+PRE-EXISTING FAILURES (also failing at baseline):
+  <list of test names — not your responsibility unless the task covers them>
+```
 
 ---
 
-## Step 5 — Create bug issues
+## Step 4 — Return result to caller
 
-For each new failure (no existing open issue), create one GitHub issue via the GitHub MCP:
+Do not file issues or make decisions.
 
-**Title:** `[Bug] <test name or short failure description>`
+Return the result summary to `hackathon-session`. The session skill decides:
+- If new failures exist → call `hackathon-debug`
+- If only pre-existing failures → note and continue
+- If suite is green → proceed to PR
 
-**Body:**
-```
-## Symptom
-<test name, assertion that failed, error message>
-
-## Steps to reproduce
-Run: `<test command>`
-Test: `<failing test name>`
-
-## Expected
-<what the test asserts should happen>
-
-## Actual
-<what actually happened — error output verbatim>
-
-## Source context
-<file path and line number if available>
-```
-
-**Labels:** `bug`, `ready`
-
-One issue per distinct failure.
-
----
-
-## Step 6 — Report
-
-After creating all issues (or confirming no new failures), output:
-
-```
-Test run complete.
-  Command: <test command>
-  Result: <N> passing, <M> failing
-  New bug issues created: <list of #N titles, or "none">
-```
-
-**Do not emit a loop signal from this skill.** When run inside the loop, return this result
-to hackathon-session: if new bugs were filed, that was the unit of work (the loop claims them
-next cycle); if the suite is fully green with no new bugs, Path E decides between
-`WAITING_FOR_PEERS` (peers still working) and `NOTHING_TO_DO` (project complete). Emitting
-`NOTHING_TO_DO` here would wrongly signal "done" while a peer is mid-task.
-
-Stop after reporting — do not claim any of the newly created bug issues in this invocation.
+When called by a human directly: just present the report above and stop.

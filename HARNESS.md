@@ -1,19 +1,12 @@
 # Adapting This Repo for Non-Claude Code Harnesses
 
-This repo is designed for **Claude Code** (`claude -p "Go"` headless mode). If your
-team uses a different agent harness (Aider, Cursor, Codex, Gemini CLI, custom LLM
-runner, etc.), this document explains how to wire it up so you get the same autonomous
-loop with your toolchain.
+This repo is designed for **Claude Code** (interactive mode with slash commands).
+If your team uses a different agent harness (Aider, Cursor, Codex, Gemini CLI,
+custom LLM runner, etc.), this document explains how to wire it up.
 
-The coordination protocol (GitHub Issues as shared brain, label state machine, branch
-per issue, PR-only close-out) is harness-agnostic. Only the invocation and context
-loading need to change.
-
-> **Fastest path:** paste the **Harness bootstrap prompt** from the README into your agent
-> once. It performs Steps 1–4 below automatically — generating your context file, loop
-> runner, and permission/auto-approve config — so you just run the produced script and walk
-> away. This document is the long-form reference for what that prompt does and how to do it
-> by hand.
+The coordination protocol (GitHub Issues as shared brain, label state machine,
+branch-per-epic/task, PR-only close-out) is harness-agnostic. Only the invocation
+and context loading differ.
 
 ---
 
@@ -25,7 +18,7 @@ loading need to change.
 | `PLAN.md` | Project plan — filled in by the team, read by all agents |
 | `SPECS.md` | Implementation detail — read by all agents |
 | `skills/*.md` | Skill definitions — your harness loads these as prompts |
-| `.gitignore` | Shared; add your harness directory to it (see below) |
+| `.gitignore` | Shared — add your harness directory to it |
 
 ---
 
@@ -33,72 +26,64 @@ loading need to change.
 
 | Claude Code file | What it does | You create |
 |---|---|---|
-| `CLAUDE.md` | Context file auto-loaded by `claude` CLI | Your harness's equivalent context file |
-| `run.sh` / `run.ps1` | Loop runner | Your harness's equivalent runner script |
+| `CLAUDE.md` | Context auto-loaded by `claude` | Your harness's equivalent context file |
 | `.claude/settings.json` | Permission pre-approvals | Your harness's permission config |
 | `.claude/commands/` | Slash commands | Your harness's equivalent (if any) |
 
-**Do not commit your harness files with the same names as the Claude Code files.**
-Use distinct names (e.g., `GEMINI.md`, `run-aider.sh`) so both harnesses can coexist
-in the same repo without conflicts.
+Use distinct names (e.g., `GEMINI.md`, `CODEX.md`) so harnesses coexist without conflicts.
 
 ---
 
 ## Step 1 — Add your harness's local files to `.gitignore`
 
-Open `.gitignore` and add your harness's config/cache directory **and** the context file and
-loop runner you'll generate in Steps 2 and 4 (all local, per-machine — see "What to commit"):
-
 ```
 # My harness
 .your-harness-config-dir/
-your-harness-cache/
-YOURHARNESS.md          # generated context file (regenerate, don't commit)
-run-yourharness.sh      # generated loop runner (regenerate, don't commit)
+YOURHARNESS.md          # generated context file
 ```
 
-Commit this `.gitignore` change so teammates don't accidentally commit your harness files
-either.
+Commit the `.gitignore` change so teammates don't accidentally commit your files.
 
 ---
 
 ## Step 2 — Build your context file
 
-Your harness needs to load the coordination protocol and all skills at the start of
-each invocation. Concatenate the following into a single context file your harness
-reads as a system prompt:
+Concatenate the following into a single file your harness reads as a system prompt:
 
 ```
 AGENTS.md
 skills/hackathon-setup.md
-skills/hackathon-session.md
 skills/hackathon-decompose.md
+skills/hackathon-session.md
 skills/hackathon-review.md
 skills/hackathon-debug.md
 skills/hackathon-test.md
 skills/hackathon-verify.md
 ```
 
-**Header to prepend** (paste at the top of your combined context file):
+**Header to prepend:**
 
 ```
 # Agent Coordination Context
 
-You are an autonomous software agent working on a hackathon project.
-GitHub is the coordination layer — all state lives in GitHub Issues.
+You are a software agent working on a hackathon project with human review at every
+major step. GitHub is the coordination layer — all state lives in GitHub Issues.
 You have no memory between sessions.
 
-Read AGENTS.md in full before acting. Then follow hackathon-session.
+Workflow:
+- hackathon-setup: run once, creates epics (needs-human-review)
+- hackathon-decompose: run after human approves epics (ai-approved); creates tasks (needs-human-review)
+- hackathon-session: run after human approves tasks (ai-approved); implements and PRs
+- hackathon-review: human-triggered; review one PR and post findings; human decides merge/changes
+- hackathon-debug/test/verify: called automatically by hackathon-session
 
-Trigger word: "Go"
+Labels:
+  needs-human-review → ai-approved → in-progress → in-review → (merged)
 
-Only hackathon-session Path E emits a loop signal, on its own line:
-- WAITING_FOR_PEERS — nothing for you to claim, but peers are still working
-- NOTHING_TO_DO — nothing in flight anywhere; the project is complete
+Read AGENTS.md in full before acting.
 ```
 
-Save this as a file your harness auto-loads (name it after your harness, e.g.,
-`GEMINI.md`, `CODEX.md`, `AIDER.md`).
+Save as `GEMINI.md`, `CODEX.md`, etc. Add to `.gitignore`.
 
 ---
 
@@ -109,7 +94,6 @@ If your harness does not support MCP:
 
 1. Replace every `mcp__github__*` instruction with equivalent `gh` CLI commands
 2. Ensure `gh` is authenticated: `gh auth login`
-3. The `gh` commands map as follows:
 
 | MCP operation | gh CLI equivalent |
 |---|---|
@@ -118,91 +102,44 @@ If your harness does not support MCP:
 | Create issue | `gh issue create --title "..." --body "..." --label "..."` |
 | Update labels | `gh issue edit <number> --add-label "..." --remove-label "..."` |
 | Add assignee | `gh issue edit <number> --add-assignee "@me"` |
+| Remove assignee | `gh issue edit <number> --remove-assignee "@me"` |
 | Add comment | `gh issue comment <number> --body "..."` |
-| Create PR | `gh pr create --title "..." --body "..." --base main` |
+| Create PR | `gh pr create --title "..." --body "..." --base <branch>` |
 | List PRs | `gh pr list --label in-review --json number,title,headRefName` |
 | Get PR files | `gh pr diff <number>` |
+| Check mergeable | `gh pr view <number> --json mergeable` |
 | Merge PR | `gh pr merge <number> --squash --delete-branch` |
 | PR review | `gh pr review <number> --approve` or `--request-changes -b "..."` |
 
-**Make MCP/gh calls sequentially, not in parallel.** This rule holds regardless of harness.
+**Make all calls sequentially, never in parallel.** This rule holds regardless of harness.
 
 ---
 
-## Step 4 — Build your loop runner
+## Step 4 — Invocation model
 
-The loop must run **unattended**, so it has to invoke your harness with its auto-approve /
-non-interactive flag (the equivalent of Claude Code's `--dangerously-skip-permissions`) —
-otherwise the agent stalls at a permission prompt the loop can't answer. Find that flag for
-your harness first; if it has none, unattended running is unsafe — stop and reconsider.
+This system is **human-paced**, not autonomous loop-based. The agent does not need
+a runner script — a human invokes each skill when appropriate:
 
-The loop branches on **three** outputs from `hackathon-session` Path E, in this order:
+1. Human runs `hackathon-setup` once to create epics
+2. Human approves epics, then invokes `hackathon-decompose`
+3. Human approves tasks, then invokes `hackathon-session`
+4. `hackathon-session` loops internally until no `ai-approved` tasks remain
+5. Human invokes `hackathon-review` for each PR when ready
+6. Human merges or requests changes; session picks up fixes automatically on next run
 
-| Output contains | Meaning | Action |
-|---|---|---|
-| `NOTHING_TO_DO` | Project complete — nothing in flight anywhere | Count it; exit after `MAX_IDLE` consecutive; else wait `IDLE_WAIT` |
-| `WAITING_FOR_PEERS` | Peers still working — a PR/task may appear soon | Reset count, wait `PEER_WAIT`, loop (NOT idle) |
-| neither (did work) | A unit of work was done | Reset count, wait `WORK_WAIT`, loop |
+**For other harnesses:** invoke `hackathon-session` (or equivalent) when you want
+the agent to work through the current `ai-approved` task queue.
 
-Example for a generic harness (`my-agent run --auto-approve --context <file> --prompt "Go"`):
+---
 
-```bash
-#!/usr/bin/env bash
-set -euo pipefail
+## Step 5 — Update `.gitignore`
 
-CONTEXT_FILE="YOUR_HARNESS.md"
-AUTO_APPROVE="--auto-approve"   # your harness's skip-prompts flag — REQUIRED for AFK
-IDLE=0
-MAX_IDLE=3        # exit after this many consecutive NOTHING_TO_DO signals
-IDLE_WAIT=60      # wait after NOTHING_TO_DO before re-checking
-PEER_WAIT=30      # wait while peers are still working (not counted as idle)
-WORK_WAIT=3       # wait between back-to-back units of real work
+Add your harness's config directory and generated context file:
 
-[ -f "$CONTEXT_FILE" ] || { echo "Missing $CONTEXT_FILE — run the bootstrap prompt first." >&2; exit 1; }
-
-echo "Agent loop started. Press Ctrl-C to stop."
-while true; do
-  echo "=== $(date '+%Y-%m-%d %H:%M:%S') ==="
-  # || true: a transient harness failure must not kill the AFK loop via set -e.
-  output=$(my-agent run $AUTO_APPROVE --context "$CONTEXT_FILE" --prompt "Go" 2>&1) || true
-  printf '%s\n' "$output"
-
-  if printf '%s' "$output" | grep -qF 'NOTHING_TO_DO'; then
-    IDLE=$((IDLE + 1))
-    [[ $IDLE -ge $MAX_IDLE ]] && { echo "Project complete — stopping."; break; }
-    echo "Idle ($IDLE/$MAX_IDLE). Waiting ${IDLE_WAIT}s..."
-    sleep "$IDLE_WAIT"
-  elif printf '%s' "$output" | grep -qF 'WAITING_FOR_PEERS'; then
-    IDLE=0
-    echo "Peers still working. Waiting ${PEER_WAIT}s..."
-    sleep "$PEER_WAIT"
-  else
-    IDLE=0
-    sleep "$WORK_WAIT"
-  fi
-done
 ```
-
-**Critical:** check `NOTHING_TO_DO` **before** `WAITING_FOR_PEERS`, and treat anything else
-as real work. Only `NOTHING_TO_DO` counts toward the idle exit; `WAITING_FOR_PEERS` keeps the
-machine in the pool so it picks up a peer's PR or newly-filed tasks instead of exiting early.
-
-Name it distinctly (e.g., `run-gemini.sh`) and add it to `.gitignore` — it's a local,
-per-machine file (see "What to commit" below).
-
----
-
-## Step 5 — Configure GitHub MCP (if your harness supports it)
-
-If your harness supports MCP servers, configure the GitHub MCP the same way as Claude
-Code. The skills work identically with MCP on any harness that supports it.
-
----
-
-## Step 6 — Update `.claude/settings.json` (optional)
-
-If Claude Code users will also work on this repo, leave `.claude/settings.json`
-as-is. Your harness's permissions config lives in its own file.
+.your-harness/
+YOURHARNESS.md
+```
 
 ---
 
@@ -210,25 +147,18 @@ as-is. Your harness's permissions config lives in its own file.
 
 If multiple harnesses are active on the same repo:
 
-- Each harness reads the same `AGENTS.md` and `skills/*.md` — they coordinate through GitHub
-- Each harness has its own runner script and context file — these do not conflict
-- All agents obey the same collision-check protocol (re-read issue after claiming, back off on conflict)
+- Each harness reads the same `AGENTS.md` and `skills/*.md`
+- Each harness has its own context file (different names, all gitignored)
+- All agents obey the same collision-check protocol
 - All agents follow the same branch discipline and PR-only close-out
-- The issue state machine (labels) is the single source of truth — harness choice is invisible to GitHub
+- The label state machine is the single source of truth
 
 ---
 
 ## What to commit
 
-The context file and loop runner are **generated locally per machine**, exactly like Claude
-Code's `CLAUDE.md` and `run.sh` — do not commit them. They are a concatenation of files that
-already live in git (`AGENTS.md` + `skills/`), so committing them just creates a stale
-duplicate, and CRLF/LF differences between Windows and Mac teammates cause conflicts on
-identical source. Regenerate them with the bootstrap prompt after any skill change.
-
 | Commit | Do not commit |
 |---|---|
-| `.gitignore` (updated with your harness dir, context file, and runner) | Your harness's config/cache dirs |
-| Changes to shared source (`AGENTS.md`, `skills/`, `PLAN.md`) | `YOURHARNESS.md` context file (local, regenerate) |
-| | `run-yourharness.sh` loop runner (local, regenerate) |
+| `.gitignore` (updated with your harness dir) | Your harness's config/cache dirs |
+| Changes to shared source (`AGENTS.md`, `skills/`, `PLAN.md`) | `YOURHARNESS.md` context file |
 | | Secrets or PATs |

@@ -1,11 +1,15 @@
 ---
-description: Debug and fix a bug-labeled ready issue — reproduce, diagnose, fix, write regression test, PR. Called from hackathon-session when a ready issue carries the `bug` label.
+description: Debug and fix a failing test or bug — reproduce, diagnose root cause, apply minimal fix, verify suite is green. Called automatically by hackathon-session when tests regress, or directly for bug-labeled issues.
 allowed-tools: mcp__github__*, Read, Write, Edit, Bash
 ---
 
 # Skill: hackathon-debug
 
-Fix one bug per invocation. Claim → reproduce → diagnose root cause → minimal fix → regression test → suite green → PR.
+Fix one failure per invocation. Reproduce → diagnose root cause → minimal fix →
+regression test → suite green → return result to caller.
+
+This skill is called automatically by `hackathon-session` when a test that was passing
+at baseline starts failing. It is also the skill used for `bug`-labeled issues.
 
 ---
 
@@ -18,54 +22,102 @@ Make all MCP calls sequentially, not in parallel.
 
 ## Trigger
 
-- `hackathon-session` Phase 2 routes here when a `ready` issue carries the `bug` label
-- Human: "Fix bug #N", "Debug this", "Pick up the bug"
+- `hackathon-session` calls this automatically when a new test failure is detected
+  during implementation (a regression relative to the baseline)
+- `hackathon-session` routes to this when a `ai-approved` issue has the `bug` label
+- Human: "Fix bug #N", "Debug this failure", "What's causing this test to fail"
 
 ---
 
-## Step 1 — Claim
+## Mode A — Regression during implementation (called by hackathon-session)
 
-Three sequential MCP calls, no other actions between them:
-1. Add yourself as assignee
-2. Change label `ready` → `in-progress` (keep `bug` label)
-3. Comment: `agent: claiming bug — [github username] — [ISO timestamp]`
+The session has detected a test that was passing at baseline is now failing. The
+session passes the failing test name and the current branch state.
 
-Collision check (multi-agent only): re-read the issue. Two assignees or two claiming comments within 2 minutes → both back off: unassign, reset the label `in-progress` → `ready` (keep `bug`) so the issue isn't stranded, comment `agent: collision — backing off`, pick a different issue.
+### A1. Reproduce
 
-Create a branch (main is already synced by session Phase 1):
+Run the specific failing test in isolation:
 ```bash
-git checkout -b <issue-number>-bug-<short-slug> 2>/dev/null || git checkout <issue-number>-bug-<short-slug>
+<test command targeting the specific test>
 ```
 
----
+If you cannot reproduce: report `agent: debug — cannot reproduce; test may be flaky.
+Re-running: <attempt count>`. Try up to 3 times. If still cannot reproduce, report
+and return `INCONCLUSIVE` to the session.
 
-## Step 2 — Understand the bug
+### A2. Diagnose
 
-Read the full issue body and all comments via the GitHub MCP.
-
-Extract:
-- Expected behavior
-- Actual (broken) behavior
-- Steps to reproduce or test that fails
-- File paths or stack traces mentioned
-
-Read the relevant source files. Trace the code path where the bug lives before touching anything.
-
----
-
-## Step 3 — Reproduce
-
-Before writing any fix, confirm the bug is reproducible:
-- Run the steps from the issue, or run the failing test specifically
-- If you cannot reproduce: comment explaining what you tried, change label to `blocked`, unassign, stop
-
----
-
-## Step 4 — Diagnose
-
+Read the relevant source files and trace the code path where the failure originates.
 Identify the exact line(s) causing the failure. Fix the root cause, not the symptom.
 
-Comment on the issue via the GitHub MCP before writing any code:
+Report before touching code:
+```
+Root cause: <one sentence>
+Fix approach: <one sentence>
+Files to change: <list>
+```
+
+### A3. Fix
+
+Implement the minimal fix for the root cause. Do not refactor or expand scope beyond
+what is needed to fix this failure.
+
+### A4. Verify
+
+Run the full test suite:
+```bash
+<test command>
+```
+
+All tests that were passing at baseline must pass. If the fix introduced new failures:
+repeat the diagnose/fix cycle for those. Do not return until the suite is clean
+relative to the baseline.
+
+### A5. Return result to hackathon-session
+
+Report:
+```
+Debug complete — regression fixed.
+Root cause: <one sentence>
+Fix: <one sentence>
+Files changed: <list>
+Suite status: <N> passing (matches baseline)
+```
+
+If after reasonable effort (3 fix attempts) the regression cannot be fixed:
+Report:
+```
+Debug failed — regression could not be fixed within 3 attempts.
+Failing test: <name>
+Last attempt: <what was tried and why it didn't work>
+```
+The session will then include this in the PR body as a known issue.
+
+---
+
+## Mode B — Bug-labeled issue (called by hackathon-session routing)
+
+The issue is already claimed (`in-progress`) by hackathon-session. Proceed directly.
+
+### B1. Understand the bug
+
+Read the full issue body and all comments via the GitHub MCP.
+Extract: expected behavior, actual behavior, steps to reproduce, file paths.
+Read the relevant source files. Trace the code path before touching anything.
+
+### B2. Reproduce
+
+Before writing any fix, confirm the bug is reproducible:
+```bash
+<steps from the issue, or the failing test>
+```
+
+If you cannot reproduce: comment explaining what you tried, change label `in-progress`
+→ `blocked`, unassign. Return to hackathon-session.
+
+### B3. Diagnose
+
+Comment on the issue via the GitHub MCP before writing code:
 ```
 agent: reproducing — root cause identified
 
@@ -74,43 +126,32 @@ Fix approach: <one sentence>
 Files to change: <list>
 ```
 
----
+### B4. Fix
 
-## Step 5 — Fix
+Implement the minimal fix. Do not refactor or expand scope.
 
-Implement the minimal fix for the root cause. Do not refactor or expand scope beyond what is needed to fix this bug.
-
----
-
-## Step 6 — Regression test
+### B5. Regression test
 
 Write a test that:
 1. Would have failed before your fix (proves the bug existed)
 2. Passes after your fix (proves it's resolved)
 
-Use the project's existing test framework. Check SPECS.md or existing test files for the framework in use. If no framework exists, write the test file and note in the PR that a framework needs to be added.
+Use the project's existing test framework.
 
----
+### B6. Verify
 
-## Step 7 — Verify
+Run the full test suite. All tests must pass. If a pre-existing test is newly broken,
+fix it and note it in the PR body.
 
-Run the full test suite:
-```bash
-<test command from PLAN.md Stack table>
-```
+### B7. Close out
 
-All tests must pass. If a pre-existing test is newly broken, fix it and note it in the PR body — do not ship a fix that breaks other things.
-
----
-
-## Step 8 — Close out
-
-Follow Phase 3 of `hackathon-session` exactly:
+Follow hackathon-session Phase 3:
 1. Push the branch
 2. Open a PR via the GitHub MCP:
    - Title: `Fix: <bug title>`
-   - Body: `Closes #<issue number>` on its own line, then: root cause, fix summary, regression test location
-3. Change issue label to `in-review` via the GitHub MCP
+   - Body: `Closes #<issue number>`, then: root cause, fix summary, regression test location
+   - Base: the **epic branch** for this issue
+3. Change issue label to `in-review`
 4. Comment on the issue:
    ```
    agent: done — PR #<number> open for review
@@ -120,7 +161,7 @@ Follow Phase 3 of `hackathon-session` exactly:
    Regression test: <test name / file>
    PR: #<number>
    ```
-5. Stop.
+5. Return to hackathon-session loop.
 
 ---
 
@@ -128,5 +169,6 @@ Follow Phase 3 of `hackathon-session` exactly:
 
 - **Reproduce before fixing.** A fix without reproduction is a guess.
 - **Root cause only.** Do not refactor surrounding code.
-- **Regression test is not optional.** No regression test = the bug can come back silently.
-- **Suite must be green before PR.** Fix collateral failures or stop and note them.
+- **Regression test is mandatory for bug-labeled issues.** It proves the fix.
+- **Suite must be clean relative to baseline before PR.**
+- **Return result to caller in Mode A.** Do not close out or stop the session.

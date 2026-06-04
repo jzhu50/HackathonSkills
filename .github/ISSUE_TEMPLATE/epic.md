@@ -1,7 +1,7 @@
 ---
 name: Epic
-about: A large feature to be decomposed into tasks before work begins
-labels: epic, needs-scoping
+about: A large feature to be decomposed into tasks after human review
+labels: epic, needs-human-review
 ---
 
 ## Goal
@@ -13,20 +13,17 @@ labels: epic, needs-scoping
      shared infrastructure, integration points with other epics. -->
 
 ## Dependencies
-<!-- Other epics that must be CLOSED before this one can be decomposed/worked, as #<n>,
-     or "None". An epic is not decomposed until everything here is closed (this is how the
-     E2E Verification epic stays last). -->
+<!-- Other epics that must be CLOSED before this one can be decomposed, as #<n>,
+     or "None". -->
 
 ## Acceptance Bar
 <!-- What would cause a PR review to fail for this feature? hackathon-verify checks each
-     item here against the integrated result, so make them verifiable. -->
+     item here against the integrated result on the epic branch, so make them verifiable. -->
 
 ## Open Questions
-<!-- Anything unresolved. During an AFK run agents do NOT wait for a human — they file a
-     `blocked` issue capturing what they need and continue. Resolve these here when you can. -->
+<!-- Anything unresolved. Agents file a `blocked` issue and continue — they do not
+     wait for interactive answers. Resolve these here when you can. -->
 
 ## Child Issues
-<!-- Agents fill this in during/after decomposition. Do not edit manually. -->
-<!-- Format (numbers are matched against real issue close-state):
-     - [ ] #<n> [#<epic>] <task title> -->
-
+<!-- hackathon-decompose fills this in. Do not edit manually. -->
+<!-- Format: - [ ] #<n> [#<epic>] <task title> -->

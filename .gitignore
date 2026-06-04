@@ -10,8 +10,6 @@
 # Never commit generated harness artifacts — CRLF/LF differences between
 # Windows and Mac teammates cause conflicts even on identical source.
 CLAUDE.md
-run.sh
-run.ps1
 .claude/
 
 # ── Other harness directories ───────────────────────────────────────────────

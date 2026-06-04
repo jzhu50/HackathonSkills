@@ -66,7 +66,7 @@ jobs:
         if: runner.os != 'Windows'
         run: |
           bash install.sh --base-url http://127.0.0.1:8000
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           
       - name: Run Installer (Windows)
         if: runner.os == 'Windows'

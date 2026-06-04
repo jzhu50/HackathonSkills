@@ -2,81 +2,68 @@
 
 AI agents write the code. You control how much they check with you.
 
-Run `/hackathon-setup` - it detects your project type, scans existing codebases,
-and configures oversight interactively. Then step through four phases: scope the plan,
-scope into epics, decompose into tasks, implement. Every gate is configurable from full
-human approval at every step to fully autonomous end-to-end execution.
-
-**This repo is a template.** Click "Use this template" on GitHub, clone it, and start
-with `/hackathon-setup`.
+Install once, use in any project. Run `/hackathon-setup` — it detects whether you have
+a new project or an existing codebase, scans what's already there, and walks you through
+configuration. Then step through four phases: scope the plan, scope into epics, decompose
+into tasks, implement. Every gate is configurable from full human approval at every step
+to fully autonomous end-to-end execution.
 
 ---
 
 ## How it works
 
-GitHub is the shared brain. Agents have no memory between sessions - everything they
+GitHub is the shared brain. Agents have no memory between sessions — everything they
 need lives in GitHub Issues, Projects, and PRs.
 
-The hierarchy is: **GitHub Project -> Epics -> Tasks**
+The hierarchy is: **GitHub Project → Epics → Tasks**
 
 | Primitive | Role |
 |---|---|
-| GitHub Projects | Initiative containers - group epics by named deliverable (MVP, v2, Security Hardening) |
-| Issues | Units of work - epics, tasks, bugs |
-| Labels | The state machine - controls what AI can touch |
-| PRs | The only way to close a task - every change goes through review |
-| `PLAN.md` | Vision, stack, projects, features, decisions - the project bible |
-| `SPECS.md` | Auto-generated from grilling - data models, API routes, UI flows, business rules |
-| `hackathon.config.yml` | Oversight gates - configured interactively by `/hackathon-setup` |
+| GitHub Projects | Initiative containers — group epics by named deliverable (MVP, v2, Security Hardening) |
+| Issues | Units of work — epics, tasks, bugs |
+| Labels | The state machine — controls what AI can touch |
+| PRs | The only way to close a task — every change goes through review |
+| `PLAN.md` | Vision, stack, projects, features, decisions — the project bible |
+| `SPECS.md` | Auto-generated from grilling — data models, API routes, UI flows, business rules |
+| `hackathon.config.yml` | Oversight gates — configured interactively by `/hackathon-setup` |
 
 Work flows through four phases:
 
 ```
 PLAN.md
-  |-> /hackathon-plan        Phase 1 - scope into Projects + generate SPECS.md
-        |-> /hackathon-epics     Phase 2 - scope Projects into Epic issues
-              |-> /hackathon-decompose  Phase 3 - scope Epics into Task issues
-                    |-> /hackathon-session    Phase 4 - implement Tasks, open PRs
+  |-> /hackathon-plan        Phase 1 — scope into Projects + generate SPECS.md
+        |-> /hackathon-epics     Phase 2 — scope Projects into Epic issues
+              |-> /hackathon-decompose  Phase 3 — scope Epics into Task issues
+                    |-> /hackathon-session    Phase 4 — implement Tasks, open PRs
 ```
 
 ---
 
 ## Getting started
 
-### 1 - Install
+### 1 — Install
+
+Run this from inside your project directory (existing repo or a new one):
 
 ```bash
-# Mac/Linux (run from inside your project directory)
+# Mac/Linux
 curl -fsSL https://raw.githubusercontent.com/Victor-Casado/HackathonSkills/main/install.sh | bash
 
-# Windows (PowerShell, run from inside your project directory)
+# Windows (PowerShell)
 irm https://raw.githubusercontent.com/Victor-Casado/HackathonSkills/main/install.ps1 | iex
 ```
 
-Installs two commands and auto-bootstraps your project if you run it inside a git repo:
-- `hackathon-skills` - PTY runner that launches your AI CLI
-- `hackathon-bootstrap` - project bootstrapper (re-run after skill updates or on new clones)
+This installs two global commands and bootstraps your project automatically:
+- `hackathon-skills` — PTY runner that launches your AI CLI
+- `hackathon-bootstrap` — re-run this after skill updates or when a teammate clones the repo
 
-### 2 - Create your repo from the template
+Bootstrap generates `CLAUDE.md` and `.claude/` locally (gitignored — never committed).
+These load the skills and pre-approve GitHub MCP permissions in Claude Code.
 
-Click **"Use this template"** on GitHub, create a new repo, then clone it and install:
+### 2 — Configure the GitHub MCP
 
-```bash
-git clone https://github.com/<you>/<project-name>
-cd <project-name>
-curl -fsSL https://raw.githubusercontent.com/Victor-Casado/HackathonSkills/main/install.sh | bash
-```
-
-### 3 - Run setup
-
-```
-/hackathon-setup
-```
-
-### 4 - Configure the GitHub MCP
-
-Each teammate needs a Personal Access Token with `repo` scope (add `read:org` for
-org repos) in their Claude Code MCP settings:
+Each teammate needs a GitHub Personal Access Token with `repo` scope (add `read:org` for
+org repos). Add it to Claude Code's MCP settings:
 
 ```json
 {
@@ -93,11 +80,12 @@ org repos) in their Claude Code MCP settings:
 }
 ```
 
-Enable branch protection on `main` (Settings -> Branches -> Require a pull request
-before merging). Do **not** also require approvals unless you have two accounts -
-GitHub won't let you approve your own PR.
+Docker must be running. Get a token at GitHub → Settings → Developer settings →
+Personal access tokens → Fine-grained.
 
-### 5 - Run the setup wizard
+### 3 — Run the setup wizard
+
+Open your project in Claude Code and run:
 
 ```
 /hackathon-setup
@@ -105,17 +93,19 @@ GitHub won't let you approve your own PR.
 
 The wizard:
 - Detects whether you have a **new project** or an **existing codebase**
-- For existing codebases: scans the repo and drafts `PLAN.md` and `SPECS.md` from
-  what's already there, then helps you describe what you want to add or improve
+- For existing codebases: scans the repo, drafts `PLAN.md` and `SPECS.md` from what's
+  already there, then asks what you want to add or improve
 - For new projects: guides you through filling in `PLAN.md`
-- Configures `hackathon.config.yml` interactively - 3 questions, no YAML editing needed
-- Walks you through every prerequisite and explains what to run next
+- Configures `hackathon.config.yml` interactively — oversight level, testing, parallelism,
+  and which GitHub Actions workflows to scaffold
+- Creates GitHub labels and sets up branch protection
+- Commits the scaffolded CI workflows
 
 ---
 
 ## Workflow
 
-### Phase 1 - Scope the plan
+### Phase 1 — Scope the plan
 
 ```
 /hackathon-plan
@@ -129,7 +119,7 @@ Reads `PLAN.md`, grills you until every boundary and decision is explicit, then:
 
 Gate: `project_breakdown`
 
-### Phase 2 - Scope each project into epics
+### Phase 2 — Scope each project into epics
 
 ```
 /hackathon-epics
@@ -141,22 +131,22 @@ epic to its project, and creates a tracking issue. Optionally grills before scop
 Gate: `epic_breakdown`
 
 If `parallelism: true`, epics are structured into waves:
-- **Wave 1** - independent foundations, each with stubs for cross-dependencies
-- **Wave 2** - integration epics that wire Wave 1 foundations together
-- **Wave 3** - end-to-end verify
+- **Wave 1** — independent foundations, each with stubs for cross-dependencies
+- **Wave 2** — integration epics that wire Wave 1 foundations together
+- **Wave 3** — end-to-end verify
 
-### Phase 3 - Decompose each epic into tasks
+### Phase 3 — Decompose each epic into tasks
 
 ```
 /hackathon-decompose
 ```
 
-For each `ai-approved` epic: optionally grills, creates task issues with context,
+For each `ai-approved` epic: optionally grills, creates task issues with full context,
 creates the epic branch, and appends a mandatory verify task last.
 
 Gate: `task_breakdown`
 
-### Phase 4 - Implement
+### Phase 4 — Implement
 
 ```
 /hackathon-session
@@ -164,7 +154,7 @@ Gate: `task_breakdown`
 
 Loops through all `ai-approved` tasks:
 - Runs baseline tests before touching anything
-- Implements on a branch off the epic branch
+- Implements on a `task/*` branch off the epic branch
 - Tests progressively; calls `/hackathon-debug` automatically on regressions
 - Presents completed work for approval (if configured), then opens a PR
 - Optionally auto-reviews and merges
@@ -202,7 +192,7 @@ Gate: `epic_review`
 
 Shows the completion status of every GitHub Project at any time. When all epics in a
 project merge, closes the GitHub Project board and auto-calls
-`/hackathon-docs-demo-script` on the last project.
+`/hackathon-docs-demo-script`.
 
 ---
 
@@ -211,7 +201,7 @@ project merge, closes the GitHub Project board and auto-calls
 ### Onboarding an existing codebase
 
 `/hackathon-setup` handles this. When it detects existing code it:
-1. Scans the repo - stack, data models, API surface, auth, test setup
+1. Scans the repo — stack, data models, API surface, auth, test setup
 2. Drafts `PLAN.md` from what it finds and asks you to confirm
 3. Pre-seeds `SPECS.md` with the current state of the codebase
 4. Asks what you want to add or improve, then runs the normal wizard flow
@@ -228,12 +218,11 @@ planning new work.
 Use this at any time after the framework is already running. It adds new scope without
 disrupting active work:
 
-- **New features** - a new GitHub Project with its own epics
-- **Security hardening** - scans for OWASP gaps, unvalidated inputs, missing auth
-  checks, then scopes a hardening project from actual findings
-- **Refactoring / tech debt** - scans for duplication, large files, missing tests
-- **Performance** - scans for N+1 queries, missing indexes, unoptimized paths
-- **Accessibility** - scans for ARIA, keyboard nav, contrast, form label gaps
+- **New features** — a new GitHub Project with its own epics
+- **Security hardening** — scans for OWASP gaps, unvalidated inputs, missing auth checks
+- **Refactoring / tech debt** — scans for duplication, large files, missing tests
+- **Performance** — scans for N+1 queries, missing indexes, unoptimized paths
+- **Accessibility** — scans for ARIA, keyboard nav, contrast, form label gaps
 
 New epics land as `ai-approved` and the session picks them up in the normal loop.
 
@@ -249,21 +238,16 @@ gates:
   project_breakdown:
     human_required: true   # approve proposed projects before GitHub Projects are created
     grilling: true         # interrogation before scoping projects and generating SPECS.md
-
   epic_breakdown:
     human_required: true   # approve proposed epics before issues are created
     grilling: true         # interrogation before scoping epics
-
   task_breakdown:
     human_required: true   # approve proposed tasks before issues are created
     grilling: true         # interrogation before decomposing each epic
-
   task_completion:
     human_required: true   # approve completed work before PR opens
-
   code_review:
     human_required: true   # you trigger review and decide merge/changes on task PRs
-
   epic_review:
     human_required: true   # you review and merge the epic->main PR
 
@@ -272,6 +256,14 @@ quality:
   comments: verbose        # verbose | minimal
 
 parallelism: false         # true = wave-based epic structure
+
+actions:
+  gitleaks: true           # secret scanning on every PR
+  codeql: true             # security analysis
+  dependency_review: true  # flag vulnerable packages in PRs
+  actionlint: true         # lint .github/workflows/
+  markdownlint: true       # lint PLAN.md, SPECS.md, AGENTS.md
+  contract: true           # branch/label/issue/env/protected-file contract checks
 ```
 
 Missing file or missing keys default to maximum oversight (all `true`, `testing: required`).
@@ -300,8 +292,8 @@ autonomously. Any failure always escalates to you regardless of config.
 
 | Level | Behavior |
 |---|---|
-| `required` | Full path coverage enforced - hard stop before any PR if code paths are uncovered |
-| `recommended` | Main logic paths tested - missing edge coverage flagged but not blocking |
+| `required` | Full path coverage enforced — hard stop before any PR if code paths are uncovered |
+| `recommended` | Main logic paths tested — missing edge coverage flagged but not blocking |
 | `skip` | No test suite run, no test writing requirement |
 
 ---
@@ -320,13 +312,14 @@ ai-approved  ->  in-progress  ->  in-review  ->  closed
 
 | Label | Who sets it | Meaning |
 |---|---|---|
-| `needs-human-review` | AI | Bug or discovered scope - always needs human judgment |
+| `needs-human-review` | AI | Bug or discovered scope — always needs human judgment |
 | `ai-approved` | AI (after chat approval) or config | Ready for an agent to claim |
 | `in-progress` | AI | Actively being worked |
 | `in-review` | AI | PR is open and unmerged |
-| `blocked` | AI | Waiting on a dependency - auto-clears when dependencies close |
-| `epic` | AI | Parent container - work happens in child task issues |
-| `bug` | AI | Broken behavior - routed to `hackathon-debug` |
+| `blocked` | AI | Waiting on a dependency — auto-clears when dependencies close |
+| `epic` | AI | Parent container — work happens in child task issues |
+| `bug` | AI | Broken behavior — routed to `hackathon-debug` |
+| `planning-update` | Human | Allows modifying protected files (PLAN.md, SPECS.md, etc.) on a task branch |
 
 ---
 
@@ -344,7 +337,7 @@ main
     |-- ...
 ```
 
-Task PRs target the epic branch. The verify task opens the epic->main PR.
+Task PRs target the epic branch. The verify task opens the epic→main PR.
 Epic branches are rebased onto the latest main before the verify PR opens.
 
 ---
@@ -364,7 +357,7 @@ You control via config:
 - Whether you approve projects, epics, and tasks before they hit GitHub
 - Whether you sign off on completed work before PRs open
 - Whether you trigger code reviews and decide merges
-- Whether you merge the final epic->main PR
+- Whether you merge the final epic→main PR
 
 ---
 
@@ -374,16 +367,16 @@ You control via config:
 
 | Slash command | What it does |
 |---|---|
-| `/hackathon-setup` | Start here - detects new vs existing project, scans codebase, configures oversight via wizard |
+| `/hackathon-setup` | Start here — detects new vs existing project, scans codebase, configures oversight, scaffolds CI |
 
 **The four phases:**
 
 | Slash command | Phase | What it does |
 |---|---|---|
-| `/hackathon-plan` | 1 | Scope PLAN.md -> Projects + generate SPECS.md + create GitHub Project boards |
-| `/hackathon-epics` | 2 | Scope Projects -> Epic issues on GitHub |
-| `/hackathon-decompose` | 3 | Scope Epics -> Task issues + epic branches |
-| `/hackathon-session` | 4 | Implement Tasks -> code + PRs |
+| `/hackathon-plan` | 1 | Scope PLAN.md → Projects + generate SPECS.md + create GitHub Project boards |
+| `/hackathon-epics` | 2 | Scope Projects → Epic issues on GitHub |
+| `/hackathon-decompose` | 3 | Scope Epics → Task issues + epic branches |
+| `/hackathon-session` | 4 | Implement Tasks → code + PRs |
 
 **Adding scope:**
 
@@ -405,14 +398,14 @@ You control via config:
 
 | Skill | When |
 |---|---|
-| `hackathon-verify` | Last task of each epic - verifies E2E, runs security audit, opens epic->main PR |
-| `hackathon-grilling` | By `hackathon-plan`, `hackathon-epics`, `hackathon-decompose`, `hackathon-add` when `grilling: true` |
+| `hackathon-verify` | Last task of each epic — verifies E2E, runs security audit, opens epic→main PR |
+| `hackathon-grilling` | By plan/epics/decompose/add when `grilling: true` |
 | `hackathon-frontend` | By session when task involves UI, components, pages, layouts |
 | `hackathon-auth` | By session when task involves auth, login, OAuth, JWT, permissions |
 | `hackathon-database-schema` | By session when task involves schema, migrations, data models |
 | `hackathon-deploy` | By session when task involves deployment, CI/CD, Docker, hosting |
 | `hackathon-seed-demo-data` | By session when task involves seed data, demo data, fixtures |
-| `hackathon-security-audit` | By `hackathon-verify` before every epic->main PR |
+| `hackathon-security-audit` | By `hackathon-verify` before every epic→main PR |
 
 Using a different agent CLI? See `HARNESS.md`.
 
@@ -421,50 +414,50 @@ Using a different agent CLI? See `HARNESS.md`.
 ## File structure
 
 ```
-workflow-templates/
-  gitleaks.yml                  - secret scanning on every PR
-  codeql.yml                    - static security analysis
-  dependency-review.yml         - flag vulnerable packages in PRs
-  actionlint.yml                - lint .github/workflows/
-  markdownlint.yml              - lint PLAN.md, SPECS.md, AGENTS.md
-  hackathon-contract.yml        - branch/label/issue/env/protected-file contract checks
-skills/
-  hackathon-setup.md            - start here: onboarding wizard, existing-project scan, config setup
-  hackathon-plan.md             - Phase 1: PLAN.md -> Projects + SPECS.md
-  hackathon-epics.md            - Phase 2: Projects -> Epic issues
-  hackathon-decompose.md        - Phase 3: Epics -> Task issues + epic branches
-  hackathon-session.md          - Phase 4: Tasks -> code + PRs
-  hackathon-add.md              - add features / hardening / refactoring to a running project
-  hackathon-projects.md         - project-level status and GitHub Project board close-out
-  hackathon-review.md           - review one PR, post findings, execute decision
-  hackathon-verify.md           - last task per epic: E2E verify, security audit, epic->main PR
-  hackathon-test.md             - run test suite, report expected vs actual + coverage
-  hackathon-debug.md            - reproduce, fix, and regression-test a failure
-  hackathon-grilling.md         - recursive interrogation until zero ambiguities (internal)
-  hackathon-frontend.md         - design system, component architecture, a11y, performance (internal)
-  hackathon-auth.md             - JWT/session/OAuth patterns and security traps (internal)
-  hackathon-database-schema.md  - schema design, indexing, FK constraints (internal)
-  hackathon-deploy.md           - Dockerfile, CI/CD, env wiring, platform fast paths (internal)
-  hackathon-seed-demo-data.md   - realistic fixtures, demo mode toggle (internal)
-  hackathon-security-audit.md   - OWASP scan before every epic->main PR (internal)
-  hackathon-docs-demo-script.md - README + API reference + demo walkthrough (auto on complete)
-hackathon.config.yml            - oversight gates, testing level, comments verbosity, parallelism
-make-claude-md.sh               - bootstrap script (installed as hackathon-bootstrap on Mac/Linux)
-make-claude-md.ps1              - bootstrap script (installed as hackathon-bootstrap on Windows)
-PLAN.md                         - fill in manually, or let hackathon-setup generate it
-SPECS.md                        - auto-generated by hackathon-plan; do not edit during parallel work
-AGENTS.md                       - agent coordination protocol (read by all harnesses)
-HARNESS.md                      - setup guide for non-Claude Code harnesses
+workflow-templates/               — CI workflows scaffolded into user projects by setup
+  gitleaks.yml                      secret scanning on every PR
+  codeql.yml                        static security analysis
+  dependency-review.yml             flag vulnerable packages in PRs
+  actionlint.yml                    lint .github/workflows/
+  markdownlint.yml                  lint PLAN.md, SPECS.md, AGENTS.md
+  hackathon-contract.yml            branch/label/issue/env/protected-file contract checks
+skills/                           — skill definitions loaded by the bootstrap script
+  hackathon-setup.md                start here: onboarding wizard, config, CI scaffolding
+  hackathon-plan.md                 Phase 1: PLAN.md → Projects + SPECS.md
+  hackathon-epics.md                Phase 2: Projects → Epic issues
+  hackathon-decompose.md            Phase 3: Epics → Task issues + epic branches
+  hackathon-session.md              Phase 4: Tasks → code + PRs
+  hackathon-add.md                  add features / hardening / refactoring to a running project
+  hackathon-projects.md             project-level status and GitHub Project board close-out
+  hackathon-review.md               review one PR, post findings, execute decision
+  hackathon-verify.md               last task per epic: E2E verify, security audit, epic→main PR
+  hackathon-test.md                 run test suite, report expected vs actual + coverage
+  hackathon-debug.md                reproduce, fix, and regression-test a failure
+  hackathon-grilling.md             recursive interrogation until zero ambiguities (internal)
+  hackathon-frontend.md             design system, component architecture, a11y, performance (internal)
+  hackathon-auth.md                 JWT/session/OAuth patterns and security traps (internal)
+  hackathon-database-schema.md      schema design, indexing, FK constraints (internal)
+  hackathon-deploy.md               Dockerfile, CI/CD, env wiring, platform fast paths (internal)
+  hackathon-seed-demo-data.md       realistic fixtures, demo mode toggle (internal)
+  hackathon-security-audit.md       OWASP scan before every epic→main PR (internal)
+  hackathon-docs-demo-script.md     README + API reference + demo walkthrough (auto on complete)
+hackathon.config.yml              — oversight gates, testing level, CI actions
+make-claude-md.sh                 — bootstrap script (installed as hackathon-bootstrap on Mac/Linux)
+make-claude-md.ps1                — bootstrap script (installed as hackathon-bootstrap on Windows)
+PLAN.md                           — fill this in, or let /hackathon-setup generate it
+SPECS.md                          — auto-generated by /hackathon-plan; do not edit during parallel work
+AGENTS.md                         — agent coordination protocol (read by all harnesses)
+HARNESS.md                        — setup guide for non-Claude Code harnesses
 ```
 
-The bootstrap script generates these locally - gitignored, never committed:
+The bootstrap script generates these locally — gitignored, never committed:
 ```
-CLAUDE.md                  - full skill content for Claude Code
-.claude/commands/          - /hackathon-* slash commands
-.claude/settings.json      - GitHub MCP pre-approved
+CLAUDE.md                  — full skill content for Claude Code
+.claude/commands/          — /hackathon-* slash commands
+.claude/settings.json      — GitHub MCP pre-approved
 ```
 
-Regenerate after any skill change. Every teammate runs this after cloning.
+Regenerate with `hackathon-bootstrap` after any skill update. Every teammate runs this after cloning.
 
 ---
 
@@ -472,5 +465,5 @@ Regenerate after any skill change. Every teammate runs this after cloning.
 
 - [Claude Code](https://docs.anthropic.com/claude-code)
 - Docker (for the GitHub MCP server)
-- GitHub Personal Access Token - one per teammate, `repo` scope
+- GitHub Personal Access Token — one per teammate, `repo` scope
 - GitHub repo with Issues and Projects enabled

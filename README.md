@@ -1,4 +1,4 @@
-# Hackathon Agent Template
+# Hackathon Skills
 
 AI agents write the code. You control how much they check with you.
 

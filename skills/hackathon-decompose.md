@@ -89,11 +89,15 @@ git push -u origin epic-<n>-<slug>
 Read all of the following via the GitHub MCP before grilling or forming tasks:
 
 1. The epic issue itself — full body, all comments
+   - Note the `## Project` field: which GitHub Project this epic belongs to
 2. `SPECS.md` if it exists — data models, routes, UI flows relevant to this epic
 3. Any issues referenced in the epic body (linked as `#X`)
 4. Existing code relevant to this epic (via `get_file_contents` or `get_repository_tree`)
 
 (`PLAN.md` and `AGENTS.md` were already loaded in Phase 1.)
+
+Include the project name in every task's `## Context` section so agents always know
+which initiative they are contributing to.
 
 ### Step 3 — Grilling (conditional)
 

@@ -13,8 +13,26 @@ Every session starts by reading state from GitHub. Every session ends by writing
 back to GitHub. A teammate's agent (or your own, in a new context) will reconstruct
 everything from what you leave behind.
 
+The hierarchy is: **GitHub Project → Epics → Tasks**
+
+Work flows through four phases:
+```
+PLAN.md
+  └─▶ hackathon-plan      Phase 1: scope into Projects + generate SPECS.md
+        └─▶ hackathon-epics   Phase 2: scope each Project into Epic issues
+              └─▶ hackathon-decompose  Phase 3: break each Epic into Task issues
+                    └─▶ hackathon-session   Phase 4: implement Tasks, open PRs
+```
+
+- A **GitHub Project** is an initiative container grouping epics into one named
+  deliverable (e.g. "MVP", "Admin Portal"). Created by `hackathon-plan`.
+- An **Epic** is a feature within a project. Scoped by `hackathon-epics`, decomposed
+  into tasks by `hackathon-decompose`.
+- A **Task** is a session-sized unit of work. Implemented by `hackathon-session`.
+
 The coordination primitives are:
-- **Issues** = units of work
+- **GitHub Projects** = initiative containers — group epics by deliverable
+- **Issues** = units of work (epics and tasks)
 - **Labels** = issue state machine
 - **Assignees** = who is working on what right now
 - **Comments** = handoff notes, status updates, blockers, rationale
@@ -32,22 +50,24 @@ maximum oversight (all gates `true`, `testing: required`, `comments: verbose`).
 
 The gates and what they control:
 
-| Gate | `true` (default) | `false` |
-|---|---|---|
-| `epic_breakdown.human_required` | Show proposed epics in chat, wait for approval before GitHub | Create epics on GitHub immediately |
-| `epic_breakdown.grilling` | Call `hackathon-grilling` before scoping epics | Skip interrogation, best-guess scoping |
-| `task_breakdown.human_required` | Show proposed tasks in chat, wait for approval before GitHub | Create tasks on GitHub immediately |
-| `task_breakdown.grilling` | Call `hackathon-grilling` before decomposing each epic | Skip interrogation, best-guess decomposition |
-| `task_completion.human_required` | Show completed work in chat, wait for approval before opening PR | Open PR immediately after tests pass |
-| `code_review.human_required` | Human triggers `hackathon-review` and decides merge/changes | Session auto-reviews and merges; loops until clean |
-| `epic_review.human_required` | Human reviews and merges epic→main PR | Auto-merge on clean verify; failures always escalate |
+| Gate | Governs | `true` (default) | `false` |
+|---|---|---|---|
+| `project_breakdown.grilling` | `hackathon-plan` | Call `hackathon-grilling` before scoping projects and generating SPECS.md | Skip interrogation, best-guess |
+| `project_breakdown.human_required` | `hackathon-plan` | Show proposed projects in chat, wait for approval before creating GitHub Projects | Create GitHub Projects immediately |
+| `epic_breakdown.grilling` | `hackathon-epics` | Call `hackathon-grilling` before scoping epics | Skip interrogation, best-guess |
+| `epic_breakdown.human_required` | `hackathon-epics` | Show proposed epics in chat, wait for approval before GitHub | Create epics immediately |
+| `task_breakdown.grilling` | `hackathon-decompose` | Call `hackathon-grilling` before decomposing each epic | Skip interrogation, best-guess |
+| `task_breakdown.human_required` | `hackathon-decompose` | Show proposed tasks in chat, wait for approval before GitHub | Create tasks immediately |
+| `task_completion.human_required` | `hackathon-session` | Show completed work in chat, wait for approval before opening PR | Open PR immediately after tests pass |
+| `code_review.human_required` | `hackathon-session` | Human triggers `hackathon-review` and decides merge/changes | Session auto-reviews and merges; loops until clean |
+| `epic_review.human_required` | `hackathon-verify` | Human reviews and merges epic→main PR | Auto-merge on clean verify; failures always escalate |
 
 **When `human_required: true`:** the skill presents its output in chat and waits for
 approval before writing to GitHub. If the human requests changes, apply them, then
 loop back for approval again. GitHub receives only approved work.
 
-**When `human_required: false` at every gate:** a single `/hackathon-goal` invocation
-runs the full pipeline end-to-end without pausing. Any failure (test regression,
+**When `human_required: false` at every gate:** running `/hackathon-plan` kicks off
+the full pipeline end-to-end without pausing. Any failure (test regression,
 verify failure) escalates to human regardless of config.
 
 **Merging:** `code_review.human_required: false` enables auto-merge of task PRs.

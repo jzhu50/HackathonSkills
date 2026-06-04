@@ -4,6 +4,10 @@
 #   all gates: true, testing: required, comments: verbose, parallelism: false
 
 gates:
+  project_breakdown:
+    human_required: true   # present proposed projects in chat and wait for approval before creating GitHub Projects
+    grilling: true         # call hackathon-grilling to reach zero ambiguities before scoping projects
+
   epic_breakdown:
     human_required: true   # present proposed epics in chat and wait for approval before writing to GitHub
     grilling: true         # call hackathon-grilling to reach zero ambiguities before scoping epics

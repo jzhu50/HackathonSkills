@@ -43,15 +43,34 @@ _TODO_
 
 ---
 
-## Core Features
+## Projects
 
-<!-- List the features needed to achieve the demo goal. Order by priority — agents
-     will work top to bottom. Each feature becomes one epic issue. Be specific enough
-     that an agent can understand what "done" means for each one. -->
+<!-- Group your core features into named projects. Each project becomes one GitHub
+     Project board and a set of epic issues beneath it. Order by priority — agents
+     work top to bottom within each project.
 
+     If your scope is simple and everything belongs together, one project is fine.
+     Use multiple projects when distinct deliverables have separate timelines, owners,
+     or release gates (e.g. "MVP", "Admin Portal", "Mobile App").
+
+     Each feature listed under a project becomes one epic issue. Be specific enough
+     that an agent can understand what "done" means. -->
+
+### Project 1: _TODO_
+
+<!-- One sentence: what does this project deliver? -->
+Goal: _TODO_
+
+Features (each becomes one epic):
 1. 
 2. 
 3. 
+
+<!-- ### Project 2: _TODO_
+Goal: _TODO_
+Features:
+1.
+2. -->
 
 ---
 

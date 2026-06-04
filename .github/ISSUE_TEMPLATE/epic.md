@@ -4,6 +4,9 @@ about: A large feature to be decomposed into tasks after human review
 labels: epic, needs-human-review
 ---
 
+## Project
+<!-- GitHub Project this epic belongs to. hackathon-setup fills this in. -->
+
 ## Goal
 <!-- What does done look like for this entire feature? Specific enough for an agent to
      verify without asking a human. -->

@@ -116,6 +116,65 @@ done
 
 echo "  CLAUDE.md written"
 
+# 4. Generate AIDER.md, CODEX.md, ANTIGRAVITY.md, GEMINI.md for other harnesses
+AGENTS_PATH="$SCRIPT_DIR/AGENTS.md"
+if [ ! -f "$AGENTS_PATH" ]; then
+  AGENTS_PATH="$TARGET_DIR/AGENTS.md"
+fi
+
+for name in AIDER.md CODEX.md ANTIGRAVITY.md GEMINI.md; do
+  harness_path="$TARGET_DIR/$name"
+  {
+    cat <<'HARNESS_HEADER'
+# Agent Coordination Context
+
+> Auto-generated. Re-run the bootstrap script to update.
+
+You are a software agent working on a hackathon project with human review at every
+major step. GitHub is the coordination layer - all state lives in GitHub Issues
+and GitHub Projects. You have no memory between sessions.
+
+Four-phase workflow:
+- hackathon-setup:      run once; configure oversight, scaffold PLAN.md
+- hackathon-plan:       Phase 1 - PLAN.md -> GitHub Projects + generate SPECS.md
+- hackathon-epics:      Phase 2 - Projects -> Epic issues on GitHub
+- hackathon-decompose:  Phase 3 - Epics -> Task issues + epic branches
+- hackathon-session:    Phase 4 - Tasks -> code + PRs (loops until queue empty)
+- hackathon-add:        add features/hardening/refactoring to a running project
+- hackathon-projects:   check completion; close GitHub Project when all epics merge
+- hackathon-review:     human-triggered; review one PR, post findings, human decides merge/changes
+- hackathon-debug/test/verify: called automatically by hackathon-session
+
+Branch discipline:
+  Epic branches: epic/<n>-<slug> (created by hackathon-decompose from main)
+  Task branches: task/<n>-<slug> (created by hackathon-session from the epic branch)
+  Task PRs target the epic branch. The verify task opens the epic->main PR.
+  Never commit to main or an epic branch directly.
+
+Labels:
+  needs-human-review -> ai-approved -> in-progress -> in-review -> (merged)
+
+Read AGENTS.md in full before acting.
+
+---
+
+HARNESS_HEADER
+    if [ -f "$AGENTS_PATH" ]; then
+      cat "$AGENTS_PATH"
+      echo ""
+      echo "---"
+    fi
+    for skill in "${skills[@]}"; do
+      echo ""
+      cat "$skill"
+      echo ""
+      echo "---"
+    done
+  } > "$harness_path"
+  echo "  harness: $name written"
+done
+
+
 # Scaffold GitHub Actions workflows based on hackathon.config.yml
 WORKFLOW_TEMPLATES_DIR="$SCRIPT_DIR/workflow-templates"
 if [ ! -d "$WORKFLOW_TEMPLATES_DIR" ]; then

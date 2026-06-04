@@ -5,20 +5,17 @@ allowed-tools: mcp__github__*, Read, Bash
 
 # Skill: hackathon-test
 
-Run the full test suite and report results clearly — what was expected, what actually
-happened, which tests are new failures vs pre-existing. When called with mode `baseline`,
-establishes the pre-implementation snapshot. When called with mode `check`, compares
-against the baseline.
-
-This skill **reports results and returns** — it does not close out, file issues, or
-make any decisions. The caller (`hackathon-session`) acts on the results.
+**Reports results and returns — never makes decisions.** Runs the full test suite and
+outputs what was expected, what actually happened, and which failures are new vs
+pre-existing. The caller (`hackathon-session`) decides what to do with the results.
 
 ---
 
-## GitHub MCP — required for all GitHub operations
+## GitHub MCP — required for all operations
 
-Every GitHub operation must use the GitHub MCP (`mcp__github__*`).
-Make all MCP calls sequentially, not in parallel.
+Every GitHub operation **must** use the GitHub MCP (`mcp__github__*`).
+Do not use `gh` CLI, `curl`, or Bash for anything the MCP can handle.
+Make all MCP calls **sequentially, not in parallel.**
 
 ---
 
@@ -96,3 +93,12 @@ Return the result summary to `hackathon-session`. The session skill decides:
 - If suite is green → proceed to PR
 
 When called by a human directly: just present the report above and stop.
+
+---
+
+## Rules
+
+- **Never** file issues, change labels, or take action on failures — report only.
+- **Never** emit loop signals or close-out comments.
+- **Always** distinguish new failures from pre-existing ones when a baseline exists.
+- **Always** include file path and line number in failure output when available.

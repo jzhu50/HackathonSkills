@@ -5,9 +5,9 @@ allowed-tools: mcp__github__*
 
 # Skill: hackathon-setup
 
-Use this skill exactly once per hackathon, immediately after the repo is created and
-`PLAN.md` has been filled in. This skill interrogates the human until the plan is fully
-clear, then creates all labels and epics so the team can start working.
+**Run once per project.** This skill interrogates the human until every ambiguity in
+`PLAN.md` is resolved, then creates all GitHub labels, epic issues, and a tracking
+issue. Nothing is created until the plan is fully understood.
 
 Do not run if issues already exist — it will create duplicates.
 
@@ -17,7 +17,7 @@ Do not run if issues already exist — it will create duplicates.
 
 Every GitHub operation **must** use the GitHub MCP (`mcp__github__*`).
 Do not use `gh` CLI, `curl`, or Bash for anything the MCP can handle.
-Make MCP calls sequentially, not in parallel.
+Make all MCP calls **sequentially, not in parallel.**
 
 ---
 
@@ -40,31 +40,28 @@ open questions.
 ## Step 2 — Recursive interrogation
 
 Before creating a single issue, surface every ambiguity that would affect how epics
-are scoped, ordered, or implemented. This is a loop — keep asking until you are
-genuinely confident that any agent could start working without asking a human.
+are scoped, ordered, or implemented. Keep asking until you are genuinely confident
+that any agent could start working without asking a human.
 
 **How the loop works:**
 
-1. Analyse what you have read. For each feature and for the plan as a whole, identify
-   everything that is ambiguous, contradictory, underspecified, or missing.
-2. Write out all your questions in one message. Ask them all at once — do not trickle.
+1. For each feature and for the plan as a whole, identify everything ambiguous,
+   contradictory, underspecified, or missing.
+2. Write all questions in one message — do not trickle them out one at a time.
 3. Wait for the human's answers.
-4. Incorporate the answers into your working understanding of the plan.
-5. Check: are there new ambiguities introduced by the answers? Are any previous
-   questions still not fully resolved?
-6. If yes — go back to step 1 and repeat with the remaining and new questions.
-7. If no — proceed to Step 3.
+4. Incorporate the answers. Check: are there new ambiguities? Any questions still unresolved?
+5. If yes → repeat from step 1. If no → proceed to Step 3.
 
-**Never stop interrogating because you have "enough" questions — stop when you have
-no remaining questions.** A half-understood plan produces bad epics.
+**Never stop because you have "enough" questions — stop only when you have none.**
+A half-understood plan produces bad epics.
 
-**Types of ambiguity to surface (not exhaustive — use your judgment):**
+**Types of ambiguity to surface:**
 
 - Done criteria: what does "done" look like for each feature, specifically enough
   that an agent can verify it without asking a human?
 - Dependencies: which features must exist before others can start?
 - Priority and cuts: if time runs out, what gets dropped first?
-- Technical decisions still open: stack choices, library choices, service choices
+- Technical decisions still open: stack, library, and service choices
 - Environment requirements: native packages, build tools, OS-specific dependencies
 - Data and state: where does data live? Is it shared across machines?
 - Scope boundaries: for each feature, what is explicitly out of scope?
@@ -72,15 +69,14 @@ no remaining questions.** A half-understood plan produces bad epics.
 - Acceptance bar: what would cause a PR review to fail for each feature?
 - Test command: what command runs the full test suite? This is required.
 
-**When you are done interrogating**, summarise back to the human what you understood
-before creating any issues. Ask for a final confirmation: "Does this capture everything
-correctly?" If they correct anything, loop once more. Then proceed.
+**When done interrogating**, summarise what you understood and ask: "Does this capture
+everything correctly?" If the human corrects anything, loop once more. Then proceed.
 
 ---
 
 ## Step 3 — Create labels
 
-Attempt to create labels one at a time via the GitHub MCP label tool.
+Create labels one at a time via the GitHub MCP label tool.
 If the tool is missing: skip silently — GitHub auto-creates labels on first use.
 
 Labels needed: `needs-human-review`, `ai-approved`, `in-progress`, `blocked`,
@@ -90,8 +86,7 @@ Labels needed: `needs-human-review`, `ai-approved`, `in-progress`, `blocked`,
 
 ## Step 4 — Create epic issues
 
-For each feature in the plan, create one GitHub issue via the MCP — **one at a time,
-sequentially**.
+For each feature in the plan, create one GitHub issue — **one at a time, sequentially**.
 
 **Title:** `[Epic] <feature name>`
 
@@ -115,7 +110,7 @@ decisions already made, integration points with other epics>
 <anything still unresolved, or "None — all decisions made">
 
 ## Child Issues
-<!-- Agents fill this in during decomposition. Do not edit manually. -->
+<!-- hackathon-decompose fills this in. Do not edit manually. -->
 ```
 
 **Labels:** `epic`, `needs-human-review`
@@ -165,10 +160,10 @@ Epics created (<N> total):
 
 Tracking issue: #<N+1>
 
-Next steps for the human:
+Next steps:
 1. Review each epic issue (#1–#N).
-2. Add the `ai-approved` label to any epic you are satisfied with.
-3. Once epics are approved, run hackathon-decompose to break them into tasks.
+2. Add `ai-approved` to any epic you are satisfied with.
+3. Run /hackathon-decompose to break approved epics into tasks.
 
 Recommended: enable branch protection on main
 (Settings → Branches → Require a pull request before merging)
@@ -176,10 +171,12 @@ Recommended: enable branch protection on main
 
 ---
 
-## Error handling
+## Rules
 
-- **Label tool missing:** skip, note in summary
-- **Issue creation fails:** report it, continue with the rest
-- **Plan is incomplete after interrogation:** document remaining gaps in the tracking
-  issue Open Questions section and proceed — agents will create `blocked` issues
-- **MCP auth error:** check PAT has `repo` scope
+- **Never** create issues before the interrogation loop completes.
+- **Never** run if issues already exist — check first.
+- **Always** create issues sequentially, one at a time.
+- **Always** summarise your understanding and get confirmation before Step 3.
+- **Label tool missing:** skip silently; GitHub auto-creates on first use.
+- **Issue creation fails:** report it, continue with the rest.
+- **MCP auth error:** check PAT has `repo` scope.

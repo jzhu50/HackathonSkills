@@ -12,10 +12,10 @@ must approve them before the task worker can pick them up.
 
 ---
 
-## GitHub MCP — required for all GitHub operations
+## GitHub MCP — required for all operations
 
 Every GitHub operation **must** use the GitHub MCP (`mcp__github__*`).
-Do not use `gh` CLI, `curl`, or Bash for GitHub operations.
+Do not use `gh` CLI, `curl`, or Bash for anything the MCP can handle.
 Make all MCP calls **sequentially, not in parallel.**
 
 ---
@@ -246,12 +246,19 @@ then be moved to needs-human-review for your review.
 
 ---
 
-## Quality bar
+## Rules
 
-Before finishing each epic's decomposition, verify every task:
-- [ ] Can an agent start this with zero additional context beyond the issue + PLAN.md?
-- [ ] Is the output of this task verifiable?
-- [ ] Is the scope small enough to finish in one session?
-- [ ] Are dependencies between tasks correct and complete?
-- [ ] Does every task include test criteria?
-- [ ] Is the verify task last, blocked by every other task?
+- **Never** decompose an epic before its `## Dependencies` are all closed.
+- **Never** assign tasks — agents claim them when the session loop runs.
+- **Never** skip creating the verify task — it is mandatory for every epic.
+- **Always** claim the epic before decomposing to prevent duplicate task creation.
+- **Always** include the epic branch name in every task's `## Context` section.
+- **Always** reset the label to `ai-approved` on collision back-off, not leave it `in-progress`.
+
+**Before finishing each epic's decomposition, verify every task:**
+- Can an agent start this with zero additional context beyond the issue + PLAN.md?
+- Is the output verifiable?
+- Is the scope small enough to finish in one session?
+- Are dependencies between tasks correct and complete?
+- Does every task include test criteria?
+- Is the verify task last, blocked by every other task?

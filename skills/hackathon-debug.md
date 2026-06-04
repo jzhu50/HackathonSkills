@@ -5,18 +5,20 @@ allowed-tools: mcp__github__*, Read, Write, Edit, Bash
 
 # Skill: hackathon-debug
 
-Fix one failure per invocation. Reproduce → diagnose root cause → minimal fix →
-regression test → suite green → return result to caller.
+**Reproduce → root cause → minimal fix → suite green.** Fix one failure per
+invocation and return the result to the caller. Never expands scope beyond the
+failing test or bug.
 
 This skill is called automatically by `hackathon-session` when a test that was passing
 at baseline starts failing. It is also the skill used for `bug`-labeled issues.
 
 ---
 
-## GitHub MCP — required for all GitHub operations
+## GitHub MCP — required for all operations
 
-Every GitHub operation must use the GitHub MCP (`mcp__github__*`).
-Make all MCP calls sequentially, not in parallel.
+Every GitHub operation **must** use the GitHub MCP (`mcp__github__*`).
+Do not use `gh` CLI, `curl`, or Bash for anything the MCP can handle.
+Make all MCP calls **sequentially, not in parallel.**
 
 ---
 

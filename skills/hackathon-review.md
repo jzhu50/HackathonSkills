@@ -15,8 +15,9 @@ This skill is always triggered manually. Never call it automatically.
 
 ## GitHub MCP — required for all operations
 
-Every operation **must** use the GitHub MCP (`mcp__github__*`).
-Make all calls sequentially, not in parallel.
+Every GitHub operation **must** use the GitHub MCP (`mcp__github__*`).
+Do not use `gh` CLI, `curl`, or Bash for anything the MCP can handle.
+Make all MCP calls **sequentially, not in parallel.**
 
 ---
 

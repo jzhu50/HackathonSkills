@@ -5,23 +5,31 @@ allowed-tools: mcp__github__*, Read, Bash
 
 # Skill: hackathon-verify
 
-**The final task for every epic.** After all other child tasks are merged into the
-epic branch, this task:
+**The final task for every epic.** Rebases the epic branch, runs the full test suite,
+checks every acceptance criterion, then opens the epic→main PR. After all other child
+tasks are merged into the epic branch, this task:
 1. Rebases the epic branch onto latest main (incorporating any other merged epics)
 2. Runs the full test suite
 3. Verifies every item in the epic's Acceptance Bar
 4. If all pass: opens a PR from the epic branch to main
 5. If failures: files bug issues and adds them to the epic's Child Issues
 
-This skill is invoked by `hackathon-session` when it claims a verify task. It is not
-called standalone.
+This skill is invoked by `hackathon-session` when it claims a verify task.
 
 ---
 
-## GitHub MCP — required for all GitHub operations
+## Trigger
 
-Every GitHub operation must use the GitHub MCP (`mcp__github__*`).
-Make all MCP calls sequentially, not in parallel.
+Called automatically by `hackathon-session` when the claimed task title matches
+`[#<epic>] Verify epic end-to-end and merge to main`. Not triggered directly.
+
+---
+
+## GitHub MCP — required for all operations
+
+Every GitHub operation **must** use the GitHub MCP (`mcp__github__*`).
+Do not use `gh` CLI, `curl`, or Bash for anything the MCP can handle.
+Make all MCP calls **sequentially, not in parallel.**
 
 ---
 

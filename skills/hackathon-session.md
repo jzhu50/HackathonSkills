@@ -14,10 +14,10 @@ pace by deciding which tasks to approve.
 
 ---
 
-## GitHub MCP — required for all GitHub operations
+## GitHub MCP — required for all operations
 
 Every GitHub operation **must** use the GitHub MCP (`mcp__github__*`).
-Do not use `gh` CLI, `curl`, or Bash for GitHub operations.
+Do not use `gh` CLI, `curl`, or Bash for anything the MCP can handle.
 Make all MCP calls **sequentially, not in parallel.**
 
 ---

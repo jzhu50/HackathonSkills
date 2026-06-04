@@ -205,6 +205,8 @@ main() {
     mkdir -p "$INSTALL_DIR"
 
     for asset_pair in "${ASSETS[@]}"; do
+        local asset_name="${asset_pair%%:*}"
+        local target_name="${asset_pair##*:}"
         local target_path="${INSTALL_DIR}/${target_name}"
 
         info "Downloading ${asset_name}..."

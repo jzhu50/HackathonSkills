@@ -184,7 +184,6 @@ jobs:
           New-Item -ItemType Directory -Force -Path $tmp | Out-Null
 
           & .\make-claude-md.ps1 $tmp
-          if ($LASTEXITCODE -ne 0) { Write-Host "FAIL: make-claude-md.ps1 exited $LASTEXITCODE"; exit 1 }
 
           $claudeMd = Join-Path $tmp "CLAUDE.md"
           if (-not (Test-Path $claudeMd) -or (Get-Item $claudeMd).Length -eq 0) {

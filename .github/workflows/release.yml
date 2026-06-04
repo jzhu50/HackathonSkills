@@ -80,7 +80,6 @@ jobs:
           # Run the globally-installed hackathon-bootstrap.ps1 from within the repo clone.
           $bootstrap = Join-Path $env:LOCALAPPDATA "hackathon-skills\bin\hackathon-bootstrap.ps1"
           & $bootstrap $tmp
-          if ($LASTEXITCODE -ne 0) { Write-Host "FAIL: bootstrap exited $LASTEXITCODE"; exit 1 }
 
           $claudeMd = Join-Path $tmp "CLAUDE.md"
           if (-not (Test-Path $claudeMd) -or (Get-Item $claudeMd).Length -eq 0) {

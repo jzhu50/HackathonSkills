@@ -1,217 +1,208 @@
 # Hackathon Agent Template
 
-A template repo for running AI coding agents as a team with human review at every
-major step. Fill in the plan, run setup, review epics, approve tasks, watch it build.
+AI agents write the code. Humans stay in control.
 
-**This repo IS your project.** Clone or fork it, fill in `PLAN.md`, run setup, and
-follow the human-in-the-loop workflow below.
+Fill in the plan, run setup, approve what you want built — agents implement, test,
+and open PRs. You review every PR before anything merges.
+
+**This repo is your project.** Clone or fork it, fill in `PLAN.md`, and follow the
+workflow below.
 
 ---
 
 ## How it works
 
-**GitHub is the shared brain.** All agents coordinate through GitHub Issues. No
-shared filesystem, no message queue.
+GitHub Issues are the coordination layer. Agents have no memory between sessions —
+everything they need lives in GitHub.
 
 | Primitive | Role |
 |---|---|
-| Issues | Units of work — tasks, epics, bugs |
-| Labels | State machine — see below |
-| Assignees | Who is working on what right now |
-| Comments | Handoff notes, blocker explanations, review findings |
-| PRs | The only valid close-out path — audit trail and review gate |
-| `PLAN.md` | Vision, stack, features, decisions |
+| Issues | Units of work — epics, tasks, bugs |
+| Labels | The state machine — controls what AI can touch |
+| PRs | The only way to close a task — every change goes through review |
+| `PLAN.md` | Vision, stack, features, decisions — the project bible |
 | `SPECS.md` | Optional: data models, API contracts, UI flows |
 
 ---
 
-## Label state machine
+## The state machine
+
+Every issue moves through this sequence. AI only acts on `ai-approved` items.
 
 ```
-needs-human-review  →  ai-approved  →  in-progress  →  in-review  →  (merged/closed)
-                                                             ↑
-                                             on request-changes: back to ai-approved
+needs-human-review  →  ai-approved  →  in-progress  →  in-review  →  closed
+                                                             │
+                                             request changes → ai-approved (fixed, re-reviewed)
 ```
 
-| Label | Meaning |
-|---|---|
-| `needs-human-review` | AI produced output — human must review before AI continues |
-| `ai-approved` | Human approved — AI can pick this up |
-| `in-progress` | Actively being worked |
-| `blocked` | Cannot proceed — comment explains why; will return to `needs-human-review` when unblocked |
-| `in-review` | PR open — human triggers AI review |
-| `epic` | Parent container — work happens in child task issues |
-| `bug` | Something is broken |
+| Label | Who sets it | Meaning |
+|---|---|---|
+| `needs-human-review` | AI | Output ready — human must review before work continues |
+| `ai-approved` | Human | Cleared for AI to pick up |
+| `in-progress` | AI | Actively being worked |
+| `in-review` | AI | PR open — human triggers review |
+| `blocked` | AI | Waiting on a dependency — auto-returns to `needs-human-review` when resolved |
+| `epic` | AI | Parent issue — work happens in child tasks |
+| `bug` | AI | Broken behavior — routed to the debug skill |
 
 ---
 
 ## Branch structure
 
+One branch per epic. One branch per task, forked off its epic.
+
 ```
 main
 ├── epic-1-auth
-│   ├── 5-create-users-table          (task branch)
-│   ├── 6-implement-login-endpoint    (task branch)
-│   └── (epic branch → main via verify PR)
-├── epic-2-dashboard
-│   └── ...
+│   ├── 5-create-users-table
+│   ├── 6-implement-login-endpoint
+│   └── ↑ task PRs merge here; epic branch → main via verify PR
+└── epic-2-dashboard
+    └── ...
 ```
 
-- `hackathon-decompose` creates each epic branch from main
-- `hackathon-session` creates task branches off the epic branch
-- Task PRs merge into the epic branch (human reviews and merges)
-- The verify task opens the epic→main PR
+Task PRs target the epic branch. The final task per epic (verify) opens the
+epic→main PR. You merge that to close the epic.
 
 ---
 
 ## Workflow
 
-```
-1. Human fills PLAN.md (vision, stack, features)
-   ↓
-2. Run: hackathon-setup
-   → Interrogates human until plan is unambiguous
-   → Creates epic issues (needs-human-review)
-   ↓
-3. Human: review each epic, add `ai-approved` label when satisfied
-   ↓
-4. Run: hackathon-decompose
-   → Creates epic branches
-   → Breaks each epic into tasks (needs-human-review)
-   → Adds mandatory verify task as the last child of each epic
-   ↓
-5. Human: review each task, add `ai-approved` label when satisfied
-   ↓
-6. Run: hackathon-session
-   → Runs baseline tests before each task
-   → Implements each ai-approved task on a branch off the epic branch
-   → Runs tests throughout; auto-calls hackathon-debug on regressions
-   → Opens PRs targeting the epic branch (in-review)
-   → Loops until no ai-approved tasks remain
-   ↓
-7. Human: for each in-review PR, trigger: hackathon-review
-   → AI reviews diff and posts detailed findings
-   → Human says "merge" or "request changes"
-   → On merge: PR closes, task closes, epic branch accumulates work
-   → On request-changes: task returns to ai-approved for fixes
-   ↓
-8. When all non-verify tasks are merged:
-   hackathon-session picks up the verify task
-   → Rebases epic branch onto latest main
-   → Runs full test suite
-   → Checks every epic acceptance criterion
-   → Opens PR: epic branch → main
-   ↓
-9. Human: review and merge the epic→main PR
-   → Epic is closed
-   ↓
-10. Repeat for remaining epics. Project is done when all epics are closed.
-```
+### 1 — Fill in the plan
+Edit `PLAN.md` as a team: vision, demo goal, stack, features, out-of-scope.
+Then run `/hackathon-setup`.
+
+### 2 — Setup interrogates you
+The agent asks questions until every ambiguity is resolved, then creates GitHub
+labels and one epic issue per feature — all labeled `needs-human-review`.
+
+### 3 — You approve epics
+Read each epic. Add `ai-approved` to any you're satisfied with.
+The agent won't touch an epic until you approve it.
+
+### 4 — Decompose approved epics
+Run `/hackathon-decompose`. For each approved epic the agent:
+- Creates an epic branch (`epic-<n>-<slug>`) from main
+- Breaks the epic into scoped tasks (each labeled `needs-human-review`)
+- Appends a mandatory **verify task** as the final child
+
+### 5 — You approve tasks
+Read each task. Add `ai-approved` to any you're satisfied with.
+Blocked tasks unblock automatically when their dependencies close and then
+surface for your review.
+
+### 6 — Implement approved tasks
+Run `/hackathon-session`. The agent loops through all `ai-approved` tasks:
+- Runs the test suite for a baseline before touching anything
+- Implements on a branch off the epic branch
+- Runs tests progressively — outputs expected vs actual
+- Calls the debug skill automatically if a passing test starts failing
+- Opens a PR targeting the epic branch
+
+Loops until no approved tasks remain, then stops and reports.
+
+### 7 — You review PRs
+For each `in-review` PR, run `/hackathon-review`. The agent reads the diff,
+checks every acceptance criterion, and posts detailed findings.
+
+You decide: **"merge"** or **"request changes: [specifics]"**. The agent executes
+your call. On request-changes the task returns to `ai-approved` and the session
+picks it up on the next run.
+
+**Nothing merges without your instruction.**
+
+### 8 — Verify closes each epic
+When all non-verify tasks are merged, the session picks up the verify task:
+- Rebases the epic branch onto the latest main
+- Runs the full test suite
+- Checks every acceptance criterion from the epic
+- Opens a PR: epic branch → main
+
+You review and merge. That closes the epic.
+
+### 9 — Repeat until done
+Work through remaining epics. The project is complete when all epics are closed.
 
 ---
 
-## What agents do automatically
+## Division of responsibility
 
-- Read GitHub state and identify the highest-value `ai-approved` task
-- Claim tasks safely (lightweight collision detection for multi-machine teams)
-- Run the test suite before starting any implementation (baseline)
-- Implement tasks on branches off the epic branch
-- Run tests progressively; explain expected vs actual output
-- Auto-invoke `hackathon-debug` when a previously-passing test regresses
-- Open PRs with `Closes #N` for automatic issue close on merge
-- Verify entire epics end-to-end before opening the epic→main PR
-- Detect and reclaim stalled work from crashed agents
+**Agents handle:**
+- Claiming tasks safely (collision-safe for multi-machine teams)
+- Baseline testing before every implementation
+- Progressive testing with expected-vs-actual output during implementation
+- Auto-debugging regressions before opening a PR
+- Opening PRs with `Closes #N` for automatic issue close on merge
+- End-to-end epic verification before the final merge
 
-## What humans do
-
-- Review and approve epics before decomposition
-- Review and approve tasks before implementation
-- Trigger PR reviews (`hackathon-review`)
-- Decide: merge or request changes
-- Merge the final epic→main PR
-
-**No AI agent merges anything without explicit human instruction.**
+**You handle:**
+- Reviewing and approving epics
+- Reviewing and approving tasks
+- Triggering PR reviews
+- Deciding: merge or request changes
+- Merging the epic→main PR
 
 ---
 
-## Repo structure
+## File structure
 
 ```
 skills/
   hackathon-setup.md       — run once: interrogates human, creates labels and epics
-  hackathon-decompose.md   — loop through ai-approved epics, create tasks
-  hackathon-session.md     — loop through ai-approved tasks, implement and PR
-  hackathon-review.md      — review one PR, post findings, await human decision
-  hackathon-debug.md       — reproduce, fix, and regression-test a bug or regression
-  hackathon-test.md        — run test suite, report expected vs actual
-  hackathon-verify.md      — verify epic end-to-end, open epic→main PR
-make-claude-md.sh          — bootstrap script (Mac/Linux): generates CLAUDE.md and .claude/
-make-claude-md.ps1         — bootstrap script (Windows): generates CLAUDE.md and .claude/
+  hackathon-decompose.md   — loops through ai-approved epics, creates tasks + epic branches
+  hackathon-session.md     — loops through ai-approved tasks, implements and opens PRs
+  hackathon-review.md      — reviews one PR, posts findings, executes your decision
+  hackathon-verify.md      — last task per epic: verifies E2E, opens epic→main PR
+  hackathon-test.md        — runs test suite, reports expected vs actual
+  hackathon-debug.md       — reproduces, fixes, and regression-tests a failure
+make-claude-md.sh          — bootstrap (Mac/Linux): generates CLAUDE.md + .claude/
+make-claude-md.ps1         — bootstrap (Windows): generates CLAUDE.md + .claude/
 PLAN.md                    — fill this in before setup
-SPECS.md                   — optional: fill in as decisions get made
-AGENTS.md                  — coordination protocol (all harnesses read this)
-HARNESS.md                 — guide for non-Claude Code harnesses
-.github/ISSUE_TEMPLATE/    — issue templates for epics and tasks
+SPECS.md                   — optional: data models, API routes, UI flows
+AGENTS.md                  — coordination protocol (read by all harnesses)
+HARNESS.md                 — setup guide for non-Claude Code harnesses
 ```
 
-The bootstrap script generates these **locally** (gitignored — never committed):
+The bootstrap script generates these locally — gitignored, never committed:
 ```
-CLAUDE.md                  — full skill content auto-loaded by claude interactive
-.claude/commands/          — slash commands for interactive Claude Code sessions
-.claude/settings.json      — GitHub MCP pre-approved (no permission prompts)
+CLAUDE.md                  — full skill content for interactive Claude Code
+.claude/commands/          — /hackathon-* slash commands
+.claude/settings.json      — GitHub MCP pre-approved
 ```
 
-Every teammate must run the bootstrap script after cloning.
+Regenerate after any skill change. Every teammate runs this after cloning.
 
 ---
 
 ## Setup
 
-### Step 1 — Clone or fork this repo as your project
+### 1 — Clone as your project
 
 ```bash
-git clone https://github.com/<org>/hackathon-agent-template <your-project-name>
-cd <your-project-name>
-git remote remove origin
-git remote add origin https://github.com/<you>/<your-project-name>
+git clone https://github.com/<you>/hackathon-agent-template <project-name>
+cd <project-name>
+git remote set-url origin https://github.com/<you>/<project-name>
 git push -u origin main
 ```
 
-### Step 2 — Fill in the plan (~10 minutes as a team)
+### 2 — Fill in `PLAN.md`
 
-Edit `PLAN.md`:
-- Vision and demo goal
-- Tech stack decisions (including **Test command** — required)
-- Core features in priority order
-- Out of scope
-- Open questions
+Vision, demo goal, tech stack, core features, out-of-scope, open questions.
 
-**The Test command row is mandatory.** Agents run it before every PR.
-Examples: `npm test`, `pytest`, `go test ./...`, `cargo test`.
+**The Test command row is required** — agents run it before every PR.
+(`npm test`, `pytest`, `go test ./...`, `cargo test`, etc.)
 
-### Step 3 — Bootstrap each machine
+### 3 — Bootstrap each machine
 
 ```bash
-# Mac/Linux
-./make-claude-md.sh
-
-# Windows
-.\make-claude-md.ps1
+./make-claude-md.sh      # Mac/Linux
+.\make-claude-md.ps1     # Windows
 ```
 
-This generates `CLAUDE.md`, `.claude/commands/`, and `.claude/settings.json`.
-Re-run whenever skills are updated.
+### 4 — Configure GitHub MCP
 
-### Step 4 — Configure GitHub MCP on each machine
-
-Each teammate needs the GitHub MCP server configured with their own PAT.
-
-**Required PAT scopes:** `repo` (add `read:org` for org-owned repos)
-
-**Recommended: enable branch protection on `main`**
-(Settings → Branches → Require a pull request before merging)
-
-**Docker-based GitHub MCP config:**
+Each teammate needs a Personal Access Token with `repo` scope (add `read:org` for
+org repos) configured in their Claude Code MCP settings:
 
 ```json
 {
@@ -228,43 +219,40 @@ Each teammate needs the GitHub MCP server configured with their own PAT.
 }
 ```
 
-### Step 5 — Run setup (once per project)
+Enable branch protection on `main` (Settings → Branches → Require a pull request
+before merging). Do **not** also require approvals unless you have two distinct
+accounts — GitHub won't let you approve your own PR.
 
-In the project root, open Claude Code and say:
+### 5 — Run setup
 
 ```
-Set up the project
+/hackathon-setup
 ```
 
-or use the slash command `/hackathon-setup`.
-
-### Step 6 — Follow the workflow
-
-After setup creates epics: review each one and add `ai-approved` when ready.
-Then run `/hackathon-decompose` to break them into tasks.
-Review tasks, add `ai-approved`, then run `/hackathon-session` to implement.
+The agent interrogates you until the plan is airtight, then creates all labels and
+epic issues.
 
 ---
 
 ## Skills reference
 
-| Skill | Trigger | What it does |
-|---|---|---|
-| `hackathon-setup` | "Set up the project" | Interrogates human, creates labels and epics |
-| `hackathon-decompose` | "Decompose the epics" | Loops through ai-approved epics, creates tasks |
-| `hackathon-session` | "Go", "Work on tasks" | Loops through ai-approved tasks, implements and PRs |
-| `hackathon-review` | "Review PR #X" | Reviews PR, posts findings, awaits human decision |
-| `hackathon-debug` | Auto (on regression) or "Fix bug #N" | Reproduces, fixes, regression-tests |
-| `hackathon-test` | Auto (during tasks) or "Run the tests" | Runs suite, reports expected vs actual |
-| `hackathon-verify` | Auto (last task of each epic) | Verifies epic E2E, opens epic→main PR |
+| Slash command | What it does |
+|---|---|
+| `/hackathon-setup` | Run once — interrogates human, creates labels and epics |
+| `/hackathon-decompose` | Loops through ai-approved epics, creates tasks |
+| `/hackathon-session` | Loops through ai-approved tasks, implements and opens PRs |
+| `/hackathon-review` | Reviews one PR, posts findings, executes your decision |
+| `/hackathon-verify` | Auto-called as the last task of each epic |
+| `/hackathon-test` | Auto-called during tasks; also runnable by humans |
+| `/hackathon-debug` | Auto-called on regressions; also runnable for bug issues |
 
-In interactive Claude Code: `/hackathon-setup`, `/hackathon-session`, etc.
+Using a different agent CLI? See `HARNESS.md`.
 
 ---
 
 ## Requirements
 
-- Claude Code CLI (`claude`) — [install](https://docs.anthropic.com/claude-code)
-- Docker — for the GitHub MCP server
-- GitHub Personal Access Token per teammate (`repo` scope)
+- [Claude Code](https://docs.anthropic.com/claude-code)
+- Docker (for the GitHub MCP server)
+- GitHub Personal Access Token — one per teammate, `repo` scope
 - GitHub repo with Issues enabled

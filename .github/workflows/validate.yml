@@ -1,0 +1,91 @@
+name: Validate
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [main]
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lint shell scripts
+        run: |
+          bash -n make-claude-md.sh
+          bash -n install.sh
+          bash -n runner.sh
+          echo "Shell syntax OK"
+
+      - name: Check skill frontmatter
+        run: |
+          failed=0
+          for f in skills/*.md; do
+            if ! grep -q '^description:' "$f"; then
+              echo "MISSING description: in $f"
+              failed=1
+            fi
+            if ! grep -q '^allowed-tools:' "$f"; then
+              echo "MISSING allowed-tools: in $f"
+              failed=1
+            fi
+          done
+          [[ $failed -eq 0 ]] && echo "Skill frontmatter OK ($(ls skills/*.md | wc -l | tr -d ' ') skills)"
+          exit $failed
+
+      - name: Run bootstrap and verify outputs
+        run: |
+          tmp=$(mktemp -d)
+          bash make-claude-md.sh "$tmp"
+
+          # CLAUDE.md must exist and be non-empty
+          [[ -s "$tmp/CLAUDE.md" ]] || { echo "FAIL: CLAUDE.md missing or empty"; exit 1; }
+
+          # command count must match skill count
+          skill_count=$(ls skills/*.md | wc -l | tr -d ' ')
+          cmd_count=$(ls "$tmp/.claude/commands/"*.md 2>/dev/null | wc -l | tr -d ' ')
+          if [[ "$skill_count" -ne "$cmd_count" ]]; then
+            echo "FAIL: $skill_count skills but $cmd_count commands in .claude/commands/"
+            exit 1
+          fi
+
+          # settings.json must exist and be valid JSON
+          [[ -f "$tmp/.claude/settings.json" ]] \
+            || { echo "FAIL: .claude/settings.json not generated"; exit 1; }
+          python3 -c "import json,sys; json.load(open('$tmp/.claude/settings.json'))" \
+            || { echo "FAIL: .claude/settings.json is not valid JSON"; exit 1; }
+
+          # CLAUDE.md must contain a section for every skill
+          for f in skills/*.md; do
+            name=$(basename "$f" .md)
+            if ! grep -q "# Skill: $name" "$tmp/CLAUDE.md"; then
+              echo "FAIL: CLAUDE.md missing section for $name"
+              exit 1
+            fi
+          done
+
+          echo "Bootstrap OK — $skill_count skills, CLAUDE.md $(wc -c < "$tmp/CLAUDE.md" | tr -d ' ') bytes"
+
+      - name: Validate PowerShell script syntax
+        shell: pwsh
+        run: |
+          $failed = 0
+          foreach ($script in @("make-claude-md.ps1", "install.ps1", "runner.ps1")) {
+            $errors = $null
+            $null = [System.Management.Automation.Language.Parser]::ParseFile(
+              (Resolve-Path $script).Path, [ref]$null, [ref]$errors
+            )
+            if ($errors.Count -gt 0) {
+              Write-Host "FAIL: $script has $($errors.Count) syntax error(s):"
+              $errors | ForEach-Object { Write-Host "  $_" }
+              $failed = 1
+            } else {
+              Write-Host "OK: $script"
+            }
+          }
+          exit $failed

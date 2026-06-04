@@ -94,6 +94,20 @@ function Get-FileHash256 {
     return $Hash.Hash.ToLower()
 }
 
+function Download-File {
+    param(
+        [string]$Url,
+        [string]$Path
+    )
+    if ($env:GITHUB_TOKEN) {
+        $SecPassword = ConvertTo-SecureString $env:GITHUB_TOKEN -AsPlainText -Force
+        $Cred = New-Object System.Management.Automation.PSCredential ("token", $SecPassword)
+        Invoke-WebRequest -Uri $Url -OutFile $Path -UseBasicParsing -Credential $Cred
+    } else {
+        Invoke-WebRequest -Uri $Url -OutFile $Path -UseBasicParsing
+    }
+}
+
 # -- Installation -------------------------------------------------------------
 
 function Install-HackathonSkills {
@@ -128,7 +142,7 @@ function Install-HackathonSkills {
         $HasChecksums = $false
 
         try {
-            Invoke-WebRequest -Uri $ChecksumUrl -OutFile $TempChecksum -UseBasicParsing
+            Download-File -Url $ChecksumUrl -Path $TempChecksum
             $HasChecksums = $true
             Write-Info "Checksums available for verification."
         } catch {
@@ -147,7 +161,7 @@ function Install-HackathonSkills {
             $TempFile = Join-Path $TempDir $AssetName
             
             try {
-                Invoke-WebRequest -Uri $DownloadUrl -OutFile $TempFile -UseBasicParsing
+                Download-File -Url $DownloadUrl -Path $TempFile
             } catch {
                 throw "Failed to download ${AssetName}: $_"
             }

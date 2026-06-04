@@ -97,6 +97,16 @@ get_latest_release() {
     fi
 }
 
+download_file() {
+    local url="$1"
+    local dest="$2"
+    if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+        curl -fsSL -u :"$GITHUB_TOKEN" -o "$dest" "$url"
+    else
+        curl -fsSL -o "$dest" "$url"
+    fi
+}
+
 
 # Global temp dir for cleanup trap
 TEMP_DIR=""
@@ -143,7 +153,7 @@ main() {
     fi
 
     local has_checksums=false
-    if curl -fsSL -o "${TEMP_DIR}/checksums.sha256" "$checksum_url" 2>/dev/null; then
+    if download_file "$checksum_url" "${TEMP_DIR}/checksums.sha256" 2>/dev/null; then
         has_checksums=true
         info "Checksums available for verification."
     else
@@ -164,7 +174,7 @@ main() {
         local target_path="${INSTALL_DIR}/${target_name}"
 
         info "Downloading ${asset_name}..."
-        if ! curl -fsSL -o "${TEMP_DIR}/${asset_name}" "$download_url"; then
+        if ! download_file "$download_url" "${TEMP_DIR}/${asset_name}"; then
             error "Failed to download ${asset_name}"
         fi
 

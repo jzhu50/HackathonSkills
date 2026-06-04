@@ -2,7 +2,7 @@ name: Verify Installers
 
 on:
   push:
-    branches: ['refactor/installers']
+    branches: ['**']
   pull_request:
     branches: [main]
   workflow_dispatch:

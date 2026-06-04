@@ -65,7 +65,9 @@ _first_run_setup() {
     read -r selection
     if [[ -n "$selection" ]]; then
       local chosen=()
-      for n in $selection; do
+      # Use read -ra to split selection into an array
+      read -ra sel_array <<< "$selection"
+      for n in "${sel_array[@]}"; do
         [[ $n -ge 1 && $n -le ${#found[@]} ]]\
           || _die "invalid selection: $n"
         chosen+=("${found[$((n - 1))]}")

@@ -133,7 +133,7 @@ Triage: `critical`/`high` = block PR. `moderate` = note in PR body. `low` = skip
 Return this report to `hackathon-verify`:
 
 ```
-SECURITY AUDIT - epic-<n>-<slug>
+SECURITY AUDIT - epic/<n>-<slug>
 
 CRITICAL (blocks PR - must fix before merge)
 ---------------------------------------------

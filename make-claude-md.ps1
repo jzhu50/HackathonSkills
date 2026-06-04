@@ -92,8 +92,8 @@ Make all MCP calls **sequentially, not in parallel.**
 
 ## Branch discipline
 
-Epic branches: epic-<n>-<slug> (created by hackathon-decompose from main)
-Task branches: <n>-<slug> (created by hackathon-session from the epic branch)
+Epic branches: epic/<n>-<slug> (created by hackathon-decompose from main)
+Task branches: task/<n>-<slug> (created by hackathon-session from the epic branch)
 Task PRs target the epic branch. The verify task opens the epic->main PR.
 Never commit to `main` or an epic branch directly.
 
@@ -109,6 +109,85 @@ foreach ($skill in $skills) {
 }
 $parts -join "" | Out-File -FilePath $ClaudeMdPath -Encoding utf8 -NoNewline
 Write-Host "  CLAUDE.md written"
+
+# Scaffold GitHub Actions workflows based on hackathon.config.yml
+$WorkflowTemplatesDir = Join-Path $PSScriptRoot "workflow-templates"
+if (-not (Test-Path $WorkflowTemplatesDir)) {
+    $WorkflowTemplatesDir = Join-Path (Get-Location).Path "workflow-templates"
+}
+
+$ConfigPath = Join-Path $TargetDir "hackathon.config.yml"
+if ((Test-Path $WorkflowTemplatesDir) -and (Test-Path $ConfigPath)) {
+    $WorkflowsOut = Join-Path $TargetDir ".github\workflows"
+    New-Item -ItemType Directory -Force -Path $WorkflowsOut | Out-Null
+
+    $ConfigContent = Get-Content $ConfigPath -Raw
+    $HasActionsSection = $ConfigContent -match '(?m)^actions:'
+
+    $WorkflowMap = @(
+        @{ Key = "gitleaks";           File = "gitleaks.yml" },
+        @{ Key = "codeql";             File = "codeql.yml" },
+        @{ Key = "dependency_review";  File = "dependency-review.yml" },
+        @{ Key = "actionlint";         File = "actionlint.yml" },
+        @{ Key = "markdownlint";       File = "markdownlint.yml" },
+        @{ Key = "contract";           File = "hackathon-contract.yml" }
+    )
+
+    $Scaffolded = @()
+    foreach ($entry in $WorkflowMap) {
+        $key  = $entry.Key
+        $file = $entry.File
+
+        if ($HasActionsSection) {
+            $val = if ($ConfigContent -match "(?m)^\s+${key}:\s*true") { 1 } else { 0 }
+        } else {
+            $val = 1
+        }
+
+        if ($val -gt 0) {
+            $Src = Join-Path $WorkflowTemplatesDir $file
+            $Dst = Join-Path $WorkflowsOut $file
+            if (Test-Path $Dst) {
+                Write-Host "  WARNING: $Dst already exists - not overwriting"
+            } elseif (Test-Path $Src) {
+                Copy-Item $Src $Dst
+                $Scaffolded += $Dst
+                Write-Host "  workflow: .github\workflows\$file"
+            }
+        }
+    }
+
+    # Also copy .env.example and .markdownlint.yml if not present
+    foreach ($f in @(".env.example", ".markdownlint.yml")) {
+        $Src = Join-Path $PSScriptRoot $f
+        $Dst = Join-Path $TargetDir $f
+        if (-not (Test-Path $Dst) -and (Test-Path $Src)) {
+            Copy-Item $Src $Dst
+            $Scaffolded += $Dst
+            Write-Host "  config: $f"
+        }
+    }
+
+    # Commit scaffolded files
+    if ($Scaffolded.Count -gt 0) {
+        Push-Location $TargetDir
+        try {
+            $gitDir = git rev-parse --git-dir 2>$null
+            if ($gitDir) {
+                git add ".github/workflows/" ".env.example" ".markdownlint.yml" 2>$null
+                $staged = git diff --cached --quiet 2>$null; $hasStagedChanges = -not $?
+                if ($hasStagedChanges) {
+                    git commit -m "ci: scaffold repository contract workflows" 2>&1 | Out-Null
+                    if (-not $?) {
+                        Write-Host "  WARNING: git commit failed (check git user.email config) - workflows are on disk but not committed"
+                    }
+                }
+            }
+        } finally {
+            Pop-Location
+        }
+    }
+}
 
 Write-Host ""
 Write-Host "Bootstrap complete -> $TargetDir"

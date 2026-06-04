@@ -217,17 +217,22 @@ powershell.exe -NoLogo -ExecutionPolicy Bypass -File "%~dp0$BaseName.ps1" %*
     Write-Host ""
     Write-Success "$ToolName $Version installed successfully!"
     Write-Host ""
-    Write-Host "Next steps:"
-    Write-Host "  1. Create a new repo from the template on GitHub"
-    Write-Host "  2. Clone it, cd into it"
-    Write-Host "  3. hackathon-bootstrap          -- generates CLAUDE.md + slash commands"
-    Write-Host "  4. Fill in PLAN.md"
-    Write-Host "  5. Open Claude Code and run /hackathon-setup"
-    Write-Host ""
-    Write-Host "Other commands:"
-    Write-Host "  hackathon-skills --help         -- PTY runner help"
-    Write-Host "  hackathon-skills --reconfigure  -- change AI CLI selection (Claude, Aider, Codex, Antigravity)"
-    Write-Host ""
+
+    # Auto-bootstrap if running inside a git repo
+    if (git rev-parse --git-dir 2>$null) {
+        Write-Host "Git repo detected - running bootstrap..."
+        & hackathon-bootstrap
+    } else {
+        Write-Host "Next steps:"
+        Write-Host "  1. Create a new repo from the template on GitHub"
+        Write-Host "  2. Clone it, cd into it"
+        Write-Host "  3. Open Claude Code and run /hackathon-setup"
+        Write-Host ""
+        Write-Host "Other commands:"
+        Write-Host "  hackathon-skills --help         -- PTY runner help"
+        Write-Host "  hackathon-skills --reconfigure  -- change AI CLI selection (Claude, Aider, Codex, Antigravity)"
+        Write-Host ""
+    }
 }
 
 Install-HackathonSkills

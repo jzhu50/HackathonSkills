@@ -239,10 +239,18 @@ main() {
     fi
 
     echo ""
-    echo "Get started:"
-    echo "  hackathon-bootstrap           # generates CLAUDE.md + slash commands"
-    echo "  hackathon-skills --help       # Show all commands (Claude, Aider, Codex, Antigravity)"
     echo ""
+
+    # Auto-bootstrap if running inside a git repo
+    if git rev-parse --git-dir > /dev/null 2>&1; then
+        echo "Git repo detected - running bootstrap..."
+        hackathon-bootstrap
+    else
+        echo "Get started:"
+        echo "  hackathon-bootstrap           # generates CLAUDE.md + slash commands"
+        echo "  hackathon-skills --help       # Show all commands (Claude, Aider, Codex, Antigravity)"
+        echo ""
+    fi
 }
 
 main "$@"

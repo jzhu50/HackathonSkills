@@ -63,20 +63,20 @@ again when actually ready.)
 
 ```bash
 git fetch origin
-git checkout epic-<n>-<slug>
-git merge --ff-only origin/epic-<n>-<slug>    # get any task PRs merged since last sync
+git checkout epic/<n>-<slug>
+git merge --ff-only origin/epic/<n>-<slug>    # get any task PRs merged since last sync
 git rebase origin/main                          # incorporate other epics that merged
 ```
 
 If the rebase has conflicts: resolve them. Favour the epic branch's changes.
 After resolving:
 ```bash
-git push --force-with-lease origin epic-<n>-<slug>
+git push --force-with-lease origin epic/<n>-<slug>
 ```
 
 Comment on the verify task:
 ```
-agent: rebased epic-<n>-<slug> onto main. Conflicts resolved: <list of files or "none">
+agent: rebased epic/<n>-<slug> onto main. Conflicts resolved: <list of files or "none">
 ```
 
 ---
@@ -155,7 +155,7 @@ For each criterion, record: PASS or FAIL and a one-line note.
      <brief description of what this epic added to the project>
      ```
    - Base: `main`
-   - Head: `epic-<n>-<slug>`
+   - Head: `epic/<n>-<slug>`
 
 3. Change the verify task label to `in-review` via the GitHub MCP.
 
@@ -204,7 +204,7 @@ For each failure:
    #<epic number>
 
    ## Context
-   Epic branch: epic-<n>-<slug>
+   Epic branch: epic/<n>-<slug>
    Filed during verification of Epic #<n>.
 
    ## Failure

@@ -77,11 +77,11 @@ comment `agent: collision - backing off`, skip to the next epic.
 
 ```bash
 git checkout main
-git checkout -b epic-<n>-<slug>
-git push -u origin epic-<n>-<slug>
+git checkout -b epic/<n>-<slug>
+git push -u origin epic/<n>-<slug>
 ```
 
-**If `comments: verbose`:** post on the epic: `agent: epic branch created - epic-<n>-<slug>`
+**If `comments: verbose`:** post on the epic: `agent: epic branch created - epic/<n>-<slug>`
 **If `comments: minimal`:** skip this comment.
 
 ### Step 2 - Load context
@@ -187,7 +187,7 @@ into the epic branch. Before opening the PR:
 - Verify every item in the epic's Acceptance Bar
 - If anything fails: file bug issues (needs-human-review), add to epic Child Issues
 
-Epic branch: epic-<n>-<slug>
+Epic branch: epic/<n>-<slug>
 Epic acceptance bar: (copy verbatim from the epic issue)
 
 ## Acceptance Criteria
@@ -216,6 +216,9 @@ Examples:
 
 **Body format:**
 ```
+## Project
+<GitHub Project name this task belongs to>
+
 ## Parent
 #<epic issue number>
 
@@ -224,7 +227,7 @@ Examples:
 
 ## Context
 <Everything the next agent needs to start cold:
-- Epic branch: epic-<n>-<slug>
+- Epic branch: epic/<n>-<slug>
 - Relevant file paths
 - Which part of PLAN.md / SPECS.md applies
 - Decisions already made that constrain this task
@@ -267,7 +270,7 @@ Epic label stays `in-progress` (children are being worked). Unassign yourself.
 **If `comments: verbose`:**
 ```
 agent: decomposed into <N> tasks
-Epic branch: epic-<n>-<slug>
+Epic branch: epic/<n>-<slug>
 Tasks (all ai-approved): #<n>, #<n>, ...
 Verify task (last, blocked by all): #<n>
 ```
@@ -282,7 +285,7 @@ agent: decomposed into <N> tasks - #<list>
 **If `comments: verbose`:** comment via the GitHub MCP:
 ```
 Epic #<n> decomposed: <N> tasks created. All labeled ai-approved.
-Epic branch: epic-<n>-<slug>
+Epic branch: epic/<n>-<slug>
 ```
 
 **If `comments: minimal`:** skip this comment.

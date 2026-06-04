@@ -124,12 +124,12 @@ Every epic gets its own branch. Every task gets a branch off its epic branch.
 
 | Branch | Naming | Created by | PR target |
 |---|---|---|---|
-| Epic | `epic-<n>-<slug>` | hackathon-decompose | main |
-| Task | `<n>-<slug>` | hackathon-session | epic branch |
+| Epic | `epic/<n>-<slug>` | hackathon-decompose | main |
+| Task | `task/<n>-<slug>` | hackathon-session | epic branch |
 | Verify | (epic branch directly) | hackathon-verify | main |
 
 **Epic branch lifecycle:**
-1. `hackathon-decompose` creates `epic-<n>-<slug>` from main and pushes to origin.
+1. `hackathon-decompose` creates `epic/<n>-<slug>` from main and pushes to origin.
 2. Task branches fork off the epic branch.
 3. Task PRs merge into the epic branch (human reviews and merges).
 4. The verify task is the last child - it opens a PR from the epic branch to main.
@@ -163,9 +163,9 @@ If `--ff-only` fails: local main has diverged. Comment on the tracking issue and
 **Per task:** before creating a task branch, sync the epic branch:
 ```bash
 git fetch origin
-git checkout epic-<n>-<slug>
-git merge --ff-only origin/epic-<n>-<slug>
-git checkout -b <task-n>-<slug>
+git checkout epic/<n>-<slug>
+git merge --ff-only origin/epic/<n>-<slug>
+git checkout -b task/<issue-number>-<short-slug>
 ```
 
 ---

@@ -93,6 +93,12 @@ Four-phase workflow:
 - hackathon-review:     human-triggered; review one PR, post findings, human decides merge/changes
 - hackathon-debug/test/verify: called automatically by hackathon-session
 
+Branch discipline:
+  Epic branches: epic/<n>-<slug> (created by hackathon-decompose from main)
+  Task branches: task/<n>-<slug> (created by hackathon-session from the epic branch)
+  Task PRs target the epic branch. The verify task opens the epic->main PR.
+  Never commit to main or an epic branch directly.
+
 Labels:
   needs-human-review -> ai-approved -> in-progress -> in-review -> (merged)
 

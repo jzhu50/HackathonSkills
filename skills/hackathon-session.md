@@ -100,13 +100,13 @@ comment `agent: collision - backing off`, pick a different issue.
 
 #### N1. Sync to the epic branch and create task branch
 
-Read the task's `## Context` section to find the epic branch name (`epic-<n>-<slug>`).
+Read the task's `## Context` section to find the epic branch name (`epic/<n>-<slug>`).
 
 ```bash
 git fetch origin
-git checkout epic-<n>-<slug>
-git merge --ff-only origin/epic-<n>-<slug>
-git checkout -b <issue-number>-<short-slug> 2>/dev/null || git checkout <issue-number>-<short-slug>
+git checkout epic/<n>-<slug>
+git merge --ff-only origin/epic/<n>-<slug>
+git checkout -b task/<issue-number>-<short-slug> 2>/dev/null || git checkout task/<issue-number>-<short-slug>
 ```
 
 If the epic branch does not exist locally or remotely: comment on the task that the
@@ -303,7 +303,7 @@ existing branch (do not open a new PR).
    - Title: same as the issue title
    - Body: `Closes #<issue number>` on its own line, then a 2-3 sentence summary
      including test results
-   - Base: the **epic branch** (e.g. `epic-<n>-<slug>`) - NOT main
+   - Base: the **epic branch** (e.g. `epic/<n>-<slug>`) - NOT main
 
 3. Change the issue label to `in-review` via the GitHub MCP.
 
@@ -311,7 +311,7 @@ existing branch (do not open a new PR).
    ```
    ## Status
    Branch: <branch-name>
-   PR: #<number> (base: epic-<n>-<slug>)
+   PR: #<number> (base: epic/<n>-<slug>)
    Tests: <N passing at baseline> -> <N passing now>
    New issues: <list or "none">
    ```
@@ -320,7 +320,7 @@ existing branch (do not open a new PR).
    agent: done - PR #<number> open for review
 
    Branch: <branch-name>
-   PR base: epic-<n>-<slug>
+   PR base: epic/<n>-<slug>
    What was built: <2-3 sentences>
    New issues created: <list or "none">
    Test suite: <N passing / N failing - any failures noted in PR>

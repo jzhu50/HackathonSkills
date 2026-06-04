@@ -46,34 +46,32 @@ PLAN.md
 ### 1 - Install
 
 ```bash
-# Mac/Linux
+# Mac/Linux (run from inside your project directory)
 curl -fsSL https://raw.githubusercontent.com/Victor-Casado/HackathonSkills/main/install.sh | bash
 
-# Windows (PowerShell)
+# Windows (PowerShell, run from inside your project directory)
 irm https://raw.githubusercontent.com/Victor-Casado/HackathonSkills/main/install.ps1 | iex
 ```
 
-Installs two commands:
+Installs two commands and auto-bootstraps your project if you run it inside a git repo:
 - `hackathon-skills` - PTY runner that launches your AI CLI
-- `hackathon-bootstrap` - project bootstrapper (run once per cloned repo)
+- `hackathon-bootstrap` - project bootstrapper (re-run after skill updates or on new clones)
 
 ### 2 - Create your repo from the template
 
-Click **"Use this template"** on GitHub, create a new repo, then clone it:
+Click **"Use this template"** on GitHub, create a new repo, then clone it and install:
 
 ```bash
 git clone https://github.com/<you>/<project-name>
 cd <project-name>
+curl -fsSL https://raw.githubusercontent.com/Victor-Casado/HackathonSkills/main/install.sh | bash
 ```
 
-### 3 - Bootstrap locally
+### 3 - Run setup
 
-```bash
-hackathon-bootstrap
 ```
-
-Generates `CLAUDE.md` and `.claude/` locally (gitignored - never committed). Re-run
-after any skill update or after a teammate clones on a new machine.
+/hackathon-setup
+```
 
 ### 4 - Configure the GitHub MCP
 
@@ -338,11 +336,11 @@ One branch per epic. One branch per task, forked off its epic branch.
 
 ```
 main
-|-- epic-1-auth
-|   |-- 5-create-users-table
-|   |-- 6-implement-login-endpoint
+|-- epic/1-auth
+|   |-- task/5-create-users-table
+|   |-- task/6-implement-login-endpoint
 |   |-- ^ task PRs merge here; epic branch -> main via verify PR
-|-- epic-2-dashboard
+|-- epic/2-dashboard
     |-- ...
 ```
 
@@ -423,6 +421,13 @@ Using a different agent CLI? See `HARNESS.md`.
 ## File structure
 
 ```
+workflow-templates/
+  gitleaks.yml                  - secret scanning on every PR
+  codeql.yml                    - static security analysis
+  dependency-review.yml         - flag vulnerable packages in PRs
+  actionlint.yml                - lint .github/workflows/
+  markdownlint.yml              - lint PLAN.md, SPECS.md, AGENTS.md
+  hackathon-contract.yml        - branch/label/issue/env/protected-file contract checks
 skills/
   hackathon-setup.md            - start here: onboarding wizard, existing-project scan, config setup
   hackathon-plan.md             - Phase 1: PLAN.md -> Projects + SPECS.md

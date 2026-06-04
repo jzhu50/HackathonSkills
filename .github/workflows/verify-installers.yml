@@ -54,7 +54,7 @@ jobs:
           echo "SERVER_PID=$!" >> $GITHUB_ENV
           # Give it a moment to start
           for i in {1..10}; do
-            if curl -s http://localhost:8000 > /dev/null; then
+            if curl -s --max-time 1 http://127.0.0.1:8000 > /dev/null; then
               echo "Server is up"
               break
             fi
@@ -65,14 +65,14 @@ jobs:
       - name: Run Installer (Unix)
         if: runner.os != 'Windows'
         run: |
-          bash install.sh --base-url http://localhost:8000
+          bash install.sh --base-url http://127.0.0.1:8000
           echo "$HOME/.local/bin" >> $GITHUB_PATH
           
       - name: Run Installer (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          .\install.ps1 -BaseUrl http://localhost:8000
+          .\install.ps1 -BaseUrl http://127.0.0.1:8000
           # Ensure UTF-8 and no BOM for GITHUB_PATH
           $binDir = "$env:LOCALAPPDATA\hackathon-skills\bin"
           $binDir | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append

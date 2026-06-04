@@ -97,13 +97,6 @@ get_latest_release() {
     fi
 }
 
-curl_auth() {
-    if [[ -n "${GITHUB_TOKEN:-}" ]]; then
-        curl -fsSL -H "Authorization: token ${GITHUB_TOKEN}" "$@"
-    else
-        curl -fsSL "$@"
-    fi
-}
 
 # Global temp dir for cleanup trap
 TEMP_DIR=""
@@ -150,7 +143,7 @@ main() {
     fi
 
     local has_checksums=false
-    if curl_auth -o "${TEMP_DIR}/checksums.sha256" "$checksum_url" 2>/dev/null; then
+    if curl -fsSL -o "${TEMP_DIR}/checksums.sha256" "$checksum_url" 2>/dev/null; then
         has_checksums=true
         info "Checksums available for verification."
     else
@@ -171,7 +164,7 @@ main() {
         local target_path="${INSTALL_DIR}/${target_name}"
 
         info "Downloading ${asset_name}..."
-        if ! curl_auth -o "${TEMP_DIR}/${asset_name}" "$download_url"; then
+        if ! curl -fsSL -o "${TEMP_DIR}/${asset_name}" "$download_url"; then
             error "Failed to download ${asset_name}"
         fi
 
@@ -239,10 +232,18 @@ main() {
     fi
 
     echo ""
-    echo "Get started:"
-    echo "  hackathon-bootstrap           # generates CLAUDE.md + slash commands"
-    echo "  hackathon-skills --help       # Show all commands (Claude, Aider, Codex, Antigravity)"
     echo ""
+
+    # Auto-bootstrap if running inside a git repo
+    if git rev-parse --git-dir > /dev/null 2>&1; then
+        echo "Git repo detected - running bootstrap..."
+        "$INSTALL_DIR/hackathon-bootstrap"
+    else
+        echo "Get started:"
+        echo "  hackathon-bootstrap           # generates CLAUDE.md + slash commands"
+        echo "  hackathon-skills --help       # Show all commands (Claude, Aider, Codex, Antigravity)"
+        echo ""
+    fi
 }
 
 main "$@"

@@ -97,8 +97,8 @@ Make all MCP calls **sequentially, not in parallel.**
 
 ## Branch discipline
 
-Epic branches: epic-<n>-<slug> (created by hackathon-decompose from main)
-Task branches: <n>-<slug> (created by hackathon-session from the epic branch)
+Epic branches: epic/<n>-<slug> (created by hackathon-decompose from main)
+Task branches: task/<n>-<slug> (created by hackathon-session from the epic branch)
 Task PRs target the epic branch. The verify task opens the epic->main PR.
 Never commit to `main` or an epic branch directly.
 
@@ -116,8 +116,68 @@ done
 
 echo "  CLAUDE.md written"
 
+# Scaffold GitHub Actions workflows based on hackathon.config.yml
+WORKFLOW_TEMPLATES_DIR="$SCRIPT_DIR/workflow-templates"
+if [ ! -d "$WORKFLOW_TEMPLATES_DIR" ]; then
+  WORKFLOW_TEMPLATES_DIR="$(pwd)/workflow-templates"
+fi
+
+if [ -d "$WORKFLOW_TEMPLATES_DIR" ] && [ -f "$TARGET_DIR/hackathon.config.yml" ]; then
+  WORKFLOWS_OUT="$TARGET_DIR/.github/workflows"
+  mkdir -p "$WORKFLOWS_OUT"
+
+  scaffolded=()
+  for pair in "gitleaks:gitleaks.yml" "codeql:codeql.yml" "dependency_review:dependency-review.yml" "actionlint:actionlint.yml" "markdownlint:markdownlint.yml" "contract:hackathon-contract.yml"; do
+    key="${pair%%:*}"
+    file="${pair##*:}"
+
+    if grep -q "^actions:" "$TARGET_DIR/hackathon.config.yml"; then
+      val=$(grep "  ${key}:" "$TARGET_DIR/hackathon.config.yml" | grep -c "true" || echo 0)
+    else
+      val=1
+    fi
+
+    if [ "$val" -gt 0 ]; then
+      src="$WORKFLOW_TEMPLATES_DIR/$file"
+      dst="$WORKFLOWS_OUT/$file"
+      if [ -f "$dst" ]; then
+        echo "  WARNING: $dst already exists - not overwriting"
+      elif [ -f "$src" ]; then
+        cp "$src" "$dst"
+        scaffolded+=("$dst")
+        echo "  workflow: .github/workflows/$file"
+      fi
+    fi
+  done
+
+  # Also copy .env.example and .markdownlint.yml if not present
+  for f in .env.example .markdownlint.yml; do
+    src="$SCRIPT_DIR/$f"
+    dst="$TARGET_DIR/$f"
+    if [ ! -f "$dst" ] && [ -f "$src" ]; then
+      cp "$src" "$dst"
+      scaffolded+=("$dst")
+      echo "  config: $f"
+    fi
+  done
+
+  # Commit scaffolded files
+  if [ ${#scaffolded[@]} -gt 0 ]; then
+    cd "$TARGET_DIR"
+    if git rev-parse --git-dir > /dev/null 2>&1; then
+      git add .github/workflows/ .env.example .markdownlint.yml 2>/dev/null || true
+      if ! git diff --cached --quiet; then
+        git commit -m "ci: scaffold repository contract workflows" || \
+          echo "  WARNING: git commit failed (check git user.email config) - workflows are on disk but not committed"
+      fi
+    fi
+    cd - > /dev/null
+  fi
+fi
+
 echo ""
 echo "Bootstrap complete -> $TARGET_DIR"
 echo ""
 echo "Interactive Claude Code: open the project - /hackathon-* commands available"
 echo "Other agent CLIs:        see HARNESS.md"
+exit 0

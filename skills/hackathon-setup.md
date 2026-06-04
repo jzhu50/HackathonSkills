@@ -129,18 +129,16 @@ Before doing anything, make sure you have:
 
 ## Step 2 - Bootstrap the project locally
 
-Run the bootstrap script once per cloned repo. It generates `CLAUDE.md` and
-`.claude/` locally (these are gitignored - never committed):
+The installer runs `hackathon-bootstrap` automatically when installed inside a git repo.
+If `.claude/` already exists, bootstrap is complete — continue to Step 3.
+
+If `.claude/` is missing (e.g. a teammate cloning the repo, or a manual install):
 
 ```bash
-# Mac/Linux
-hackathon-bootstrap
-
-# Windows
 hackathon-bootstrap
 ```
 
-Re-run this after any skill update or after a teammate clones the repo.
+Re-run this after any skill update or after a teammate clones on a new machine.
 
 ---
 
@@ -224,6 +222,27 @@ gates:
 >   A) No - sequential priority order (default)
 >   B) Yes - wave-based parallel structure"
 
+**Question 4 - Repository contract workflows**
+> "Which GitHub Actions workflows should be installed in your project?
+>   A) All (recommended) - full contract enforcement
+>   B) Security only - gitleaks + codeql + dependency_review
+>   C) Custom - let me choose each one
+>   D) None - skip GitHub Actions entirely"
+
+For custom (C), ask about each individually:
+- gitleaks: scan for accidentally committed secrets?
+- codeql: static security analysis?
+- dependency_review: flag vulnerable packages in PRs?
+- actionlint: lint GitHub Actions workflows?
+- markdownlint: lint PLAN.md, SPECS.md, AGENTS.md?
+- contract: enforce branch/label/issue/env/protected-file rules?
+
+Map answers to `actions:` presets:
+- **A - All:** all keys `true`
+- **B - Security only:** gitleaks, codeql, dependency_review `true`; actionlint, markdownlint, contract `false`
+- **C - Custom:** set each key per answer
+- **D - None:** all keys `false`
+
 After collecting answers, write `hackathon.config.yml` with the chosen values.
 Show the final config to the user and confirm before writing:
 
@@ -261,14 +280,58 @@ quality:
   testing: <required|recommended|skip>
   comments: verbose
 parallelism: <true|false>
+actions:
+  gitleaks: <true|false>
+  codeql: <true|false>
+  dependency_review: <true|false>
+  actionlint: <true|false>
+  markdownlint: <true|false>
+  contract: <true|false>
 ```
+
+After writing the config, scaffold enabled workflow templates into `.github/workflows/`
+using the Write tool for each enabled workflow. Copy from `workflow-templates/` in the
+skills source. Then `git add .github/workflows/ && git commit -m "ci: scaffold repository contract workflows"`.
+
+If the `contract` workflow is enabled, also note to the user that they should enable the
+`Repository Contract` status check in GitHub branch protection settings once the first
+PR is opened.
 
 **Fully autonomous mode (Preset C + testing: skip):** run `/hackathon-plan` and the
 full pipeline runs end-to-end without pausing. Any failure always escalates to you.
 
 ---
 
-## Step 5 - Run the four phases in order
+## Step 5 - Create labels and branch protection
+
+### Create GitHub labels
+
+Create the following labels in the repo via the GitHub MCP if they don't already exist.
+Check existing labels first; skip any that are already present.
+
+| Label | Color | Description |
+|---|---|---|
+| `needs-human-review` | `#e11d48` | Bug or discovered scope — always requires human judgment |
+| `ai-approved` | `#16a34a` | Ready for an agent to claim and work |
+| `in-progress` | `#2563eb` | Actively being worked |
+| `blocked` | `#dc2626` | Cannot proceed — comment explains why |
+| `in-review` | `#7c3aed` | PR is open and waiting for review/merge |
+| `epic` | `#0891b2` | Parent container — work happens in child task issues |
+| `bug` | `#dc2626` | Something is broken — routed to hackathon-debug |
+| `planning-update` | `#f59e0b` | Allows modifying protected files on a task branch |
+
+### Set up branch protection (via MCP)
+
+Set branch protection on `main` via the GitHub MCP:
+- Require a pull request before merging
+- If the `contract` workflow is enabled: require the `Repository Contract` status check
+
+Do NOT require approvals unless the user confirms they have two distinct GitHub accounts
+(GitHub won't let you approve your own PR).
+
+---
+
+## Step 6 - Run the four phases in order
 
 ### Phase 1 - Scope the plan
 ```
@@ -297,7 +360,7 @@ Loops through all `ai-approved` tasks: implements, tests, opens PRs.
 
 ---
 
-## Step 6 - During implementation
+## Step 7 - During implementation
 
 **Reviewing PRs** (if `code_review.human_required: true`):
 ```
@@ -317,7 +380,7 @@ Shows project-level status. Closes a GitHub Project when all its epics merge.
 
 ---
 
-## Step 7 - When a project is done
+## Step 8 - When a project is done
 
 When all epics in a project close, the agent auto-calls `/hackathon-docs-demo-script`
 to generate the README, API reference, and demo walkthrough.
@@ -341,12 +404,9 @@ Run `/hackathon-projects` to formally close the GitHub Project board.
 ## Quick-start checklist
 
 ```
-[ ] Docker running
-[ ] PAT configured in Claude Code MCP settings
-[ ] Branch protection enabled on main
-[ ] hackathon-bootstrap run
+[ ] Install complete (hackathon-skills installed + hackathon-bootstrap run)
+[ ] /hackathon-setup complete (config written, workflows committed, labels created)
 [ ] PLAN.md filled in
-[ ] hackathon.config.yml configured
 [ ] /hackathon-plan
 [ ] /hackathon-epics
 [ ] /hackathon-decompose

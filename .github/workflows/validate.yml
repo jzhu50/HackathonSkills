@@ -3,6 +3,7 @@ name: Validate
 on:
   push:
     branches: ['**']
+    tags: ['v*']
   pull_request:
     branches: [main]
 
@@ -121,6 +122,16 @@ jobs:
         run: |
           bash <(curl -s https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
           ./actionlint -color
+
+  # -- workflow-templates linting -----------------------------------------------
+  lint-workflow-templates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: actionlint workflow templates
+        run: |
+          bash <(curl -s https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+          ./actionlint -color workflow-templates/*.yml
 
   # -- PowerShell bootstrap (Windows) -------------------------------------------
   validate-windows:

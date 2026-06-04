@@ -161,3 +161,5 @@ Write-Host "Other commands:"
 Write-Host "  hackathon-skills -Help          -- PTY runner help"
 Write-Host "  hackathon-skills -Reconfigure   -- change AI CLI selection"
 Write-Host ""
+
+exit 0

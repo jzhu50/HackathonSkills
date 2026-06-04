@@ -148,3 +148,5 @@ printf '  5. Open Claude Code and run /hackathon-setup\n\n'
 printf 'Other commands:\n'
 printf '  hackathon-skills --help       - PTY runner help\n'
 printf '  hackathon-skills --reconfigure - change AI CLI selection\n\n'
+
+exit 0

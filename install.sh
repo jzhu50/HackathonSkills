@@ -238,7 +238,7 @@ main() {
     echo ""
     echo "Get started:"
     echo "  hackathon-bootstrap           # generates CLAUDE.md + slash commands"
-    echo "  hackathon-skills --help        # Show all commands"
+    echo "  hackathon-skills --help       # Show all commands (Claude, Aider, Codex, Antigravity)"
     echo ""
 }
 

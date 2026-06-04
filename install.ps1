@@ -226,7 +226,7 @@ powershell.exe -NoLogo -ExecutionPolicy Bypass -File "%~dp0$BaseName.ps1" %*
     Write-Host ""
     Write-Host "Other commands:"
     Write-Host "  hackathon-skills --help         -- PTY runner help"
-    Write-Host "  hackathon-skills --reconfigure  -- change AI CLI selection"
+    Write-Host "  hackathon-skills --reconfigure  -- change AI CLI selection (Claude, Aider, Codex, Antigravity)"
     Write-Host ""
 }
 

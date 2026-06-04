@@ -3,8 +3,24 @@ name: Verify Installers
 on:
   push:
     branches: ['**']
+    paths:
+      - 'install.sh'
+      - 'install.ps1'
+      - 'runner.sh'
+      - 'runner.ps1'
+      - 'make-claude-md.sh'
+      - 'make-claude-md.ps1'
+      - '.github/workflows/verify-installers.yml'
   pull_request:
     branches: [main]
+    paths:
+      - 'install.sh'
+      - 'install.ps1'
+      - 'runner.sh'
+      - 'runner.ps1'
+      - 'make-claude-md.sh'
+      - 'make-claude-md.ps1'
+      - '.github/workflows/verify-installers.yml'
   workflow_dispatch:
 
 env:

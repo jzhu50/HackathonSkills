@@ -1,11 +1,11 @@
----
-description: Debug and fix a failing test or bug — reproduce, diagnose root cause, apply minimal fix, verify suite is green. Called automatically by hackathon-session when tests regress, or directly for bug-labeled issues.
+﻿---
+description: Debug and fix a failing test or bug - reproduce, diagnose root cause, apply minimal fix, verify suite is green. Called automatically by hackathon-session when tests regress, or directly for bug-labeled issues.
 allowed-tools: mcp__github__*, Read, Write, Edit, Bash
 ---
 
 # Skill: hackathon-debug
 
-**Reproduce → root cause → minimal fix → suite green.** Fix one failure per
+**Reproduce -> root cause -> minimal fix -> suite green.** Fix one failure per
 invocation and return the result to the caller. Never expands scope beyond the
 failing test or bug.
 
@@ -14,7 +14,7 @@ at baseline starts failing. It is also the skill used for `bug`-labeled issues.
 
 ---
 
-## GitHub MCP — required for all operations
+## GitHub MCP - required for all operations
 
 Every GitHub operation **must** use the GitHub MCP (`mcp__github__*`).
 Do not use `gh` CLI, `curl`, or Bash for anything the MCP can handle.
@@ -31,7 +31,7 @@ Make all MCP calls **sequentially, not in parallel.**
 
 ---
 
-## Mode A — Regression during implementation (called by hackathon-session)
+## Mode A - Regression during implementation (called by hackathon-session)
 
 The session has detected a test that was passing at baseline is now failing. The
 session passes the failing test name and the current branch state.
@@ -43,7 +43,7 @@ Run the specific failing test in isolation:
 <test command targeting the specific test>
 ```
 
-If you cannot reproduce: report `agent: debug — cannot reproduce; test may be flaky.
+If you cannot reproduce: report `agent: debug - cannot reproduce; test may be flaky.
 Re-running: <attempt count>`. Try up to 3 times. If still cannot reproduce, report
 and return `INCONCLUSIVE` to the session.
 
@@ -79,7 +79,7 @@ relative to the baseline.
 
 Report:
 ```
-Debug complete — regression fixed.
+Debug complete - regression fixed.
 Root cause: <one sentence>
 Fix: <one sentence>
 Files changed: <list>
@@ -89,7 +89,7 @@ Suite status: <N> passing (matches baseline)
 If after reasonable effort (3 fix attempts) the regression cannot be fixed:
 Report:
 ```
-Debug failed — regression could not be fixed within 3 attempts.
+Debug failed - regression could not be fixed within 3 attempts.
 Failing test: <name>
 Last attempt: <what was tried and why it didn't work>
 ```
@@ -97,7 +97,7 @@ The session will then include this in the PR body as a known issue.
 
 ---
 
-## Mode B — Bug-labeled issue (called by hackathon-session routing)
+## Mode B - Bug-labeled issue (called by hackathon-session routing)
 
 The issue is already claimed (`in-progress`) by hackathon-session. Proceed directly.
 
@@ -115,13 +115,13 @@ Before writing any fix, confirm the bug is reproducible:
 ```
 
 If you cannot reproduce: comment explaining what you tried, change label `in-progress`
-→ `blocked`, unassign. Return to hackathon-session.
+-> `blocked`, unassign. Return to hackathon-session.
 
 ### B3. Diagnose
 
 Comment on the issue via the GitHub MCP before writing code:
 ```
-agent: reproducing — root cause identified
+agent: reproducing - root cause identified
 
 Root cause: <one sentence>
 Fix approach: <one sentence>
@@ -160,11 +160,11 @@ Follow hackathon-session Phase 3:
 2. Open a PR via the GitHub MCP:
    - Title: `Fix: <bug title>`
    - Body: `Closes #<issue number>`, then: root cause, fix summary, regression test location
-   - Base: the **epic branch** — read `Epic branch:` from the issue's `## Context` section
+   - Base: the **epic branch** - read `Epic branch:` from the issue's `## Context` section
 3. Change issue label to `in-review`
 4. Comment on the issue:
    ```
-   agent: done — PR #<number> open for review
+   agent: done - PR #<number> open for review
 
    Root cause: <one sentence>
    Fix: <one sentence>
@@ -182,3 +182,6 @@ Follow hackathon-session Phase 3:
 - **Regression test is mandatory for bug-labeled issues.** It proves the fix.
 - **Suite must be clean relative to baseline before PR.**
 - **Return result to caller in Mode A.** Do not close out or stop the session.
+
+
+

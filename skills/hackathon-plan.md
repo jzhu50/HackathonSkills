@@ -1,5 +1,5 @@
----
-description: Phase 1 — read PLAN.md, grill for clarity, scope into named Projects, auto-generate SPECS.md, and create GitHub Project boards. Run once before hackathon-epics.
+﻿---
+description: Phase 1 - read PLAN.md, grill for clarity, scope into named Projects, auto-generate SPECS.md, and create GitHub Project boards. Run once before hackathon-epics.
 allowed-tools: mcp__github__*, Read, Write, Bash
 ---
 
@@ -9,11 +9,11 @@ allowed-tools: mcp__github__*, Read, Write, Bash
 named GitHub Projects, auto-generates `SPECS.md`, and creates the GitHub Project boards.
 
 Run once per project, before `/hackathon-epics`.
-Do not re-run if GitHub Projects already exist — it will create duplicates.
+Do not re-run if GitHub Projects already exist - it will create duplicates.
 
 ---
 
-## GitHub MCP — required for all operations
+## GitHub MCP - required for all operations
 
 Every GitHub operation **must** use the GitHub MCP (`mcp__github__*`).
 Do not use `gh` CLI, `curl`, or Bash for anything the MCP can handle.
@@ -28,7 +28,7 @@ Make all MCP calls **sequentially, not in parallel.**
 
 ---
 
-## Step 0 — Read config
+## Step 0 - Read config
 
 Read `hackathon.config.yml`. Extract and hold for the entire skill:
 - `gates.project_breakdown.human_required` (default: `true`)
@@ -37,32 +37,32 @@ Read `hackathon.config.yml`. Extract and hold for the entire skill:
 
 ---
 
-## Step 1 — Read the plan
+## Step 1 - Read the plan
 
 Read `PLAN.md`. If `SPECS.md` already exists (pre-seeded by `hackathon-setup` for an
-existing codebase), read it too — grilling will *extend* it, not replace it.
+existing codebase), read it too - grilling will *extend* it, not replace it.
 
 Extract: vision, demo goal, stack, projects (each with goal and feature list),
 out of scope, open questions.
 
 Check whether GitHub Projects already exist in this repo via the GitHub MCP.
-If they do: stop and report — `/hackathon-plan` has already run.
+If they do: stop and report - `/hackathon-plan` has already run.
 (To add new scope to an existing project, use `/hackathon-add` instead.)
 
 ---
 
-## Step 2 — Grilling (conditional)
+## Step 2 - Grilling (conditional)
 
 **If `project_breakdown.grilling: true`:** call `hackathon-grilling` with context:
 `"project scoping and spec generation for <project name from PLAN.md>"`.
 
 The grilling session should resolve:
-- Project boundary clarity — what belongs to each deliverable
-- Data models — entities, fields, relationships
-- API contracts — endpoints, request/response shapes, auth model
-- UI flows — key screens and transitions
-- Business rules — validation, access control, edge cases
-- Environment variables — third-party services, secrets needed
+- Project boundary clarity - what belongs to each deliverable
+- Data models - entities, fields, relationships
+- API contracts - endpoints, request/response shapes, auth model
+- UI flows - key screens and transitions
+- Business rules - validation, access control, edge cases
+- Environment variables - third-party services, secrets needed
 - Any open questions listed in PLAN.md
 
 Use the full grilling brief in Steps 3 and 4.
@@ -72,7 +72,7 @@ interpretation of PLAN.md.
 
 ---
 
-## Step 3 — Human approval loop for projects (conditional)
+## Step 3 - Human approval loop for projects (conditional)
 
 **If `project_breakdown.human_required: true`:**
 
@@ -92,14 +92,14 @@ Project 2: <name>
 Does this look right? Say "looks good" to proceed, or describe any changes.
 ```
 
-Wait for the human's response. Loop (apply changes → re-present) until explicit approval.
+Wait for the human's response. Loop (apply changes -> re-present) until explicit approval.
 Never create GitHub Projects or write SPECS.md without approval.
 
 **If `project_breakdown.human_required: false`:** skip this step.
 
 ---
 
-## Step 4 — Generate SPECS.md
+## Step 4 - Generate SPECS.md
 
 Using PLAN.md, the grilling brief, and the approved project scoping, write `SPECS.md`
 to the repo root. This is the single implementation reference for all agents.
@@ -139,7 +139,7 @@ Relationships:
 
 ### <Flow name>
 1. User lands on <screen>
-2. <Action> → <result>
+2. <Action> -> <result>
 3. ...
 
 ## Business Rules
@@ -156,7 +156,7 @@ Relationships:
 | `VAR_NAME` | ... | Yes / No |
 ```
 
-Write this file using the Write tool. Be thorough — this file is the ground truth
+Write this file using the Write tool. Be thorough - this file is the ground truth
 that every epic and task will reference. Vague specs produce vague code.
 
 After writing, commit the file:
@@ -168,7 +168,7 @@ git push origin main
 
 ---
 
-## Step 5 — Create GitHub Projects
+## Step 5 - Create GitHub Projects
 
 For each approved project, create one GitHub Project board via the GitHub MCP
 (use the Projects v2 API tools). Create them **one at a time, sequentially**.
@@ -180,17 +180,17 @@ Record the GitHub Project node ID and URL for each project.
 
 ---
 
-## Step 6 — Report
+## Step 6 - Report
 
 **If `comments: verbose`:**
 ```
-✓ Planning complete for <project name>
+[x] Planning complete for <project name>
 
 SPECS.md generated and committed.
 
 GitHub Projects created (<M> total):
-  · <Project 1 name> — <URL>
-  · <Project 2 name> — <URL>
+  * <Project 1 name> - <URL>
+  * <Project 2 name> - <URL>
 
 Next steps:
 1. Run /hackathon-epics to scope each project into epic issues.
@@ -207,7 +207,7 @@ Planning complete. SPECS.md written. <M> GitHub Projects created.
 
 - **Never** create GitHub Projects before project approval (if `human_required` is on).
 - **Never** write SPECS.md before grilling completes (if `grilling` is on).
-- **Never** run if GitHub Projects already exist — check first.
+- **Never** run if GitHub Projects already exist - check first.
 - **Always** commit SPECS.md to main before creating GitHub Projects.
 - **Always** create GitHub Projects sequentially, one at a time.
 - **When human_required: true and changes requested:** apply changes and re-present.
@@ -216,3 +216,6 @@ Planning complete. SPECS.md written. <M> GitHub Projects created.
   to guess. If grilling didn't resolve something, mark it clearly as `TODO` in SPECS.md
   so agents know to file a `needs-human-review` issue rather than guessing.
 - **MCP auth error:** check PAT has `repo` scope.
+
+
+

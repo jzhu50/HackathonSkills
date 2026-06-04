@@ -1,6 +1,6 @@
 # Project Plan
 
-> Fill this in as a team before running setup. Be specific — vague plans produce
+> Fill this in as a team before running setup. Be specific - vague plans produce
 > vague code. Agents read this at the start of every session.
 >
 > When done, tell your agent: "Set up the project" and it will create all epics automatically.
@@ -29,7 +29,7 @@ _TODO_
 ## Stack
 
 <!-- Fill in what's decided. Leave rows blank if genuinely undecided.
-     Agents will not make stack choices — they'll flag undecided rows as open questions. -->
+     Agents will not make stack choices - they'll flag undecided rows as open questions. -->
 
 | Layer | Choice |
 |---|---|
@@ -46,7 +46,7 @@ _TODO_
 ## Projects
 
 <!-- Group your core features into named projects. Each project becomes one GitHub
-     Project board and a set of epic issues beneath it. Order by priority — agents
+     Project board and a set of epic issues beneath it. Order by priority - agents
      work top to bottom within each project.
 
      If your scope is simple and everything belongs together, one project is fine.
@@ -62,9 +62,9 @@ _TODO_
 Goal: _TODO_
 
 Features (each becomes one epic):
-1. 
-2. 
-3. 
+1.
+2.
+3.
 
 <!-- ### Project 2: _TODO_
 Goal: _TODO_
@@ -79,17 +79,17 @@ Features:
 <!-- Explicitly list what you are NOT building. This is as important as the feature list.
      It prevents agents from gold-plating or going down rabbit holes. -->
 
-- 
-- 
+-
+-
 
 ---
 
 ## Open Questions
 
-<!-- Anything genuinely undecided. Agents will not guess on these — they will create
+<!-- Anything genuinely undecided. Agents will not guess on these - they will create
      a blocked issue and wait for a human to resolve it here. -->
 
-- 
+-
 
 ---
 

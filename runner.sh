@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# runner.sh — hackathon-skills PTY runner (macOS/Linux)
+# runner.sh - hackathon-skills PTY runner (macOS/Linux)
 #
 # Spawns the configured AI CLI in a fresh pseudo-terminal for each task.
 # Terminal geometry is set via TIOCSWINSZ so the child sees the real size.
@@ -12,7 +12,7 @@
 # Subsequent runs load that config.  Use --reconfigure to re-detect.
 #
 # Each invocation kills any previously tracked session (PID file) before
-# spawning a new one — fresh context per task, state lives in files/GitHub.
+# spawning a new one - fresh context per task, state lives in files/GitHub.
 
 set -euo pipefail
 
@@ -21,16 +21,16 @@ CONFIG_DIR="${XDG_CONFIG_HOME:-${HOME}/.config}/${TOOL_NAME}"
 CONFIG_FILE="${CONFIG_DIR}/config.json"
 PID_FILE="${TMPDIR:-/tmp}/${TOOL_NAME}.pid"
 
-# ── helpers ──────────────────────────────────────────────────────────────────
+# -- helpers ------------------------------------------------------------------
 
 _die() { printf 'error: %s\n' "$*" >&2; exit 1; }
 
 _require_python3() {
-  command -v python3 &>/dev/null \
+  command -v python3 &>/dev/null\
     || _die "python3 is required for PTY support (brew install python / apt install python3)"
 }
 
-# ── first-run AI CLI detection ────────────────────────────────────────────────
+# -- first-run AI CLI detection ------------------------------------------------
 
 _detect_clis() {
   local found=()
@@ -41,7 +41,7 @@ _detect_clis() {
 }
 
 _first_run_setup() {
-  printf '%s: first run — scanning PATH for AI CLIs...\n' "$TOOL_NAME"
+  printf '%s: first run - scanning PATH for AI CLIs...\n' "$TOOL_NAME"
 
   local found=()
   while IFS= read -r line; do
@@ -66,7 +66,7 @@ _first_run_setup() {
     if [[ -n "$selection" ]]; then
       local chosen=()
       for n in $selection; do
-        [[ $n -ge 1 && $n -le ${#found[@]} ]] \
+        [[ $n -ge 1 && $n -le ${#found[@]} ]]\
           || _die "invalid selection: $n"
         chosen+=("${found[$((n - 1))]}")
       done
@@ -89,7 +89,7 @@ _first_run_setup() {
   printf '  cli: %s\n\n' "${found[*]}"
 }
 
-# ── process management ────────────────────────────────────────────────────────
+# -- process management --------------------------------------------------------
 
 _kill_existing_session() {
   [[ ! -f "$PID_FILE" ]] && return 0
@@ -103,10 +103,10 @@ _kill_existing_session() {
   fi
 }
 
-# ── PTY launch ───────────────────────────────────────────────────────────────
+# -- PTY launch ---------------------------------------------------------------
 #
 # Uses pty.openpty() + TIOCSWINSZ so the child process sees the real PTY
-# geometry (220×50), not just environment variables.
+# geometry (220x50), not just environment variables.
 
 _spawn_pty() {
   local ai_cli="$1"; shift
@@ -149,7 +149,7 @@ def main():
         os.execvp(args[0], args)
         os._exit(1)
 
-    # parent — I/O relay
+    # parent - I/O relay
     os.close(slave)
     saved = None
     if sys.stdin.isatty():
@@ -191,7 +191,7 @@ def main():
             pass
 
     _, status = os.waitpid(pid, 0)
-    code = os.waitstatus_to_exitcode(status) if hasattr(os, "waitstatus_to_exitcode") \
+    code = os.waitstatus_to_exitcode(status) if hasattr(os, "waitstatus_to_exitcode")\
         else (status >> 8)
     sys.exit(code)
 
@@ -199,7 +199,7 @@ main()
 PYEOF
 }
 
-# ── read config ───────────────────────────────────────────────────────────────
+# -- read config ---------------------------------------------------------------
 
 _primary_cli() {
   python3 - "$CONFIG_FILE" << 'PYEOF'
@@ -212,13 +212,13 @@ except (OSError, json.JSONDecodeError) as e:
     sys.exit(1)
 clis = data.get("cli", [])
 if not clis:
-    print("error: config 'cli' list is empty — run with --reconfigure", file=sys.stderr)
+    print("error: config 'cli' list is empty - run with --reconfigure", file=sys.stderr)
     sys.exit(1)
 print(clis[0])
 PYEOF
 }
 
-# ── main ──────────────────────────────────────────────────────────────────────
+# -- main ----------------------------------------------------------------------
 
 RECONFIGURE=false
 OVERRIDE_CLI=""

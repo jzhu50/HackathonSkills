@@ -14,11 +14,11 @@ and context loading differ.
 
 | File | Why |
 |---|---|
-| `AGENTS.md` | The coordination protocol — all harnesses follow this |
-| `PLAN.md` | Project plan — filled in by the team, read by all agents |
-| `SPECS.md` | Implementation detail — read by all agents |
-| `skills/*.md` | Skill definitions — your harness loads these as prompts |
-| `.gitignore` | Shared — add your harness directory to it |
+| `AGENTS.md` | The coordination protocol - all harnesses follow this |
+| `PLAN.md` | Project plan - filled in by the team, read by all agents |
+| `SPECS.md` | Implementation detail - read by all agents |
+| `skills/*.md` | Skill definitions - your harness loads these as prompts |
+| `.gitignore` | Shared - add your harness directory to it |
 
 ---
 
@@ -34,7 +34,7 @@ Use distinct names (e.g., `GEMINI.md`, `CODEX.md`) so harnesses coexist without 
 
 ---
 
-## Step 1 — Add your harness's local files to `.gitignore`
+## Step 1 - Add your harness's local files to `.gitignore`
 
 ```
 # My harness
@@ -46,7 +46,7 @@ Commit the `.gitignore` change so teammates don't accidentally commit your files
 
 ---
 
-## Step 2 — Build your context file
+## Step 2 - Build your context file
 
 Concatenate the following into a single file your harness reads as a system prompt:
 
@@ -79,22 +79,22 @@ skills/hackathon-docs-demo-script.md
 # Agent Coordination Context
 
 You are a software agent working on a hackathon project with human review at every
-major step. GitHub is the coordination layer — all state lives in GitHub Issues
+major step. GitHub is the coordination layer - all state lives in GitHub Issues
 and GitHub Projects. You have no memory between sessions.
 
 Four-phase workflow:
 - hackathon-setup:      run once; configure oversight, scaffold PLAN.md
-- hackathon-plan:       Phase 1 — PLAN.md → GitHub Projects + generate SPECS.md
-- hackathon-epics:      Phase 2 — Projects → Epic issues on GitHub
-- hackathon-decompose:  Phase 3 — Epics → Task issues + epic branches
-- hackathon-session:    Phase 4 — Tasks → code + PRs (loops until queue empty)
+- hackathon-plan:       Phase 1 - PLAN.md -> GitHub Projects + generate SPECS.md
+- hackathon-epics:      Phase 2 - Projects -> Epic issues on GitHub
+- hackathon-decompose:  Phase 3 - Epics -> Task issues + epic branches
+- hackathon-session:    Phase 4 - Tasks -> code + PRs (loops until queue empty)
 - hackathon-add:        add features/hardening/refactoring to a running project
 - hackathon-projects:   check completion; close GitHub Project when all epics merge
 - hackathon-review:     human-triggered; review one PR, post findings, human decides merge/changes
 - hackathon-debug/test/verify: called automatically by hackathon-session
 
 Labels:
-  needs-human-review → ai-approved → in-progress → in-review → (merged)
+  needs-human-review -> ai-approved -> in-progress -> in-review -> (merged)
 
 Read AGENTS.md in full before acting.
 ```
@@ -103,7 +103,7 @@ Save as `GEMINI.md`, `CODEX.md`, etc. Add to `.gitignore`.
 
 ---
 
-## Step 3 — Configure GitHub access
+## Step 3 - Configure GitHub access
 
 The skills assume the **GitHub MCP** (`mcp__github__*`) for all GitHub operations.
 If your harness does not support MCP:
@@ -131,13 +131,13 @@ If your harness does not support MCP:
 
 ---
 
-## Step 4 — Invocation model
+## Step 4 - Invocation model
 
 This system is **human-paced**, not autonomous loop-based. The agent does not need
-a runner script — a human invokes each skill when appropriate:
+a runner script - a human invokes each skill when appropriate:
 
 1. Human runs `hackathon-setup` once to configure oversight and scaffold `PLAN.md`
-2. Human runs `hackathon-plan` — scopes `PLAN.md` into GitHub Projects and generates `SPECS.md`
+2. Human runs `hackathon-plan` - scopes `PLAN.md` into GitHub Projects and generates `SPECS.md`
 3. Human approves projects, then invokes `hackathon-epics`
 4. Human approves epics, then invokes `hackathon-decompose`
 5. Human approves tasks, then invokes `hackathon-session`
@@ -151,7 +151,7 @@ the agent to work through the current `ai-approved` task queue.
 
 ---
 
-## Step 5 — Update `.gitignore`
+## Step 5 - Update `.gitignore`
 
 Add your harness's config directory and generated context file:
 

@@ -1,4 +1,4 @@
----
+﻿---
 description: Generate realistic fixture data, populate the database, and wire up a demo mode toggle. Built for hackathon demos where a blank app kills the presentation. Auto-called by hackathon-session when a task involves seed data, demo data, or database population.
 allowed-tools: mcp__github__*, Read, Write, Edit, Bash
 ---
@@ -17,29 +17,29 @@ Auto-called by `hackathon-session` when task title or body contains:
 
 ---
 
-## Phase 0 — Load context
+## Phase 0 - Load context
 
 Read sequentially:
-1. The task issue — what entities, what demo story
-2. `PLAN.md` — stack, database, ORM
-3. `SPECS.md` — data models if defined
+1. The task issue - what entities, what demo story
+2. `PLAN.md` - stack, database, ORM
+3. `SPECS.md` - data models if defined
 4. Any existing schema/migration files to understand entity shapes
 
 ---
 
-## Phase 1 — Confirm seed requirements
+## Phase 1 - Confirm seed requirements
 
 Check context first. Ask only for gaps, in one batch:
 
-1. **What entities?** — List main tables/models that need data
-2. **DB + ORM?** — Prisma, Mongoose, Drizzle, raw SQL?
-3. **How many records?** — Demo: 5 users, 3 orgs, 20 tasks is usually enough
-4. **What story should the demo tell?** — What journey should the judge take?
-5. **Idempotent?** — Running seed twice = same result, no duplicates? (Almost always yes)
+1. **What entities?** - List main tables/models that need data
+2. **DB + ORM?** - Prisma, Mongoose, Drizzle, raw SQL?
+3. **How many records?** - Demo: 5 users, 3 orgs, 20 tasks is usually enough
+4. **What story should the demo tell?** - What journey should the judge take?
+5. **Idempotent?** - Running seed twice = same result, no duplicates? (Almost always yes)
 
 ---
 
-## Phase 2 — Seed script (Prisma example)
+## Phase 2 - Seed script (Prisma example)
 
 ```typescript
 // prisma/seed.ts
@@ -125,7 +125,7 @@ main().catch(console.error).finally(() => db.$disconnect());
 
 ---
 
-## Phase 3 — Idempotent upsert (for CI / repeated runs)
+## Phase 3 - Idempotent upsert (for CI / repeated runs)
 
 ```typescript
 const alice = await db.user.upsert({
@@ -137,7 +137,7 @@ const alice = await db.user.upsert({
 
 ---
 
-## Phase 4 — Demo mode toggle
+## Phase 4 - Demo mode toggle
 
 ```typescript
 // lib/demo.ts
@@ -155,7 +155,7 @@ export function DemoBanner() {
   if (!DEMO_MODE) return null;
   return (
     <div className="bg-amber-500 text-black text-center text-sm py-2 px-4">
-      Demo mode — log in as <code>alice@demo.com</code> / <code>demo1234</code>
+      Demo mode - log in as <code>alice@demo.com</code> / <code>demo1234</code>
     </div>
   );
 }
@@ -168,7 +168,7 @@ export function DemoBanner() {
 - **Names:** use realistic diverse names, not "User1" / "Test User"
 - **Avatars:** `https://i.pravatar.cc/150?u=<username>` (no account needed)
 - **Timestamps:** spread over 30-60 days so charts and activity feeds look alive
-- **Status distribution:** ~30% done, ~40% in progress, ~30% todo — all-todo looks unused
+- **Status distribution:** ~30% done, ~40% in progress, ~30% todo - all-todo looks unused
 
 ---
 
@@ -192,3 +192,6 @@ export function DemoBanner() {
 
 When seed script is written and tested, signal to `hackathon-session` that the seed
 phase is done. Session continues with tests and PR.
+
+
+

@@ -1,4 +1,4 @@
----
+﻿---
 description: Database schema design guide. Covers normalization decisions, primary key strategy, indexing, soft deletes, FK constraints, and the design conversation that prevents schema rewrites mid-hackathon. Auto-called by hackathon-session when a task involves schema design, migrations, or data models.
 allowed-tools: mcp__github__*, Read, Write, Edit, Bash
 ---
@@ -21,42 +21,42 @@ Auto-called by `hackathon-session` when task title or body contains:
 
 ---
 
-## Phase 0 — Load context
+## Phase 0 - Load context
 
 Read sequentially:
-1. The task issue — goal, acceptance criteria
-2. `PLAN.md` — stack (which DB? which ORM/migration tool?)
-3. `SPECS.md` — Data Models section if it exists
+1. The task issue - goal, acceptance criteria
+2. `PLAN.md` - stack (which DB? which ORM/migration tool?)
+3. `SPECS.md` - Data Models section if it exists
 4. Any existing migration files or schema files in the repo
 
 ---
 
-## Phase 1 — Confirm design decisions
+## Phase 1 - Confirm design decisions
 
 Check existing context first. For anything not yet decided, ask in one batch:
 
-1. **Database** — PostgreSQL, MySQL, SQLite, MongoDB?
-2. **ORM / migration tool** — Prisma, Drizzle, TypeORM, Alembic, raw SQL?
-3. **Main entities** — List the 5-10 core things the app manages
-4. **Access patterns** — The 3 most common queries (drives indexing decisions)
-5. **Expected scale** — Hundreds, thousands, or millions of rows?
-6. **Multi-tenancy?** — Isolated schemas, row-level tenancy, or single tenant?
-7. **Soft deletes?** — Archive vs. hard delete?
-8. **Audit trail?** — Track who changed what, when?
+1. **Database** - PostgreSQL, MySQL, SQLite, MongoDB?
+2. **ORM / migration tool** - Prisma, Drizzle, TypeORM, Alembic, raw SQL?
+3. **Main entities** - List the 5-10 core things the app manages
+4. **Access patterns** - The 3 most common queries (drives indexing decisions)
+5. **Expected scale** - Hundreds, thousands, or millions of rows?
+6. **Multi-tenancy?** - Isolated schemas, row-level tenancy, or single tenant?
+7. **Soft deletes?** - Archive vs. hard delete?
+8. **Audit trail?** - Track who changed what, when?
 
 ---
 
-## Phase 2 — Design decisions
+## Phase 2 - Design decisions
 
 Work through each before writing any SQL or schema code:
 
 ### Primary keys
 
 ```sql
--- Public-facing IDs, distributed systems → UUID
+-- Public-facing IDs, distributed systems -> UUID
 id UUID PRIMARY KEY DEFAULT gen_random_uuid()
 
--- High-insert internal tables → BIGSERIAL (faster inserts, smaller indexes)
+-- High-insert internal tables -> BIGSERIAL (faster inserts, smaller indexes)
 id BIGSERIAL PRIMARY KEY
 ```
 
@@ -65,7 +65,7 @@ In Prisma:
 id String @id @default(cuid())  -- Good default for hackathons
 ```
 
-**Rule:** Never expose sequential integer IDs to clients — they leak record counts.
+**Rule:** Never expose sequential integer IDs to clients - they leak record counts.
 
 ### Timestamps (always include on every table)
 
@@ -87,7 +87,7 @@ Always store UTC. Convert to local time in the application layer, never in the D
 ```sql
 deleted_at TIMESTAMP WITH TIME ZONE  -- NULL = active, non-NULL = deleted
 
--- Partial index — only indexes active rows (huge performance win)
+-- Partial index - only indexes active rows (huge performance win)
 CREATE INDEX idx_users_active ON users(deleted_at) WHERE deleted_at IS NULL;
 ```
 
@@ -97,13 +97,13 @@ Skip soft deletes on: junction tables, event/log tables.
 ### Normalization
 
 ```
-3NF (Normalized) → OLTP, data changes frequently, storage matters
-Denormalized     → Read-heavy (>10:1 read/write), analytics, join cost is prohibitive
+3NF (Normalized) -> OLTP, data changes frequently, storage matters
+Denormalized     -> Read-heavy (>10:1 read/write), analytics, join cost is prohibitive
 ```
 
 ---
 
-## Phase 3 — Schema output format
+## Phase 3 - Schema output format
 
 For every table, produce:
 
@@ -130,7 +130,7 @@ CREATE INDEX idx_users_active ON users(deleted_at) WHERE deleted_at IS NULL;
 
 ---
 
-## Phase 4 — FK constraints
+## Phase 4 - FK constraints
 
 ```sql
 -- Owned children: cascade delete
@@ -154,27 +154,27 @@ CREATE INDEX idx_project_members_user ON project_members(user_id);
 
 ---
 
-## Phase 5 — Indexing rules
+## Phase 5 - Indexing rules
 
 ```
 Always index:
-  ✓ All foreign key columns
-  ✓ Columns in WHERE clauses of frequent queries
-  ✓ Unique constraints (email, slug)
+  [x] All foreign key columns
+  [x] Columns in WHERE clauses of frequent queries
+  [x] Unique constraints (email, slug)
 
 Consider:
   ? Composite indexes for multi-column WHERE (high-selectivity column first)
   ? Partial indexes for filtered queries (WHERE deleted_at IS NULL)
 
 Never:
-  ✗ Columns rarely in WHERE/JOIN
-  ✗ Low-cardinality columns alone (boolean, 3-value status) — add to composite
-  ✗ Every column "just in case"
+  [ ] Columns rarely in WHERE/JOIN
+  [ ] Low-cardinality columns alone (boolean, 3-value status) - add to composite
+  [ ] Every column "just in case"
 ```
 
 ---
 
-## Phase 6 — Prisma schema variant (if using Prisma)
+## Phase 6 - Prisma schema variant (if using Prisma)
 
 ```prisma
 model User {
@@ -215,3 +215,6 @@ enum Role { ADMIN MEMBER VIEWER }
 
 When schema is designed and migration file is written, signal to `hackathon-session`
 that the schema phase is done. Session continues with tests and PR.
+
+
+

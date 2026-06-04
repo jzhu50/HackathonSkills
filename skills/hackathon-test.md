@@ -1,17 +1,17 @@
----
+﻿---
 description: Run the test suite and report results with expected vs actual output per test. Respects testing config (required/recommended/skip). Called by hackathon-session at baseline and throughout implementation. Also callable by humans.
 allowed-tools: mcp__github__*, Read, Bash
 ---
 
 # Skill: hackathon-test
 
-**Reports results and returns — never makes decisions.** Runs the full test suite and
+**Reports results and returns - never makes decisions.** Runs the full test suite and
 outputs what was expected, what actually happened, and which failures are new vs
 pre-existing. The caller (`hackathon-session`) decides what to do with the results.
 
 ---
 
-## GitHub MCP — required for all operations
+## GitHub MCP - required for all operations
 
 Every GitHub operation **must** use the GitHub MCP (`mcp__github__*`).
 Do not use `gh` CLI, `curl`, or Bash for anything the MCP can handle.
@@ -27,23 +27,23 @@ Make all MCP calls **sequentially, not in parallel.**
 
 ---
 
-## Step 0 — Check config
+## Step 0 - Check config
 
 Read `hackathon.config.yml`. Extract `quality.testing` (default: `required`).
 
 **If `testing: skip`:** return immediately:
 ```
-Test run skipped — testing: skip is set in hackathon.config.yml
+Test run skipped - testing: skip is set in hackathon.config.yml
 ```
 Do not run the suite. Do not report coverage.
 
 ---
 
-## Step 1 — Find the test command
+## Step 1 - Find the test command
 
 Check in order:
-1. `PLAN.md` Stack table — "Test command" row
-2. `SPECS.md` — setup or environment section
+1. `PLAN.md` Stack table - "Test command" row
+2. `SPECS.md` - setup or environment section
 3. Common defaults: `npm test`, `pytest`, `go test ./...`, `cargo test`, `bundle exec rspec`
 
 If no test command can be determined: report "no test command found" and stop.
@@ -51,7 +51,7 @@ If no test command can be determined: report "no test command found" and stop.
 
 ---
 
-## Step 2 — Run the suite
+## Step 2 - Run the suite
 
 ```bash
 <test command>
@@ -64,12 +64,12 @@ Capture all output. For each test, extract:
 
 ---
 
-## Step 3 — Report
+## Step 3 - Report
 
 Output the results in this format:
 
 ```
-Test run — <mode: baseline / check>
+Test run - <mode: baseline / check>
 Command: <test command>
 Result: <N> passing, <M> failing, <K> skipped
 
@@ -77,7 +77,7 @@ Result: <N> passing, <M> failing, <K> skipped
 FAILING TESTS:
 - <test name>
   Expected: <what the test asserts>
-  Actual:   <what happened — error/assertion output>
+  Actual:   <what happened - error/assertion output>
   File:     <path:line if available>
 
 - <test name>
@@ -87,10 +87,10 @@ FAILING TESTS:
 
 [If mode is "check" and baseline exists:]
 NEW FAILURES (were passing at baseline):
-  <list of test names — these need debugging>
+  <list of test names - these need debugging>
 
 PRE-EXISTING FAILURES (also failing at baseline):
-  <list of test names — not your responsibility unless the task covers them>
+  <list of test names - not your responsibility unless the task covers them>
 
 [If testing: required and mode is "check":]
 COVERAGE GAPS:
@@ -99,20 +99,20 @@ COVERAGE GAPS:
 ```
 
 **Coverage gaps** are reported as a distinct section only when `testing: required`.
-The caller treats coverage gaps the same as test failures — they must be resolved
+The caller treats coverage gaps the same as test failures - they must be resolved
 before a PR can be opened. If `testing: recommended` or `testing: skip`, omit this
 section entirely.
 
 ---
 
-## Step 4 — Return result to caller
+## Step 4 - Return result to caller
 
 Do not file issues or make decisions.
 
 Return the result summary to `hackathon-session`. The session skill decides:
-- If new failures exist → call `hackathon-debug`
-- If only pre-existing failures → note and continue
-- If suite is green → proceed to PR
+- If new failures exist -> call `hackathon-debug`
+- If only pre-existing failures -> note and continue
+- If suite is green -> proceed to PR
 
 When called by a human directly: just present the report above and stop.
 
@@ -120,7 +120,10 @@ When called by a human directly: just present the report above and stop.
 
 ## Rules
 
-- **Never** file issues, change labels, or take action on failures — report only.
+- **Never** file issues, change labels, or take action on failures - report only.
 - **Never** emit loop signals or close-out comments.
 - **Always** distinguish new failures from pre-existing ones when a baseline exists.
 - **Always** include file path and line number in failure output when available.
+
+
+

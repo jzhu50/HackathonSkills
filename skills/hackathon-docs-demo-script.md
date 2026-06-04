@@ -1,5 +1,5 @@
----
-description: Generate the README update, API reference, and a literal demo walkthrough script — what to click, what to say, what the judge sees. Triggered manually before a demo or deadline.
+﻿---
+description: Generate the README update, API reference, and a literal demo walkthrough script - what to click, what to say, what the judge sees. Triggered manually before a demo or deadline.
 allowed-tools: mcp__github__*, Read, Write
 ---
 
@@ -18,14 +18,14 @@ Produces: (1) updated README with live URL and demo credentials, (2) API referen
 
 ---
 
-## Phase 0 — Load context
+## Phase 0 - Load context
 
 Read sequentially:
-1. `PLAN.md` — vision, demo goal, stack, features
-2. `SPECS.md` — API routes and UI flows if defined
-3. All closed epic issues via the GitHub MCP — what was actually built
-4. The tracking issue — overall project state
-5. Existing `README.md` — what already exists
+1. `PLAN.md` - vision, demo goal, stack, features
+2. `SPECS.md` - API routes and UI flows if defined
+3. All closed epic issues via the GitHub MCP - what was actually built
+4. The tracking issue - overall project state
+5. Existing `README.md` - what already exists
 
 Ask the human only for things not in any of the above:
 - Live URL (if deployed)
@@ -35,7 +35,7 @@ Ask the human only for things not in any of the above:
 
 ---
 
-## Part 1 — README update
+## Part 1 - README update
 
 Write or update `README.md`:
 
@@ -86,14 +86,14 @@ npm run dev
 
 ## Team
 
-- [Name](https://github.com/handle) — Role
+- [Name](https://github.com/handle) - Role
 
-Built at [Hackathon] · [Date]
+Built at [Hackathon] * [Date]
 ```
 
 ---
 
-## Part 2 — API reference (if backend exists)
+## Part 2 - API reference (if backend exists)
 
 For each endpoint discovered in the codebase or SPECS.md:
 
@@ -103,7 +103,7 @@ For each endpoint discovered in the codebase or SPECS.md:
 Base URL: `https://[app-url]/api`
 Auth: `Authorization: Bearer <token>` unless marked public.
 
-### POST /auth/login — Public
+### POST /auth/login - Public
 Request: `{ "email": "string", "password": "string" }`
 Response 200: `{ "token": "...", "user": { "id", "email", "name", "role" } }`
 Errors: `401 Invalid credentials`, `429 Too many attempts`
@@ -115,45 +115,45 @@ Response 200: `{ "[resources]": [...], "total": N }`
 
 ---
 
-## Part 3 — Demo walkthrough script
+## Part 3 - Demo walkthrough script
 
 ```
 DEMO SCRIPT: [Project Name]
 Duration: [X] minutes
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+------------------------------
 OPENING (30 sec)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+------------------------------
 SAY: "[Project Name] solves [problem] for [who]. Here's how it works."
 [Open browser to live URL]
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+------------------------------
 STEP 1: LOGIN (30 sec)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ACTION: Click "Sign In" → enter alice@demo.com / demo1234
+------------------------------
+ACTION: Click "Sign In" -> enter alice@demo.com / demo1234
 JUDGE SEES: Dashboard with populated data
-SAY: "This is the main dashboard — you can see [3 key things]."
+SAY: "This is the main dashboard - you can see [3 key things]."
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+------------------------------
 STEP 2: CORE FEATURE (60-90 sec)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+------------------------------
 SAY: "The core workflow is [description]."
 ACTION: [Do the primary user action]
 JUDGE SEES: [What appears]
 SAY: "[The value prop in one sentence]"
-[PAUSE — let the judge absorb it]
+[PAUSE - let the judge absorb it]
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+------------------------------
 STEP 3: THE WOW MOMENT (30-60 sec)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-SAY: "Here's the part that's genuinely interesting —"
+------------------------------
+SAY: "Here's the part that's genuinely interesting -"
 ACTION: [Trigger the impressive feature]
 SAY: "[One sentence: why this is hard or novel]"
-[PAUSE — let it land]
+[PAUSE - let it land]
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+------------------------------
 CLOSING (30 sec)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+------------------------------
 SAY: "[Project Name] does [X] for [who], using [notable tech].
       Built in [time]. Live at [URL]. Happy to answer questions."
 [Keep the most impressive view on screen]
@@ -169,10 +169,10 @@ BEFORE: Test full flow 30 min early. Demo credentials in a visible note.
 
 DURING: Speak to what the judge SEES, not what you're DOING.
         Bad: "Now I'm clicking create." Good: "This is where a user kicks off a project."
-        If something breaks: "Let me show you X" — never "it was working this morning."
+        If something breaks: "Let me show you X" - never "it was working this morning."
         Pause after the wow moment. Don't rush past it.
 
-AFTER:  Know your stack cold. Know lines of code / hours — signals effort.
+AFTER:  Know your stack cold. Know lines of code / hours - signals effort.
         Have one "what we'd build next" talking point ready.
 ```
 
@@ -183,3 +183,6 @@ AFTER:  Know your stack cold. Know lines of code / hours — signals effort.
 - **Never invent features that weren't built.** Read the closed epic issues.
 - **Demo script must match the actual app state.** Test the flow before writing it.
 - **README live URL must be real.** Leave a placeholder only if deploy hasn't happened yet.
+
+
+

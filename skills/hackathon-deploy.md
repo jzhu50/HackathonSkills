@@ -1,4 +1,4 @@
----
+﻿---
 description: Get the application live for a demo. Produces a Dockerfile (or platform config), GitHub Actions CI/CD workflow, environment variable wiring, and a live URL. Auto-called by hackathon-session when a task involves deployment, CI/CD, Docker, or hosting.
 allowed-tools: mcp__github__*, Read, Write, Edit, Bash
 ---
@@ -19,34 +19,34 @@ Auto-called by `hackathon-session` when task title or body contains:
 
 ---
 
-## Phase 0 — Load context
+## Phase 0 - Load context
 
 Read sequentially:
-1. The task issue — what deploy target, what the artifact should be
-2. `PLAN.md` — stack, app type, database details
+1. The task issue - what deploy target, what the artifact should be
+2. `PLAN.md` - stack, app type, database details
 3. Any existing Dockerfile, `.github/workflows/`, or platform config files
 
 ---
 
-## Phase 1 — Confirm platform and config
+## Phase 1 - Confirm platform and config
 
 Check existing context first. For anything not yet decided, ask in one batch:
 
-1. **Target platform** — Vercel, Railway, Fly.io, Render, self-hosted?
-2. **App type** — Next.js, Node/Express, Python, static site?
-3. **Database** — Postgres (where hosted?), SQLite, no DB?
-4. **Environment variable names** — list them (values never shared here)
-5. **Build command** — `npm run build`, `next build`, other?
-6. **Port** — what port does the app listen on?
+1. **Target platform** - Vercel, Railway, Fly.io, Render, self-hosted?
+2. **App type** - Next.js, Node/Express, Python, static site?
+3. **Database** - Postgres (where hosted?), SQLite, no DB?
+4. **Environment variable names** - list them (values never shared here)
+5. **Build command** - `npm run build`, `next build`, other?
+6. **Port** - what port does the app listen on?
 
 ---
 
-## Phase 2 — Platform fast paths
+## Phase 2 - Platform fast paths
 
 ### Vercel (best for Next.js)
 
 ```json
-// vercel.json — only needed for non-default config
+// vercel.json - only needed for non-default config
 {
   "buildCommand": "npm run build",
   "env": {
@@ -56,7 +56,7 @@ Check existing context first. For anything not yet decided, ask in one batch:
 }
 ```
 
-Set env vars: Vercel Dashboard → Project → Settings → Environment Variables.
+Set env vars: Vercel Dashboard -> Project -> Settings -> Environment Variables.
 
 ### Railway (best for Node APIs + Postgres)
 
@@ -77,7 +77,7 @@ fly deploy
 
 ---
 
-## Phase 3 — Dockerfile
+## Phase 3 - Dockerfile
 
 ### Node.js / Next.js (multi-stage)
 
@@ -130,7 +130,7 @@ CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 
 ---
 
-## Phase 4 — GitHub Actions CI/CD
+## Phase 4 - GitHub Actions CI/CD
 
 ### Deploy on push to main (Fly.io)
 
@@ -181,14 +181,14 @@ jobs:
 
 ---
 
-## Phase 5 — Environment variable wiring
+## Phase 5 - Environment variable wiring
 
 **The pattern:**
 ```
-.env.example   → committed (template, no values)
-.env           → NOT committed (.gitignore)
-GitHub Secrets → Settings → Secrets → Actions → New secret
-Platform       → Dashboard or `fly secrets set` / `railway variables set`
+.env.example   -> committed (template, no values)
+.env           -> NOT committed (.gitignore)
+GitHub Secrets -> Settings -> Secrets -> Actions -> New secret
+Platform       -> Dashboard or `fly secrets set` / `railway variables set`
 ```
 
 **Always create `.env.example`:**
@@ -212,7 +212,7 @@ gh secret set DATABASE_URL --body "postgresql://..."
 
 ---
 
-## Phase 6 — Database migrations in CI
+## Phase 6 - Database migrations in CI
 
 ```yaml
 # Prisma
@@ -232,12 +232,12 @@ Never run `migrate dev` in production. Use `migrate deploy`.
 
 ---
 
-## Phase 7 — Health check endpoint
+## Phase 7 - Health check endpoint
 
 Every deployed app needs `/health` for platform uptime checks:
 
 ```typescript
-// Next.js App Router — app/api/health/route.ts
+// Next.js App Router - app/api/health/route.ts
 export function GET() {
   return Response.json({ status: 'ok', timestamp: new Date().toISOString() });
 }
@@ -280,3 +280,6 @@ app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
 When deploy artifacts are written and verified locally, signal to `hackathon-session`
 that the deploy phase is done. Session continues with tests and PR.
+
+
+

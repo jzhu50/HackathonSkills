@@ -1,4 +1,4 @@
----
+﻿---
 description: Show GitHub Project completion status and close a project board when all its epics have merged. Run at any time to check progress, or after the last epic in a project merges.
 allowed-tools: mcp__github__*, Read
 ---
@@ -10,7 +10,7 @@ and closes a project board when all its epics are merged into main.
 
 ---
 
-## GitHub MCP — required for all operations
+## GitHub MCP - required for all operations
 
 Every GitHub operation **must** use the GitHub MCP (`mcp__github__*`).
 Do not use `gh` CLI, `curl`, or Bash for anything the MCP can handle.
@@ -26,7 +26,7 @@ Make all MCP calls **sequentially, not in parallel.**
 
 ---
 
-## Step 1 — Load state
+## Step 1 - Load state
 
 Via the GitHub MCP:
 1. List all GitHub Projects in this repo
@@ -37,52 +37,52 @@ Also read `PLAN.md` for project goals and the tracking issue for the dependency 
 
 ---
 
-## Step 2 — Compute status per project
+## Step 2 - Compute status per project
 
 For each GitHub Project, compute:
 
 | Epic | Status |
 |---|---|
-| #n [Epic] <title> | ✓ closed / 🔄 in-progress / 🔲 not started / ⛔ blocked |
+| #n [Epic] <title> | [x] closed / (in-progress) in-progress / [ ] not started / (blocked) blocked |
 
 Overall project state:
-- **Complete** — all epics closed
-- **In progress** — at least one epic open, none blocked
-- **Blocked** — at least one epic blocked, others may be complete
+- **Complete** - all epics closed
+- **In progress** - at least one epic open, none blocked
+- **Blocked** - at least one epic blocked, others may be complete
 
 ---
 
-## Step 3 — Report status
+## Step 3 - Report status
 
 Present the status in chat:
 
 ```
 Project status
 
-── <Project 1 name> ──────────────────────── IN PROGRESS
-  ✓ #1 [Epic] <title>
-  🔄 #2 [Epic] <title>   (in-progress)
-  🔲 #3 [Epic] <title>   (ai-approved, depends on #2)
+-- <Project 1 name> ------------------------ IN PROGRESS
+  [x] #1 [Epic] <title>
+  (in-progress) #2 [Epic] <title>   (in-progress)
+  [ ] #3 [Epic] <title>   (ai-approved, depends on #2)
 
-── <Project 2 name> ──────────────────────── COMPLETE
-  ✓ #4 [Epic] <title>
-  ✓ #5 [Epic] <title>
+-- <Project 2 name> ------------------------ COMPLETE
+  [x] #4 [Epic] <title>
+  [x] #5 [Epic] <title>
 ```
 
 If a project is **Complete** and its board is still open: offer to close it (see Step 4).
 
 ---
 
-## Step 4 — Close a completed project (conditional)
+## Step 4 - Close a completed project (conditional)
 
 Only close a GitHub Project when ALL of the following are true:
 - Every epic assigned to the project is closed
-- The epic→main PRs are all merged (not just the issues closed manually)
+- The epic->main PRs are all merged (not just the issues closed manually)
 
 To close:
 1. Via the GitHub MCP, update the GitHub Project status to `closed`
 2. Comment on the tracking issue:
-   `agent: project "<name>" complete — all epics merged, GitHub Project closed`
+   `agent: project "<name>" complete - all epics merged, GitHub Project closed`
 3. Call `hackathon-docs-demo-script` if this is the last open project in the repo
 
 **Never close a project with open epics.** If the human asks to close a project that
@@ -96,3 +96,6 @@ has open epics, report the open items and ask for confirmation before proceeding
 - **Always** verify epic closure via merged PRs, not just label state.
 - **If the human requests a force-close** (open epics remain): list the open epics,
   state the risk, and require explicit confirmation before closing.
+
+
+

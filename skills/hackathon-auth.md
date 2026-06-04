@@ -1,4 +1,4 @@
----
+﻿---
 description: Full authentication and authorization implementation guide. Covers strategy choice (JWT vs sessions vs provider), OAuth, protected routes, token refresh, and the security traps that catch naive implementations. Auto-called by hackathon-session when a task involves auth, login, OAuth, JWT, sessions, or permissions.
 allowed-tools: mcp__github__*, Read, Write, Edit, Bash
 ---
@@ -22,33 +22,33 @@ Auto-called by `hackathon-session` when task title or body contains:
 
 ---
 
-## Phase 0 — Load context
+## Phase 0 - Load context
 
 Read sequentially:
-1. The task issue — goal, context, acceptance criteria
-2. `PLAN.md` — stack, any auth decisions already made
-3. `SPECS.md` — if auth model described
+1. The task issue - goal, context, acceptance criteria
+2. `PLAN.md` - stack, any auth decisions already made
+3. `SPECS.md` - if auth model described
 4. Any existing auth files in the repo
 
 ---
 
-## Phase 1 — Strategy decision
+## Phase 1 - Strategy decision
 
 Check existing context first. For anything not yet decided, ask in one batch:
 
-1. **Auth approach** — JWT (stateless), sessions (stateful), or delegated provider (Clerk, Auth0, Supabase Auth, NextAuth)?
-2. **OAuth providers needed?** — Google, GitHub, Discord, others?
-3. **Framework** — Next.js, Express, FastAPI? (determines the right library)
-4. **Persistence** — Where are sessions/tokens stored? (DB, Redis, cookie?)
-5. **Roles / permissions?** — Per-user roles, team-based access, multi-tenancy?
-6. **Token refresh?** — Short-lived access tokens + refresh token rotation?
+1. **Auth approach** - JWT (stateless), sessions (stateful), or delegated provider (Clerk, Auth0, Supabase Auth, NextAuth)?
+2. **OAuth providers needed?** - Google, GitHub, Discord, others?
+3. **Framework** - Next.js, Express, FastAPI? (determines the right library)
+4. **Persistence** - Where are sessions/tokens stored? (DB, Redis, cookie?)
+5. **Roles / permissions?** - Per-user roles, team-based access, multi-tenancy?
+6. **Token refresh?** - Short-lived access tokens + refresh token rotation?
 
 ### Decision matrix: JWT vs sessions
 
 | Factor | JWT (stateless) | Sessions (stateful) |
 |---|---|---|
 | Scalability | Horizontal scaling trivial | Requires shared session store (Redis) |
-| Invalidation | Hard — token lives until expiry | Instant — delete the session record |
+| Invalidation | Hard - token lives until expiry | Instant - delete the session record |
 | Size overhead | ~500 bytes per request | ~40 bytes (session ID in cookie) |
 | Best for | APIs, microservices, mobile | Web apps when instant revocation matters |
 | Security trap | Can't revoke without a blocklist | Session fixation on login |
@@ -57,7 +57,7 @@ Check existing context first. For anything not yet decided, ask in one batch:
 
 ---
 
-## Phase 2 — JWT implementation (if chosen)
+## Phase 2 - JWT implementation (if chosen)
 
 ### Access + refresh token pattern
 
@@ -82,7 +82,7 @@ function generateTokens(userId: string): TokenPair {
 }
 ```
 
-### Token storage — the right way
+### Token storage - the right way
 
 ```typescript
 // Refresh token: httpOnly cookie (XSS-safe)
@@ -130,7 +130,7 @@ async function refreshHandler(req, res) {
 
 ---
 
-## Phase 3 — Session implementation (if chosen)
+## Phase 3 - Session implementation (if chosen)
 
 ```typescript
 import session from 'express-session';
@@ -140,7 +140,7 @@ const PgSession = connectPgSimple(session);
 
 app.use(session({
   store: new PgSession({ pool: db }),
-  secret: process.env.SESSION_SECRET!,  // ≥32 random bytes
+  secret: process.env.SESSION_SECRET!,  // >=32 random bytes
   resave: false,
   saveUninitialized: false,
   name: '__session',  // Don't use default 'connect.sid'
@@ -155,7 +155,7 @@ app.use(session({
 
 ---
 
-## Phase 4 — OAuth (NextAuth.js for Next.js)
+## Phase 4 - OAuth (NextAuth.js for Next.js)
 
 ```typescript
 // app/api/auth/[...nextauth]/route.ts
@@ -181,7 +181,7 @@ export { handler as GET, handler as POST };
 
 ---
 
-## Phase 5 — Protected routes
+## Phase 5 - Protected routes
 
 ### Middleware-level (Next.js)
 
@@ -221,20 +221,20 @@ function authorize(roles: string[]) {
 
 ---
 
-## Phase 6 — Security traps checklist
+## Phase 6 - Security traps checklist
 
 Verify all of these before signaling completion to session:
 
 ```
 [ ] Passwords hashed with bcrypt/argon2 (NEVER MD5, SHA1, or plaintext)
 [ ] Rate limiting on /login, /signup, /forgot-password (max 5-10 req/15min)
-[ ] Account enumeration prevention — same response for "wrong password" and "no account"
+[ ] Account enumeration prevention - same response for "wrong password" and "no account"
 [ ] CSRF protection on all state-mutating endpoints
 [ ] Token/session invalidated on logout (not just cookie deletion)
 [ ] Refresh tokens stored hashed in DB (not plaintext)
 [ ] Password reset tokens: single-use, expire in 1 hour, constant-time compare
 [ ] No sensitive data (userId, email) in URL parameters
-[ ] Secrets in environment variables — not in source code
+[ ] Secrets in environment variables - not in source code
 [ ] Session ID regenerated on login (prevents session fixation)
 ```
 
@@ -242,7 +242,7 @@ Verify all of these before signaling completion to session:
 |---|---|---|
 | JWT | Stored in localStorage | httpOnly cookie for refresh, memory for access |
 | JWT | Long expiry (1 day+) | Access: 15min, Refresh: 7 days with rotation |
-| OAuth | `state` param not validated | Always validate — prevents CSRF on OAuth callback |
+| OAuth | `state` param not validated | Always validate - prevents CSRF on OAuth callback |
 | Sessions | Session ID not regenerated | Regenerate on login (session fixation) |
 | Password reset | Reusable tokens | Mark used on first consumption, expire in 1hr |
 
@@ -261,3 +261,6 @@ that the auth implementation phase is done. Session continues with tests and PR.
 - **Never store tokens in localStorage.** httpOnly cookie or memory only.
 - **Rate limit auth endpoints.** Always.
 - **Same error response for wrong password and no account.** Prevents enumeration.
+
+
+

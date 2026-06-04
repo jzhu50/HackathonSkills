@@ -1,5 +1,5 @@
----
-description: Review one PR — read the diff, check acceptance criteria, post findings, and either present verdict to human or return it to the calling skill. Triggered by human or called internally by hackathon-session when code_review.human_required is false.
+﻿---
+description: Review one PR - read the diff, check acceptance criteria, post findings, and either present verdict to human or return it to the calling skill. Triggered by human or called internally by hackathon-session when code_review.human_required is false.
 allowed-tools: mcp__github__*
 ---
 
@@ -18,7 +18,7 @@ instead of waiting for a human. Session acts on the verdict.
 
 ---
 
-## GitHub MCP — required for all operations
+## GitHub MCP - required for all operations
 
 Every GitHub operation **must** use the GitHub MCP (`mcp__github__*`).
 Do not use `gh` CLI, `curl`, or Bash for anything the MCP can handle.
@@ -33,21 +33,21 @@ Make all MCP calls **sequentially, not in parallel.**
 
 ---
 
-## Phase 0 — Determine mode and read config
+## Phase 0 - Determine mode and read config
 
 Read `hackathon.config.yml`. Extract:
 - `quality.comments` (default: `verbose`)
 
-**Mode:** if called by a human → human-triggered mode.
-If called internally by hackathon-session → internal mode.
+**Mode:** if called by a human -> human-triggered mode.
+If called internally by hackathon-session -> internal mode.
 
 ---
 
-## Phase 1 — Orient
+## Phase 1 - Orient
 
 Read sequentially via the GitHub MCP:
-1. `AGENTS.md` — coordination protocol
-2. `PLAN.md` — vision, done criteria, acceptance bar
+1. `AGENTS.md` - coordination protocol
+2. `PLAN.md` - vision, done criteria, acceptance bar
 
 **Human-triggered:** if the human specified a PR number, use that.
 If not: list all `in-review` issues via the GitHub MCP and ask which to review.
@@ -56,7 +56,7 @@ If not: list all `in-review` issues via the GitHub MCP and ask which to review.
 
 ---
 
-## Phase 2 — Review
+## Phase 2 - Review
 
 ### 2a. Read the issue
 
@@ -74,10 +74,10 @@ Check the PR's `mergeable` state via the GitHub MCP.
 
 - If **`null` or `UNKNOWN`** (GitHub is still computing): wait 10 seconds and re-check
   once. If still null after the retry, report to the human:
-  `"PR #<n> mergeability is still computing — re-run review in a moment."` and stop.
+  `"PR #<n> mergeability is still computing - re-run review in a moment."` and stop.
 - If **conflicted**:
-  - Post on PR: `agent: merge conflict — branch must be rebased onto <base>`
-  - Change issue label `in-review` → `ai-approved`
+  - Post on PR: `agent: merge conflict - branch must be rebased onto <base>`
+  - Change issue label `in-review` -> `ai-approved`
   - Unassign the issue
   - Comment on issue:
     ```
@@ -109,43 +109,43 @@ its stated acceptance criteria or introduce clear defects.
 
 ---
 
-## Phase 3 — Post findings
+## Phase 3 - Post findings
 
 **If `comments: verbose`:** post a detailed review comment on the **PR** via the GitHub MCP:
 
 ```
 ## Review findings
 
-**Issue:** #<n> — <title>
+**Issue:** #<n> - <title>
 **PR base:** <epic branch or main>
 
 ### Acceptance criteria
-- [PASS/FAIL] <criterion 1> — <note if relevant>
-- [PASS/FAIL] <criterion 2> — <note if relevant>
+- [PASS/FAIL] <criterion 1> - <note if relevant>
+- [PASS/FAIL] <criterion 2> - <note if relevant>
 ...
 
 ### Additional findings
-<bugs, missing tests, security issues — one per bullet, with file:line reference>
+<bugs, missing tests, security issues - one per bullet, with file:line reference>
 <If none: "No additional findings.">
 
 ### Verdict
-APPROVE — all criteria met, no blocking issues.
- — or —
-REQUEST CHANGES — <N> issues must be fixed before merge:
-1. <specific thing to fix — file:line + what to change>
+APPROVE - all criteria met, no blocking issues.
+ - or -
+REQUEST CHANGES - <N> issues must be fixed before merge:
+1. <specific thing to fix - file:line + what to change>
 2. ...
 ```
 
 **If `comments: minimal`:** post only the verdict line on the PR:
 ```
-agent: APPROVE — all criteria met.
- — or —
-agent: REQUEST CHANGES — <N> issues: 1. <issue> 2. <issue> ...
+agent: APPROVE - all criteria met.
+ - or -
+agent: REQUEST CHANGES - <N> issues: 1. <issue> 2. <issue> ...
 ```
 
 ---
 
-## Phase 4 — Return verdict or present to human
+## Phase 4 - Return verdict or present to human
 
 **Internal mode:**
 
@@ -153,9 +153,9 @@ Return the verdict directly to the calling skill (hackathon-session). Do not wai
 Format:
 ```
 APPROVE
- — or —
+ - or -
 REQUEST CHANGES:
-1. <specific thing to fix — file:line + what to change>
+1. <specific thing to fix - file:line + what to change>
 2. ...
 ```
 
@@ -186,7 +186,7 @@ Stop here and wait for the human's decision.
 
 ---
 
-## Phase 5 — Execute the human's decision
+## Phase 5 - Execute the human's decision
 
 The human will respond with one of the following. Execute immediately:
 
@@ -195,10 +195,10 @@ The human will respond with one of the following. Execute immediately:
 1. Approve the PR via the GitHub MCP.
    - If approval fails because you are the PR author (GitHub forbids self-approval):
      skip the formal approval; your review comment is the audit trail.
-2. Merge the PR via the GitHub MCP — squash preferred. If squash is disabled on the
+2. Merge the PR via the GitHub MCP - squash preferred. If squash is disabled on the
    repo, retry with a standard merge commit.
    - If merge is rejected by branch protection requiring approvals and you cannot
-     self-approve: comment `agent: cannot merge — branch protection requires an
+     self-approve: comment `agent: cannot merge - branch protection requires an
      approval this account cannot give`, leave `in-review`, stop.
 3. Confirm the issue was auto-closed (via `Closes #n` in the PR body). If not, close
    it manually via the GitHub MCP.
@@ -212,25 +212,25 @@ The human will respond with one of the following. Execute immediately:
    - For each problem: quote the unmet criterion, point to the exact file/behaviour,
      suggest the specific fix. Be concrete enough for the next agent to implement
      without questions.
-2. Change the **issue** label `in-review` → `ai-approved`.
-   (Back to `ai-approved` — this was already human-approved work, it just needs fixes.)
+2. Change the **issue** label `in-review` -> `ai-approved`.
+   (Back to `ai-approved` - this was already human-approved work, it just needs fixes.)
 3. Unassign the issue.
 4. Comment on the **issue**:
    ```
-   agent: review — changes requested
+   agent: review - changes requested
 
    Branch: <branch-name>
    PR: #<pr-number>
-   What needs fixing: <one line per change — mirror the PR review comments>
+   What needs fixing: <one line per change - mirror the PR review comments>
 
    Next agent: check out branch <branch-name>, read PR #<pr-number> review comments,
-   implement the fixes, push. Do not open a new PR — the existing one auto-updates.
+   implement the fixes, push. Do not open a new PR - the existing one auto-updates.
    ```
 5. Report: `PR #<n> has changes requested. Issue #<n> returned to ai-approved.`
 
 ### "override and merge"
 
-Same as "merge" — no additional validation required. Human has decided.
+Same as "merge" - no additional validation required. Human has decided.
 
 ### "leave" (or "skip")
 
@@ -246,3 +246,6 @@ Leave the PR as-is in `in-review`. Report: `PR #<n> left open.`
 - **Never request changes for style.** Only for unmet acceptance criteria or clear bugs.
 - **Be specific.** Vague feedback is not implementable by the next agent.
 - **Never fire MCP calls in parallel.**
+
+
+

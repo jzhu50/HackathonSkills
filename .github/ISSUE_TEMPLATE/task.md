@@ -19,7 +19,7 @@ labels: needs-human-review
      will have left in place. -->
 
 ## Acceptance Criteria
-- [ ] 
+- [ ]
 - [ ] Tests written for new behavior
 - [ ] Full test suite passes
 

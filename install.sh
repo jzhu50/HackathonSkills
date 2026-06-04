@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# install.sh — hackathon-skills installer (macOS/Linux)
+# install.sh - hackathon-skills installer (macOS/Linux)
 #
 # Downloads runner.sh and make-claude-md.sh from the latest GitHub release:
-#   ~/.local/bin/hackathon-skills      — PTY runner (launch your AI CLI)
-#   ~/.local/bin/hackathon-bootstrap   — project bootstrapper (run once per project)
+#   ~/.local/bin/hackathon-skills      - PTY runner (launch your AI CLI)
+#   ~/.local/bin/hackathon-bootstrap   - project bootstrapper (run once per project)
 #
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/Victor-Casado/HackathonSkills/main/install.sh | bash
@@ -19,29 +19,29 @@ INSTALL_DIR="${HOME}/.local/bin"
 INSTALL_PATH="${INSTALL_DIR}/${TOOL_NAME}"
 BOOTSTRAP_PATH="${INSTALL_DIR}/${BOOTSTRAP_NAME}"
 
-# ── helpers ──────────────────────────────────────────────────────────────────
+# -- helpers ------------------------------------------------------------------
 
 _die() { printf 'error: %s\n' "$*" >&2; exit 1; }
 _info() { printf '  %s\n' "$*"; }
 
-# ── resolve latest release tag ────────────────────────────────────────────────
+# -- resolve latest release tag ------------------------------------------------
 
 _latest_tag() {
   local url="https://api.github.com/repos/${REPO}/releases/latest"
   if command -v curl &>/dev/null; then
-    curl -fsSL "$url" \
-      | grep '"tag_name"' \
+    curl -fsSL "$url"\
+      | grep '"tag_name"'\
       | sed -E 's/.*"tag_name": *"([^"]+)".*/\1/'
   elif command -v wget &>/dev/null; then
-    wget -qO- "$url" \
-      | grep '"tag_name"' \
+    wget -qO- "$url"\
+      | grep '"tag_name"'\
       | sed -E 's/.*"tag_name": *"([^"]+)".*/\1/'
   else
     _die "curl or wget is required to download releases"
   fi
 }
 
-# ── download ──────────────────────────────────────────────────────────────────
+# -- download ------------------------------------------------------------------
 
 _download() {
   local url="$1"
@@ -53,7 +53,7 @@ _download() {
   fi
 }
 
-# ── PATH setup ────────────────────────────────────────────────────────────────
+# -- PATH setup ----------------------------------------------------------------
 
 _add_to_path() {
   local shell_rc=""
@@ -78,7 +78,7 @@ _add_to_path() {
   fi
 }
 
-# ── install one script ────────────────────────────────────────────────────────
+# -- install one script --------------------------------------------------------
 
 _install_script() {
   local url="$1"
@@ -93,7 +93,7 @@ _install_script() {
   _download "$url" "$tmp"
   chmod +x "$tmp"
 
-  head -1 "$tmp" | grep -q 'bash\|sh' \
+  head -1 "$tmp" | grep -q 'bash\|sh'\
     || _die "downloaded ${label} does not look like a shell script"
 
   mv "$tmp" "$dest"
@@ -101,7 +101,7 @@ _install_script() {
   _info "installed: ${dest}"
 }
 
-# ── main ──────────────────────────────────────────────────────────────────────
+# -- main ----------------------------------------------------------------------
 
 printf '\nhackathon-skills installer\n'
 printf '==========================\n\n'
@@ -134,9 +134,9 @@ printf 'Done.\n\n'
 printf 'Next steps:\n'
 printf '  1. Create a new repo from the template on GitHub\n'
 printf '  2. Clone it, cd into it\n'
-printf '  3. hackathon-bootstrap        — generates CLAUDE.md + slash commands\n'
+printf '  3. hackathon-bootstrap        - generates CLAUDE.md + slash commands\n'
 printf '  4. Fill in PLAN.md\n'
 printf '  5. Open Claude Code and run /hackathon-setup\n\n'
 printf 'Other commands:\n'
-printf '  hackathon-skills --help       — PTY runner help\n'
-printf '  hackathon-skills --reconfigure — change AI CLI selection\n\n'
+printf '  hackathon-skills --help       - PTY runner help\n'
+printf '  hackathon-skills --reconfigure - change AI CLI selection\n\n'

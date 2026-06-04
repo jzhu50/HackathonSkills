@@ -1,8 +1,8 @@
 # install.ps1 - hackathon-skills installer (Windows)
 #
 # Downloads runner.ps1 and make-claude-md.ps1 from the latest GitHub release:
-#   %LOCALAPPDATA%\hackathon-skills\bin\hackathon-skills.ps1   — PTY runner
-#   %LOCALAPPDATA%\hackathon-skills\bin\hackathon-bootstrap.ps1 — project bootstrapper
+#   %LOCALAPPDATA%\hackathon-skills\bin\hackathon-skills.ps1    - PTY runner
+#   %LOCALAPPDATA%\hackathon-skills\bin\hackathon-bootstrap.ps1 - project bootstrapper
 # Creates .cmd shims for both so they're callable without the .ps1 extension.
 #
 # Usage (run in PowerShell as your normal user - no elevation needed):

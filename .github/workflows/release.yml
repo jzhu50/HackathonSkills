@@ -25,12 +25,12 @@ jobs:
           if gh release view "${{ github.ref_name }}" > /dev/null 2>&1; then
             gh release upload "${{ github.ref_name }}" "${ASSETS[@]}" --clobber
           else
-            gh release create "${{ github.ref_name }}" "${ASSETS[@]}" \
-              --title "${{ github.ref_name }}" \
+            gh release create "${{ github.ref_name }}" "${ASSETS[@]}"\
+              --title "${{ github.ref_name }}"\
               --generate-notes
           fi
 
-  # ── post-publish smoke test (all three platforms) ────────────────────────────
+  # -- post-publish smoke test (all three platforms) ----------------------------
   smoke-test:
     needs: release
     strategy:
@@ -48,11 +48,11 @@ jobs:
           # Retry up to 5 times with 10s gaps before failing.
           for i in 1 2 3 4 5; do
             bash install.sh "${{ github.ref_name }}" && break
-            echo "Attempt $i failed — waiting 10s before retry..."
+            echo "Attempt $i failed - waiting 10s before retry..."
             sleep 10
           done
 
-      - name: Smoke test — bootstrap after install (Linux / macOS)
+      - name: Smoke test - bootstrap after install (Linux / macOS)
         if: runner.os != 'Windows'
         run: |
           # Run the globally-installed hackathon-bootstrap from within the repo clone
@@ -64,10 +64,10 @@ jobs:
 
           skill_count=$(find skills -maxdepth 1 -name '*.md' | wc -l | tr -d ' ')
           cmd_count=$(find "$tmp/.claude/commands/" -maxdepth 1 -name '*.md' 2>/dev/null | wc -l | tr -d ' ')
-          [[ "$skill_count" -eq "$cmd_count" ]] \
+          [[ "$skill_count" -eq "$cmd_count" ]]\
             || { echo "FAIL: $skill_count skills but $cmd_count commands"; exit 1; }
 
-          python3 -c "import json; json.load(open('$tmp/.claude/settings.json'))" \
+          python3 -c "import json; json.load(open('$tmp/.claude/settings.json'))"\
             || { echo "FAIL: settings.json not valid JSON"; exit 1; }
 
           echo "Smoke test OK (${{ matrix.os }}, ${{ github.ref_name }})"
@@ -83,11 +83,11 @@ jobs:
             & .\install.ps1 -Tag $tag
             if ($LASTEXITCODE -eq 0) { break }
             if ($i -eq 5) { Write-Host "All install attempts failed"; exit 1 }
-            Write-Host "Attempt $i failed — waiting 10s before retry..."
+            Write-Host "Attempt $i failed - waiting 10s before retry..."
             Start-Sleep 10
           }
 
-      - name: Smoke test — bootstrap after install (Windows)
+      - name: Smoke test - bootstrap after install (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |

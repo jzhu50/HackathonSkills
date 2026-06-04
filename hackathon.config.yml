@@ -23,11 +23,11 @@ gates:
     human_required: true   # human triggers hackathon-review and decides merge/changes on task PRs
 
   epic_review:
-    human_required: true   # human reviews and merges epic→main PR
+    human_required: true   # human reviews and merges epic->main PR
 
 quality:
-  # required:     full path coverage enforced — hard stop before PR if any code path is uncovered
-  # recommended:  main logic paths must be tested — missing edge coverage flagged but not blocking
+  # required:     full path coverage enforced - hard stop before PR if any code path is uncovered
+  # recommended:  main logic paths must be tested - missing edge coverage flagged but not blocking
   # skip:         no test suite run, no test writing requirement
   testing: required
 
@@ -36,8 +36,8 @@ quality:
   comments: verbose
 
 # When true: hackathon-setup structures epics into parallel waves.
-#   Wave 1 — independent foundations, each built with stubs for cross-dependencies
-#   Wave 2 — integration epics that wire the foundations together
-#   Wave 3 — end-to-end verify
+#   Wave 1 - independent foundations, each built with stubs for cross-dependencies
+#   Wave 2 - integration epics that wire the foundations together
+#   Wave 3 - end-to-end verify
 # When false: epics in priority/dependency chain order (original behavior)
 parallelism: false

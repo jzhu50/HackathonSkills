@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 #
-# make-claude-md.sh — bootstrap a hackathon project for Claude Code
+# make-claude-md.sh - bootstrap a hackathon project for Claude Code
 #
 # Generates in the target project:
-#   CLAUDE.md              — full skill content loaded by interactive Claude Code
-#   .claude/commands/      — slash commands for interactive Claude Code
-#   .claude/settings.json  — GitHub MCP pre-approved (no permission prompts)
+#   CLAUDE.md              - full skill content loaded by interactive Claude Code
+#   .claude/commands/      - slash commands for interactive Claude Code
+#   .claude/settings.json  - GitHub MCP pre-approved (no permission prompts)
 #
 # Usage:
 #   ./make-claude-md.sh                  # targets current directory
@@ -27,7 +27,7 @@ SETTINGS_PATH="$TARGET_DIR/.claude/settings.json"
 CLAUDE_MD="$TARGET_DIR/CLAUDE.md"
 
 if [ ! -d "$SKILLS_DIR" ]; then
-  echo "Error: skills/ not found — run from inside a clone of the template repo" >&2; exit 1
+  echo "Error: skills/ not found - run from inside a clone of the template repo" >&2; exit 1
 fi
 
 skills=("$SKILLS_DIR"/*.md)
@@ -46,7 +46,7 @@ done
 
 # 2. settings.json
 if [ -f "$SETTINGS_PATH" ]; then
-  echo "  WARNING: .claude/settings.json exists — not overwriting. Ensure mcp__github__*, Bash(git:*), Read, Edit, Write are in permissions.allow."
+  echo "  WARNING: .claude/settings.json exists - not overwriting. Ensure mcp__github__*, Bash(git:*), Read, Edit, Write are in permissions.allow."
 else
   cat > "$SETTINGS_PATH" <<'SETTINGS'
 {
@@ -64,7 +64,7 @@ SETTINGS
   echo "  settings: .claude/settings.json written"
 fi
 
-# 3. CLAUDE.md — coordination header + full skill content
+# 3. CLAUDE.md - coordination header + full skill content
 {
 cat <<'HEADER'
 # Hackathon Agent Coordination
@@ -77,19 +77,19 @@ This project has a human review gate between every major AI step.
 No AI agent merges anything without explicit human instruction.
 
 Workflow:
-  hackathon-setup       → wizard: configure oversight, scaffold PLAN.md
-  hackathon-plan        → Phase 1: PLAN.md → GitHub Projects + generate SPECS.md
+  hackathon-setup       -> wizard: configure oversight, scaffold PLAN.md
+  hackathon-plan        -> Phase 1: PLAN.md -> GitHub Projects + generate SPECS.md
   Human approves projects (ai-approved)
-  hackathon-epics       → Phase 2: Projects → Epic issues on GitHub
+  hackathon-epics       -> Phase 2: Projects -> Epic issues on GitHub
   Human approves epics (ai-approved)
-  hackathon-decompose   → Phase 3: Epics → Task issues + epic branches
+  hackathon-decompose   -> Phase 3: Epics -> Task issues + epic branches
   Human approves tasks (ai-approved)
-  hackathon-session     → Phase 4: Tasks → code + PRs (in-review)
-  Human triggers hackathon-review → AI posts findings → human decides
-  hackathon-verify      → last task per epic; opens epic→main PR
-  hackathon-projects    → track completion; close GitHub Project when all epics merge
+  hackathon-session     -> Phase 4: Tasks -> code + PRs (in-review)
+  Human triggers hackathon-review -> AI posts findings -> human decides
+  hackathon-verify      -> last task per epic; opens epic->main PR
+  hackathon-projects    -> track completion; close GitHub Project when all epics merge
 
-## GitHub MCP — use for all GitHub operations
+## GitHub MCP - use for all GitHub operations
 
 Use `mcp__github__*` for every GitHub operation: issues, labels, assignees,
 comments, pull requests. Never use `gh`, `curl`, or Bash for GitHub operations.
@@ -99,7 +99,7 @@ Make all MCP calls **sequentially, not in parallel.**
 
 Epic branches: epic-<n>-<slug> (created by hackathon-decompose from main)
 Task branches: <n>-<slug> (created by hackathon-session from the epic branch)
-Task PRs target the epic branch. The verify task opens the epic→main PR.
+Task PRs target the epic branch. The verify task opens the epic->main PR.
 Never commit to `main` or an epic branch directly.
 
 ---
@@ -117,7 +117,7 @@ done
 echo "  CLAUDE.md written"
 
 echo ""
-echo "Bootstrap complete → $TARGET_DIR"
+echo "Bootstrap complete -> $TARGET_DIR"
 echo ""
-echo "Interactive Claude Code: open the project — /hackathon-* commands available"
+echo "Interactive Claude Code: open the project - /hackathon-* commands available"
 echo "Other agent CLIs:        see HARNESS.md"

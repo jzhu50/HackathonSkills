@@ -97,6 +97,14 @@ get_latest_release() {
     fi
 }
 
+curl_auth() {
+    if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+        curl -fsSL -H "Authorization: token ${GITHUB_TOKEN}" "$@"
+    else
+        curl -fsSL "$@"
+    fi
+}
+
 # Global temp dir for cleanup trap
 TEMP_DIR=""
 
@@ -110,7 +118,6 @@ trap cleanup EXIT
 # -- Installation -------------------------------------------------------------
 
 main() {
-    local args=("$@")
     echo ""
     echo -e "${CYAN}${TOOL_NAME} installer${NC}"
     echo -e "${CYAN}========================${NC}"
@@ -143,12 +150,7 @@ main() {
     fi
 
     local has_checksums=false
-    local auth_header=()
-    if [[ -n "${GITHUB_TOKEN:-}" ]]; then
-        auth_header=(-H "Authorization: token ${GITHUB_TOKEN}")
-    fi
-
-    if curl -fsSL "${auth_header[@]}" -o "${TEMP_DIR}/checksums.sha256" "$checksum_url" 2>/dev/null; then
+    if curl_auth -o "${TEMP_DIR}/checksums.sha256" "$checksum_url" 2>/dev/null; then
         has_checksums=true
         info "Checksums available for verification."
     else
@@ -169,7 +171,7 @@ main() {
         local target_path="${INSTALL_DIR}/${target_name}"
 
         info "Downloading ${asset_name}..."
-        if ! curl -fsSL "${auth_header[@]}" -o "${TEMP_DIR}/${asset_name}" "$download_url"; then
+        if ! curl_auth -o "${TEMP_DIR}/${asset_name}" "$download_url"; then
             error "Failed to download ${asset_name}"
         fi
 
@@ -177,8 +179,7 @@ main() {
         if [[ "$has_checksums" == "true" ]]; then
             info "Verifying checksum for ${asset_name}..."
             local expected_hash
-            # Use grep -F and anchor to avoid partial matches
-            expected_hash=$(grep -F "  ${asset_name}" "${TEMP_DIR}/checksums.sha256" | awk '{print $1}' | tr '[:upper:]' '[:lower:]' || true)
+            expected_hash=$(awk -v file="$asset_name" '{name=$2; sub(/^\*/, "", name)} name == file {print tolower($1); exit}' "${TEMP_DIR}/checksums.sha256" || true)
             
             if [[ -n "$expected_hash" ]]; then
                 local actual_hash=""

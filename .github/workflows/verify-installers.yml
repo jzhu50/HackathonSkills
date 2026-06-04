@@ -37,11 +37,11 @@ jobs:
           
           # Generate checksums (explicitly list files to avoid including the checksum file itself)
           cd dist
-          files="runner.sh make-claude-md.sh runner.ps1 make-claude-md.ps1"
+          files=(runner.sh make-claude-md.sh runner.ps1 make-claude-md.ps1)
           if command -v sha256sum &> /dev/null; then
-            sha256sum $files > checksums.sha256
+            sha256sum "${files[@]}" > checksums.sha256
           elif command -v shasum &> /dev/null; then
-            shasum -a 256 $files > checksums.sha256
+            shasum -a 256 "${files[@]}" > checksums.sha256
           fi
           echo "Generated checksums:"
           cat checksums.sha256
@@ -51,7 +51,7 @@ jobs:
         run: |
           # Use 'python' which is more portable on Windows/Unix in GH Actions
           python -m http.server 8000 --directory dist &
-          echo "SERVER_PID=$!" >> $GITHUB_ENV
+          echo "SERVER_PID=$!" >> "$GITHUB_ENV"
           # Give it a moment to start
           for i in {1..10}; do
             if curl -s --max-time 1 http://127.0.0.1:8000 > /dev/null; then
@@ -112,7 +112,11 @@ jobs:
       - name: Test runner with ${{ matrix.cli }}
         shell: bash
         run: |
-          hackathon-skills --cli ${{ matrix.cli }} -- test-arg
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            hackathon-skills.cmd -Cli ${{ matrix.cli }} test-arg
+          else
+            hackathon-skills --cli ${{ matrix.cli }} -- test-arg
+          fi
 
       - name: Cleanup server
         if: always()

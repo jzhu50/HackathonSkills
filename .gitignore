@@ -11,6 +11,10 @@
 # Windows and Mac teammates cause conflicts even on identical source.
 CLAUDE.md
 .claude/
+AIDER.md
+CODEX.md
+ANTIGRAVITY.md
+GEMINI.md
 
 # ── Other harness directories ───────────────────────────────────────────────
 # Each harness generates its own config directory. Keep those local.

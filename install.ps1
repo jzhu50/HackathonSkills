@@ -96,15 +96,36 @@ function Get-FileHash256 {
 
 function Download-File {
     param(
-        [string]$Url,
+        [string]$AssetName,
         [string]$Path
     )
     if ($env:GITHUB_TOKEN) {
+        # 1. Fetch release JSON to get asset ID
+        $ApiUrl = "https://api.github.com/repos/$Repo/releases/tags/$Version"
         $SecPassword = ConvertTo-SecureString $env:GITHUB_TOKEN -AsPlainText -Force
         $Cred = New-Object System.Management.Automation.PSCredential ("token", $SecPassword)
-        Invoke-WebRequest -Uri $Url -OutFile $Path -UseBasicParsing -Credential $Cred
+        
+        try {
+            $ReleaseJson = Invoke-RestMethod -Uri $ApiUrl -UseBasicParsing -Credential $Cred
+        } catch {
+            throw "Failed to fetch release info from API: $_"
+        }
+        
+        # 2. Extract asset ID
+        $Asset = $ReleaseJson.assets | Where-Object { $_.name -eq $AssetName }
+        if (-not $Asset) {
+            throw "Asset $AssetName not found in release info"
+        }
+        $AssetId = $Asset.id
+        
+        # 3. Download via API
+        $DownloadUrl = "https://api.github.com/repos/$Repo/releases/assets/$AssetId"
+        $Headers = @{ Accept = "application/octet-stream" }
+        Invoke-WebRequest -Uri $DownloadUrl -OutFile $Path -UseBasicParsing -Headers $Headers -Credential $Cred
     } else {
-        Invoke-WebRequest -Uri $Url -OutFile $Path -UseBasicParsing
+        # Public download fallback
+        $DownloadUrl = if ($BaseUrl) { "$BaseUrl/$AssetName" } else { "https://github.com/$Repo/releases/download/$Version/$AssetName" }
+        Invoke-WebRequest -Uri $DownloadUrl -OutFile $Path -UseBasicParsing
     }
 }
 
@@ -137,12 +158,11 @@ function Install-HackathonSkills {
     
     try {
         # Optional: Download checksums
-        $ChecksumUrl = if ($BaseUrl) { "$BaseUrl/checksums.sha256" } else { "https://github.com/$Repo/releases/download/$Version/checksums.sha256" }
         $TempChecksum = Join-Path $TempDir "checksums.sha256"
         $HasChecksums = $false
 
         try {
-            Download-File -Url $ChecksumUrl -Path $TempChecksum
+            Download-File -AssetName "checksums.sha256" -Path $TempChecksum
             $HasChecksums = $true
             Write-Info "Checksums available for verification."
         } catch {
@@ -157,11 +177,10 @@ function Install-HackathonSkills {
             
             Write-Info "Downloading $AssetName..."
             
-            $DownloadUrl = if ($BaseUrl) { "$BaseUrl/$AssetName" } else { "https://github.com/$Repo/releases/download/$Version/$AssetName" }
             $TempFile = Join-Path $TempDir $AssetName
             
             try {
-                Download-File -Url $DownloadUrl -Path $TempFile
+                Download-File -AssetName $AssetName -Path $TempFile
             } catch {
                 throw "Failed to download ${AssetName}: $_"
             }

@@ -98,14 +98,63 @@ get_latest_release() {
 }
 
 download_file() {
-    local url="$1"
+    local asset_name="$1"
     local dest="$2"
+
     if [[ -n "${GITHUB_TOKEN:-}" ]]; then
-        curl -fsSL -u :"$GITHUB_TOKEN" -o "$dest" "$url"
+        # 1. Fetch release JSON to get asset ID
+        local api_url="https://api.github.com/repos/${REPO}/releases/tags/${version}"
+        local release_json
+        if ! release_json=$(curl -fsSL -u :"$GITHUB_TOKEN" "$api_url"); then
+            echo "Error: Failed to fetch release info from API for tag ${version}" >&2
+            return 1
+        fi
+
+        # 2. Extract asset ID using awk
+        local asset_id
+        asset_id=$(echo "$release_json" | awk -v name="$asset_name" '
+          /^[[:space:]]*"name":/ {
+            gsub(/[",[:space:]]/, "", $2)
+            curr_name = $2
+          }
+          /^[[:space:]]*"id":/ {
+            gsub(/[",[:space:]]/, "", $2)
+            curr_id = $2
+          }
+          /^[[:space:]]*\}/ {
+            if (curr_name == name) {
+              print curr_id
+              exit
+            }
+          }
+        ')
+
+        if [[ -z "$asset_id" ]]; then
+            echo "Error: Asset ID for $asset_name not found in release info" >&2
+            return 1
+        fi
+
+        # 3. Download via API
+        local download_url="https://api.github.com/repos/${REPO}/releases/assets/${asset_id}"
+        if ! curl -fsSL -H "Accept: application/octet-stream" -u :"$GITHUB_TOKEN" -o "$dest" "$download_url"; then
+            echo "Error: Failed to download ${asset_name} via API" >&2
+            return 1
+        fi
     else
-        curl -fsSL -o "$dest" "$url"
+        # Public download fallback
+        local download_url
+        if [[ -n "${BASE_URL:-}" ]]; then
+            download_url="${BASE_URL}/${asset_name}"
+        else
+            download_url="https://github.com/${REPO}/releases/download/${version}/${asset_name}"
+        fi
+        if ! curl -fsSL -o "$dest" "$download_url"; then
+            echo "Error: Failed to download ${asset_name}" >&2
+            return 1
+        fi
     fi
 }
+
 
 
 # Global temp dir for cleanup trap
@@ -145,15 +194,8 @@ main() {
     TEMP_DIR="$(mktemp -d)"
     
     # Optional: Download checksums
-    local checksum_url
-    if [[ -n "${BASE_URL:-}" ]]; then
-        checksum_url="${BASE_URL}/checksums.sha256"
-    else
-        checksum_url="https://github.com/${REPO}/releases/download/${version}/checksums.sha256"
-    fi
-
     local has_checksums=false
-    if download_file "$checksum_url" "${TEMP_DIR}/checksums.sha256" 2>/dev/null; then
+    if download_file "checksums.sha256" "${TEMP_DIR}/checksums.sha256" 2>/dev/null; then
         has_checksums=true
         info "Checksums available for verification."
     else
@@ -163,18 +205,10 @@ main() {
     mkdir -p "$INSTALL_DIR"
 
     for asset_pair in "${ASSETS[@]}"; do
-        local asset_name="${asset_pair%%:*}"
-        local target_name="${asset_pair##*:}"
-        local download_url
-        if [[ -n "${BASE_URL:-}" ]]; then
-            download_url="${BASE_URL}/${asset_name}"
-        else
-            download_url="https://github.com/${REPO}/releases/download/${version}/${asset_name}"
-        fi
         local target_path="${INSTALL_DIR}/${target_name}"
 
         info "Downloading ${asset_name}..."
-        if ! download_file "$download_url" "${TEMP_DIR}/${asset_name}"; then
+        if ! download_file "$asset_name" "${TEMP_DIR}/${asset_name}"; then
             error "Failed to download ${asset_name}"
         fi
 

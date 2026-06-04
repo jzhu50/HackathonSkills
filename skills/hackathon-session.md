@@ -138,6 +138,21 @@ Baseline: <N> passing, <M> pre-existing failures
 
 #### N3. Implement
 
+**Specialized skill dispatch.** Before writing any code, check the task title and
+body for domain signals. If a match is found, call the corresponding skill first
+and use its output as the implementation guide throughout this task.
+
+| Signal in title or body | Call |
+|---|---|
+| `ui`, `component`, `page`, `screen`, `frontend`, `layout`, `design`, `responsive`, `navigation`, `dashboard`, `form`, `view` | `hackathon-frontend` |
+| `auth`, `login`, `signup`, `logout`, `oauth`, `jwt`, `token`, `session`, `password`, `protected`, `permission`, `role` | `hackathon-auth` |
+| `schema`, `migration`, `table`, `model`, `database`, `erd`, `create table`, `prisma model`, `drizzle`, `entity` | `hackathon-database-schema` |
+| `deploy`, `dockerfile`, `ci/cd`, `github actions`, `production`, `host`, `vercel`, `railway`, `fly`, `render` | `hackathon-deploy` |
+| `seed`, `demo data`, `fixture`, `populate`, `sample data`, `demo mode` | `hackathon-seed-demo-data` |
+
+Multiple signals may match — call all applicable skills in sequence.
+If no signals match, proceed with general implementation below.
+
 Reference `PLAN.md`, `SPECS.md`, and the issue body. When a design decision is
 unclear, take the simpler path and document it in an issue comment.
 

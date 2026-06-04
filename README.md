@@ -236,6 +236,13 @@ skills/
   hackathon-test.md        — runs test suite, reports expected vs actual + coverage
   hackathon-debug.md       — reproduces, fixes, and regression-tests a failure
   hackathon-grilling.md    — recursive interrogation until zero ambiguities (internal)
+  hackathon-frontend.md    — design system, component architecture, a11y, performance (internal)
+  hackathon-auth.md        — JWT/session/OAuth patterns and security traps (internal)
+  hackathon-database-schema.md — schema design, indexing, FK constraints (internal)
+  hackathon-deploy.md      — Dockerfile, CI/CD, env wiring, platform fast paths (internal)
+  hackathon-seed-demo-data.md  — realistic fixtures, demo mode toggle (internal)
+  hackathon-security-audit.md  — OWASP scan before every epic→main PR (internal)
+  hackathon-docs-demo-script.md — README + API reference + demo walkthrough (auto on project complete)
 hackathon.config.yml       — oversight gates, testing level, comments verbosity, parallelism
 make-claude-md.sh          — bootstrap script (installed as hackathon-bootstrap on Mac/Linux)
 make-claude-md.ps1         — bootstrap script (installed as hackathon-bootstrap on Windows)
@@ -343,11 +350,22 @@ accounts — GitHub won't let you approve your own PR.
 | `/hackathon-decompose` | Loops through ai-approved epics, creates tasks (with optional grilling + approval) |
 | `/hackathon-session` | Loops through ai-approved tasks, implements, opens PRs, optionally auto-merges |
 | `/hackathon-review` | Reviews one PR, posts findings, executes your decision (or returns verdict internally) |
-| `/hackathon-verify` | Auto-called as the last task of each epic — verifies E2E, merges if configured |
+| `/hackathon-verify` | Auto-called as the last task of each epic — verifies E2E, runs security audit, merges if configured |
 | `/hackathon-test` | Auto-called during tasks; also runnable by humans |
 | `/hackathon-debug` | Auto-called on regressions; also runnable for bug issues |
+| `/hackathon-docs-demo-script` | Auto-called when all epics close; also runnable manually before a demo |
 
-`hackathon-grilling` is called internally — not directly.
+**Auto-called internally (not triggered directly):**
+
+| Skill | When |
+|---|---|
+| `hackathon-grilling` | By setup/decompose when `grilling: true` |
+| `hackathon-frontend` | By session when task involves UI, components, pages, layouts |
+| `hackathon-auth` | By session when task involves auth, login, OAuth, JWT, permissions |
+| `hackathon-database-schema` | By session when task involves schema, migrations, data models |
+| `hackathon-deploy` | By session when task involves deployment, CI/CD, Docker, hosting |
+| `hackathon-seed-demo-data` | By session when task involves seed data, demo data, fixtures |
+| `hackathon-security-audit` | By verify before every epic→main PR |
 
 Using a different agent CLI? See `HARNESS.md`.
 

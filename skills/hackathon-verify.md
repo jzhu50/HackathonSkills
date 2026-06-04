@@ -95,7 +95,20 @@ describing the setup problem, add it to the epic's Child Issues, unassign, stop.
 
 ---
 
-## Step 4 — Verify each acceptance criterion
+## Step 4 — Security audit
+
+Call `hackathon-security-audit` on the epic branch. Review the returned findings report:
+
+- **CRITICAL findings:** do not open the PR. For each CRITICAL finding, create a `bug`
+  issue (labeled `needs-human-review`) with the finding details. Append to epic's
+  `## Child Issues`. Comment on the verify task listing the blocking issues. Change
+  verify task label back to `ai-approved`. Unassign. Stop.
+- **HIGH / MEDIUM findings:** note them in the PR body under `## Security notes`.
+  Do not block the PR.
+- **LOW findings:** create `needs-human-review` issues for each. Do not block the PR.
+- **All PASSED:** proceed normally, no additional PR note needed.
+
+## Step 4b — Verify each acceptance criterion
 
 For each criterion in the epic's **Acceptance Bar** section, verify it against the
 current state of the epic branch. This may involve:
@@ -236,10 +249,24 @@ For each failure:
 
 ---
 
+## Step 6 — Check if all epics are done
+
+After a successful merge (or after opening the PR if `epic_review.human_required: true`
+and the human has merged), list all open `epic`-labeled issues via the GitHub MCP.
+
+If **all epics are now closed** (none remaining open):
+- Call `hackathon-docs-demo-script` automatically.
+- This generates the README update, API reference, and demo walkthrough script.
+
+If epics remain open: skip this step and return to hackathon-session.
+
+---
+
 ## Rules
 
 - **Never open the epic→main PR without running verification.** Closed child tasks ≠ working epic.
 - **Always rebase onto main first.** The epic may be out of date with other merged epics.
 - **Never skip the test suite.**
+- **Never skip the security audit.** CRITICAL findings block the PR.
 - **File bugs as needs-human-review.** Human decides priority before the worker picks them up.
 - **Do not close the epic manually.** GitHub auto-closes it via `Closes #<epic-number>` in the PR body.

@@ -96,16 +96,10 @@ jobs:
         shell: bash
         run: |
           mkdir -p mock_bin
-          cat > mock_bin/${{ matrix.cli }} <<EOF
-#!/usr/bin/env bash
-echo "Mock ${{ matrix.cli }} called with args: \$@"
-EOF
-          chmod +x mock_bin/${{ matrix.cli }}
+          printf "#!/usr/bin/env bash\necho \"Mock ${{ matrix.cli }} called with args: \$@\"\n" > "mock_bin/${{ matrix.cli }}"
+          chmod +x "mock_bin/${{ matrix.cli }}"
           if [[ "${{ runner.os }}" == "Windows" ]]; then
-            cat > mock_bin/${{ matrix.cli }}.cmd <<EOF
-@echo off
-echo Mock ${{ matrix.cli }} called with args: %*
-EOF
+            printf "@echo off\necho Mock ${{ matrix.cli }} called with args: %%*\n" > "mock_bin/${{ matrix.cli }}.cmd"
             # Convert Unix path to Windows path for GITHUB_PATH
             MOCK_PATH=$(pwd -W)/mock_bin
             echo "$MOCK_PATH" >> $GITHUB_PATH
@@ -120,9 +114,9 @@ EOF
           hackathon-skills --cli ${{ matrix.cli }} -- test-arg
 
       - name: Cleanup server
-        if: always()
+        if: ${{ always() }}
         shell: bash
         run: |
           if [[ -n "$SERVER_PID" ]]; then
-            kill $SERVER_PID
+            kill "$SERVER_PID"
           fi

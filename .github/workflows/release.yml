@@ -47,9 +47,9 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           # GitHub's CDN can take a few seconds after release creation to serve assets.
-          # Retry up to 5 times with 10s gaps before failing.
+          # Retry up to 12 times with 10s gaps before failing.
           success=false
-          for i in 1 2 3 4 5; do
+          for i in {1..12}; do
             if bash install.sh --tag "${{ github.ref_name }}"; then
               success=true
               break
@@ -58,7 +58,7 @@ jobs:
             sleep 10
           done
           if [ "$success" = false ]; then
-            echo "FAIL: Installation failed after 5 attempts"
+            echo "FAIL: Installation failed after 12 attempts"
             exit 1
           fi
 
@@ -89,17 +89,20 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           # GitHub's CDN can take a few seconds after release creation to serve assets.
-          # Retry up to 5 times with 10s gaps before failing.
+          # Retry up to 12 times with 10s gaps before failing.
           $tag = "${{ github.ref_name }}"
           $success = $false
-          for ($i = 1; $i -le 5; $i++) {
-            & .\install.ps1 -Tag $tag
-            if ($LASTEXITCODE -eq 0) { $success = $true; break }
+          for ($i = 1; $i -le 12; $i++) {
+            pwsh -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Tag $tag
+            if ($LASTEXITCODE -eq 0) {
+              $success = $true
+              break
+            }
             Write-Host "Attempt $i failed - waiting 10s before retry..."
             Start-Sleep 10
           }
           if (-not $success) {
-            Write-Host "FAIL: Installation failed after 5 attempts"
+            Write-Host "FAIL: Installation failed after 12 attempts"
             exit 1
           }
 

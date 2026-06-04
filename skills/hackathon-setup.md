@@ -1,13 +1,12 @@
 ---
-description: Bootstrap a hackathon project — recursively interrogates the human until the plan is unambiguous, then creates GitHub labels and epic issues. Run once per hackathon.
-allowed-tools: mcp__github__*
+description: Bootstrap a hackathon project — reads config, optionally grills for clarity, proposes epics (with optional human approval), then creates GitHub labels and epic issues. Run once per hackathon.
+allowed-tools: mcp__github__*, Read
 ---
 
 # Skill: hackathon-setup
 
-**Run once per project.** This skill interrogates the human until every ambiguity in
-`PLAN.md` is resolved, then creates all GitHub labels, epic issues, and a tracking
-issue. Nothing is created until the plan is fully understood.
+**Run once per project.** Reads `hackathon.config.yml`, scopes epics from `PLAN.md`,
+and creates GitHub labels and epic issues. Gate behavior depends on config.
 
 Do not run if issues already exist — it will create duplicates.
 
@@ -28,55 +27,108 @@ Make all MCP calls **sequentially, not in parallel.**
 
 ---
 
+## Step 0 — Read config
+
+Read `hackathon.config.yml`. Extract and hold for the entire skill:
+- `gates.epic_breakdown.human_required` (default: `true`)
+- `gates.epic_breakdown.grilling` (default: `true`)
+- `quality.comments` (default: `verbose`)
+- `parallelism` (default: `false`)
+
+---
+
 ## Step 1 — Read the plan
 
-Read `PLAN.md` and `SPECS.md` (if it exists) via the GitHub MCP.
+Read `PLAN.md` and `SPECS.md` (if it exists).
 
-Extract: vision, demo goal, stack, core features (these become epics), out of scope,
-open questions.
-
----
-
-## Step 2 — Recursive interrogation
-
-Before creating a single issue, surface every ambiguity that would affect how epics
-are scoped, ordered, or implemented. Keep asking until you are genuinely confident
-that any agent could start working without asking a human.
-
-**How the loop works:**
-
-1. For each feature and for the plan as a whole, identify everything ambiguous,
-   contradictory, underspecified, or missing.
-2. Write all questions in one message — do not trickle them out one at a time.
-3. Wait for the human's answers.
-4. Incorporate the answers. Check: are there new ambiguities? Any questions still unresolved?
-5. If yes → repeat from step 1. If no → proceed to Step 3.
-
-**Never stop because you have "enough" questions — stop only when you have none.**
-A half-understood plan produces bad epics.
-
-**Types of ambiguity to surface:**
-
-- Done criteria: what does "done" look like for each feature, specifically enough
-  that an agent can verify it without asking a human?
-- Dependencies: which features must exist before others can start?
-- Priority and cuts: if time runs out, what gets dropped first?
-- Technical decisions still open: stack, library, and service choices
-- Environment requirements: native packages, build tools, OS-specific dependencies
-- Data and state: where does data live? Is it shared across machines?
-- Scope boundaries: for each feature, what is explicitly out of scope?
-- Integration points: which features share code, schemas, or API contracts?
-- Acceptance bar: what would cause a PR review to fail for each feature?
-- Test command: what command runs the full test suite? This is required.
-
-**When done interrogating**, summarise what you understood and ask: "Does this capture
-everything correctly?" If the human corrects anything, loop once more. Then proceed.
+Extract: vision, demo goal, stack, core features, out of scope, open questions.
 
 ---
 
-## Step 3 — Create labels
+## Step 2 — Grilling (conditional)
 
-Create labels one at a time via the GitHub MCP label tool.
+**If `grilling: true`:** call `hackathon-grilling` with context:
+`"epic breakdown for <project name from PLAN.md>"`.
+Use the returned brief when scoping epics in Step 3.
+
+**If `grilling: false`:** proceed immediately with best-guess interpretation of PLAN.md.
+Do not ask any questions.
+
+---
+
+## Step 3 — Scope epics
+
+Using PLAN.md, SPECS.md, and the grilling brief (if obtained):
+
+**If `parallelism: false`:** scope epics in priority/dependency order. Each epic may
+depend on earlier epics. This is the standard sequential structure.
+
+**If `parallelism: true`:** structure epics into waves for maximum parallel execution:
+
+  **Wave 1 — Independent foundations.**
+  Each foundation epic builds one component independently, using stubs or hardcoded
+  contracts wherever it would normally depend on another component.
+  Examples: "Backend API (with in-memory stub data layer)", "Frontend (with hardcoded
+  fixture data)", "Auth service (with stub token issuance)".
+  Wave 1 epics have no dependencies on each other.
+
+  **Wave 2 — Integration epics.**
+  Each integration epic wires two or more Wave 1 foundations together, replacing stubs
+  with real connections.
+  Examples: "Wire backend to real database", "Connect frontend to live API", "Integrate
+  auth tokens into backend middleware".
+  Wave 2 epics depend only on the Wave 1 epics they integrate.
+
+  **Wave 3 — End-to-end verify.**
+  One epic that verifies the fully integrated system end-to-end.
+  Depends on all Wave 2 epics.
+
+  When scoping Wave 1 epics, explicitly define the stub contract each uses — this
+  becomes the integration target for Wave 2. Include the stub contract in the epic's
+  Context section.
+
+For every epic regardless of wave strategy, define:
+- A specific done criterion an agent can verify without asking a human
+- Dependencies (other epic numbers that must close first)
+- Acceptance bar (what would cause a PR review to fail)
+
+---
+
+## Step 4 — Human approval loop (conditional)
+
+**If `human_required: true`:**
+
+Present the proposed epics in chat. Use this format:
+
+```
+Proposed epics:
+
+Epic 1: <title>
+  Goal: <done criterion>
+  Wave: <1 / 2 / 3 — or omit if parallelism: false>
+  Depends on: <epic numbers or "none">
+  Acceptance bar: <what causes PR failure>
+
+Epic 2: <title>
+  ...
+
+Does this look right? Say "looks good" to proceed, or describe any changes.
+```
+
+Wait for the human's response.
+
+- If **"looks good"** (or equivalent) → proceed to Step 5.
+- If **changes requested** → apply changes to the epic plan, then present the updated
+  plan again with the same format. Loop until the human explicitly approves.
+  Never proceed to GitHub without explicit approval.
+
+**If `human_required: false`:** skip this step entirely.
+
+---
+
+## Step 5 — Create labels
+
+Create labels one at a time via the GitHub MCP.
 If the tool is missing: skip silently — GitHub auto-creates labels on first use.
 
 Labels needed: `needs-human-review`, `ai-approved`, `in-progress`, `blocked`,
@@ -84,9 +136,9 @@ Labels needed: `needs-human-review`, `ai-approved`, `in-progress`, `blocked`,
 
 ---
 
-## Step 4 — Create epic issues
+## Step 6 — Create epic issues
 
-For each feature in the plan, create one GitHub issue — **one at a time, sequentially**.
+For each approved epic, create one GitHub issue — **one at a time, sequentially**.
 
 **Title:** `[Epic] <feature name>`
 
@@ -96,9 +148,13 @@ For each feature in the plan, create one GitHub issue — **one at a time, seque
 <done criteria — specific enough for an agent to verify without asking>
 
 ## Context
-<everything from PLAN.md, SPECS.md, and the interrogation that affects implementation:
-stack choices, constraints, shared infrastructure, environment requirements,
-decisions already made, integration points with other epics>
+<everything from PLAN.md, SPECS.md, grilling brief, and wave strategy that affects
+implementation: stack choices, constraints, shared infrastructure, environment
+requirements, decisions already made, integration points with other epics.
+If parallelism: true, include the stub contract this epic uses or provides.>
+
+## Wave
+<Wave 1 / Wave 2 / Wave 3 — omit if parallelism: false>
 
 ## Dependencies
 <other epics that must be closed before this can be decomposed, as #<n>, or "None">
@@ -113,13 +169,14 @@ decisions already made, integration points with other epics>
 <!-- hackathon-decompose fills this in. Do not edit manually. -->
 ```
 
-**Labels:** `epic`, `needs-human-review`
+**Labels:** `epic`, `ai-approved`
 
-Create in priority order (dependency-first).
+Create in wave order (Wave 1 first, then Wave 2, then Wave 3).
+Within a wave, create in any order.
 
 ---
 
-## Step 5 — Create tracking issue
+## Step 7 — Create tracking issue
 
 **Title:** `[Project] Tracking — <project name>`
 
@@ -135,6 +192,9 @@ Create in priority order (dependency-first).
 - [ ] #<n> [Epic] <name>
 - [ ] #<n> [Epic] <name>
 
+## Wave Structure
+<wave assignments if parallelism: true, or "Sequential" if false>
+
 ## Dependency Map
 <inter-epic dependencies>
 
@@ -149,34 +209,41 @@ Create in priority order (dependency-first).
 
 ---
 
-## Step 6 — Report
+## Step 8 — Report
 
+**If `comments: verbose`:**
 ```
 ✓ Setup complete for <project name>
 
 Epics created (<N> total):
-  #1 · [Epic] <feature>
+  #1 · [Epic] <feature> [Wave 1]
   ...
 
 Tracking issue: #<N+1>
 
 Next steps:
-1. Review each epic issue (#1–#N).
-2. Add `ai-approved` to any epic you are satisfied with.
-3. Run /hackathon-decompose to break approved epics into tasks.
+1. Run /hackathon-decompose to break epics into tasks.
+   (Epics are already ai-approved — no label step needed.)
 
 Recommended: enable branch protection on main
 (Settings → Branches → Require a pull request before merging)
+```
+
+**If `comments: minimal`:**
+```
+Setup complete. <N> epics created. Tracking issue: #<N+1>.
 ```
 
 ---
 
 ## Rules
 
-- **Never** create issues before the interrogation loop completes.
+- **Never** create issues before grilling completes (if grilling is on).
+- **Never** create issues before human approval (if human_required is on).
 - **Never** run if issues already exist — check first.
 - **Always** create issues sequentially, one at a time.
-- **Always** summarise your understanding and get confirmation before Step 3.
+- **When human_required: true and changes requested:** apply changes and re-present.
+  Never proceed without explicit "looks good" or equivalent.
 - **Label tool missing:** skip silently; GitHub auto-creates on first use.
 - **Issue creation fails:** report it, continue with the rest.
 - **MCP auth error:** check PAT has `repo` scope.

@@ -1,5 +1,5 @@
 ---
-description: Run the test suite and report results with expected vs actual output per test. Called by hackathon-session at baseline (before implementation) and throughout implementation. Also callable by humans.
+description: Run the test suite and report results with expected vs actual output per test. Respects testing config (required/recommended/skip). Called by hackathon-session at baseline and throughout implementation. Also callable by humans.
 allowed-tools: mcp__github__*, Read, Bash
 ---
 
@@ -24,6 +24,18 @@ Make all MCP calls **sequentially, not in parallel.**
 - `hackathon-session` at start of each task (mode: `baseline`)
 - `hackathon-session` during or after implementation (mode: `check`)
 - Human: "Run the tests", "Check what's failing", "What's the test status"
+
+---
+
+## Step 0 — Check config
+
+Read `hackathon.config.yml`. Extract `quality.testing` (default: `required`).
+
+**If `testing: skip`:** return immediately:
+```
+Test run skipped — testing: skip is set in hackathon.config.yml
+```
+Do not run the suite. Do not report coverage.
 
 ---
 
@@ -79,7 +91,17 @@ NEW FAILURES (were passing at baseline):
 
 PRE-EXISTING FAILURES (also failing at baseline):
   <list of test names — not your responsibility unless the task covers them>
+
+[If testing: required and mode is "check":]
+COVERAGE GAPS:
+  <list of code paths in new/modified files that are not exercised by any test>
+  <If none: "Full path coverage achieved.">
 ```
+
+**Coverage gaps** are reported as a distinct section only when `testing: required`.
+The caller treats coverage gaps the same as test failures — they must be resolved
+before a PR can be opened. If `testing: recommended` or `testing: skip`, omit this
+section entirely.
 
 ---
 

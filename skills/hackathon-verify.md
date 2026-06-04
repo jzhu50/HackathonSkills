@@ -33,7 +33,11 @@ Make all MCP calls **sequentially, not in parallel.**
 
 ---
 
-## Step 0 — Already claimed by hackathon-session
+## Step 0 — Read config and confirm claim
+
+Read `hackathon.config.yml`. Extract:
+- `gates.epic_review.human_required` (default: `true`)
+- `quality.comments` (default: `verbose`)
 
 The verify task issue is already `in-progress` with you as assignee when this
 skill starts. Proceed directly to Step 1.
@@ -107,7 +111,7 @@ For each criterion, record: PASS or FAIL and a one-line note.
 
 ### All criteria pass and suite is green
 
-1. Comment on the verify task:
+1. **If `comments: verbose`:** comment on the verify task:
    ```
    agent: epic verified — all acceptance criteria met
 
@@ -117,6 +121,7 @@ For each criterion, record: PASS or FAIL and a one-line note.
    - [PASS] <criterion 2>
    ...
    ```
+   **If `comments: minimal`:** comment: `agent: epic verified — all criteria met, suite green`
 
 2. Open a PR via the GitHub MCP:
    - Title: `[Epic #<n>] <epic title> — ready to merge`
@@ -141,13 +146,35 @@ For each criterion, record: PASS or FAIL and a one-line note.
 
 3. Change the verify task label to `in-review` via the GitHub MCP.
 
-4. Comment on the **epic** issue:
+4. **If `epic_review.human_required: true`:**
+
+   **If `comments: verbose`:** comment on the **epic** issue:
    ```
    agent: epic verified — PR #<pr-number> opened for merge to main.
    Human: review and merge the PR to close this epic.
    ```
+   **If `comments: minimal`:** skip this comment.
 
-5. Stop. Return to hackathon-session (which will continue its loop to the next task).
+   Stop. Return to hackathon-session.
+
+5. **If `epic_review.human_required: false`:**
+
+   Merge the PR via the GitHub MCP (squash preferred). If squash is disabled,
+   retry with a standard merge commit.
+
+   If merge is rejected by branch protection requiring approvals that this account
+   cannot provide: comment `agent: cannot auto-merge — branch protection requires
+   an approval this account cannot give`, leave `in-review`, escalate to human.
+
+   Confirm the epic issue was auto-closed (via `Closes #<epic-number>` in the PR body).
+   If not, close it manually via the GitHub MCP.
+
+   Remove the `in-review` label from the (now closed) verify task.
+
+   **If `comments: verbose`:** comment on the epic: `agent: epic merged to main — PR #<pr-number>`
+   **If `comments: minimal`:** skip.
+
+   Stop. Return to hackathon-session.
 
 ### Failures found (test failures or unmet criteria)
 

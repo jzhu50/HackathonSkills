@@ -1,15 +1,20 @@
 ---
-description: Review one specified PR — read the diff, check acceptance criteria, post detailed findings, and present a clear verdict to the human. The human then tells Claude to merge or request changes.
+description: Review one PR — read the diff, check acceptance criteria, post findings, and either present verdict to human or return it to the calling skill. Triggered by human or called internally by hackathon-session when code_review.human_required is false.
 allowed-tools: mcp__github__*
 ---
 
 # Skill: hackathon-review
 
-**Human-triggered, one PR per invocation.** Review the specified PR against its
-acceptance criteria, post detailed findings as a comment, and present a clear
-summary. The human then decides — and tells Claude to merge or request changes.
+**One PR per invocation.** Reviews the specified PR against its acceptance criteria,
+posts findings, and either presents the verdict to the human (human-triggered mode)
+or returns the verdict to the calling skill (internal mode).
 
-This skill is always triggered manually. Never call it automatically.
+**Human-triggered mode:** human invokes this skill directly. Skill presents verdict
+and waits for the human's merge/reject decision.
+
+**Internal mode:** called by `hackathon-session` when `code_review.human_required: false`.
+Skill returns the verdict (`APPROVE` or `REQUEST CHANGES: [list]`) to the session
+instead of waiting for a human. Session acts on the verdict.
 
 ---
 
@@ -23,7 +28,18 @@ Make all MCP calls **sequentially, not in parallel.**
 
 ## Trigger
 
-"Review PR #X", "Review the open PRs", or any instruction from the human to review.
+**Human-triggered:** "Review PR #X", "Review the open PRs", or any instruction from the human to review.
+**Internal:** called by `hackathon-session` with a specific PR number and `mode: internal`.
+
+---
+
+## Phase 0 — Determine mode and read config
+
+Read `hackathon.config.yml`. Extract:
+- `quality.comments` (default: `verbose`)
+
+**Mode:** if called by a human → human-triggered mode.
+If called internally by hackathon-session → internal mode.
 
 ---
 
@@ -33,8 +49,10 @@ Read sequentially via the GitHub MCP:
 1. `AGENTS.md` — coordination protocol
 2. `PLAN.md` — vision, done criteria, acceptance bar
 
-If the human specified a PR number: use that.
+**Human-triggered:** if the human specified a PR number, use that.
 If not: list all `in-review` issues via the GitHub MCP and ask which to review.
+
+**Internal mode:** PR number is provided by the caller. Use it directly.
 
 ---
 
@@ -93,7 +111,7 @@ its stated acceptance criteria or introduce clear defects.
 
 ## Phase 3 — Post findings
 
-Post a detailed review comment on the **PR** via the GitHub MCP:
+**If `comments: verbose`:** post a detailed review comment on the **PR** via the GitHub MCP:
 
 ```
 ## Review findings
@@ -118,11 +136,34 @@ REQUEST CHANGES — <N> issues must be fixed before merge:
 2. ...
 ```
 
+**If `comments: minimal`:** post only the verdict line on the PR:
+```
+agent: APPROVE — all criteria met.
+ — or —
+agent: REQUEST CHANGES — <N> issues: 1. <issue> 2. <issue> ...
+```
+
 ---
 
-## Phase 4 — Present to human
+## Phase 4 — Return verdict or present to human
 
-Summarise your findings clearly:
+**Internal mode:**
+
+Return the verdict directly to the calling skill (hackathon-session). Do not wait.
+Format:
+```
+APPROVE
+ — or —
+REQUEST CHANGES:
+1. <specific thing to fix — file:line + what to change>
+2. ...
+```
+
+Stop. The session will act on this verdict.
+
+**Human-triggered mode:**
+
+Summarise findings clearly:
 
 ```
 Review complete for PR #<n> (<issue title>).

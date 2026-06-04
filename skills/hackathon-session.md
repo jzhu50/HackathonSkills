@@ -1,5 +1,5 @@
 ---
-description: Loop through all ai-approved tasks — claim, test, implement, debug if needed, open PR. Runs until no ai-approved tasks remain. Context grows across tasks.
+description: Loop through all ai-approved tasks — claim, test, implement, debug if needed, optionally pause for human approval, open PR, optionally auto-review and merge. Runs until no ai-approved tasks remain. Context grows across tasks.
 allowed-tools: mcp__github__*, Read, Write, Edit, Bash
 ---
 
@@ -7,10 +7,10 @@ allowed-tools: mcp__github__*, Read, Write, Edit, Bash
 
 **One growing context, all ai-approved tasks.** This skill orients once, then loops:
 claim an `ai-approved` task → run baseline tests → implement → run tests throughout →
-debug if tests fail unexpectedly → open PR → repeat until no tasks remain.
+debug if tests fail unexpectedly → apply task_completion gate → open PR → apply
+code_review gate → repeat until no tasks remain.
 
-The context accumulates across tasks. This is intentional — the human controls the
-pace by deciding which tasks to approve.
+Gate behavior depends on `hackathon.config.yml`.
 
 ---
 
@@ -25,6 +25,16 @@ Make all MCP calls **sequentially, not in parallel.**
 ## Trigger
 
 "Go", "Work on tasks", "Start implementing", or any instruction to do project work.
+
+---
+
+## Phase 0 — Read config
+
+Read `hackathon.config.yml`. Extract and hold for the entire session:
+- `gates.task_completion.human_required` (default: `true`)
+- `gates.code_review.human_required` (default: `true`)
+- `quality.testing` (default: `required`)
+- `quality.comments` (default: `verbose`)
 
 ---
 
@@ -73,8 +83,7 @@ List all `ai-approved` issues with no assignee via the GitHub MCP.
 | Verify task title | Verify epic | Call hackathon-verify |
 | None of the above | New task | Path N — new task |
 
-Pick **at random** from the available issues — not the oldest. If all issues are
-one type, pick from that type.
+Pick **at random** from the available issues — not the oldest.
 
 **Claim the chosen issue** (three sequential MCP calls, no other actions between):
 1. Add yourself as assignee
@@ -106,45 +115,71 @@ next issue.
 
 #### N2. Run baseline tests
 
-Before writing any code, run the full test suite to establish what was already
-broken before you touched anything:
+**If `testing: skip`:** skip this step entirely. Record baseline as "skipped".
+
+**Otherwise:** before writing any code, run the full test suite:
 
 ```bash
 <test command from PLAN.md>
 ```
 
 Call `hackathon-test` with mode `baseline`. Record which tests were passing and
-which were already failing. **Do not treat pre-existing failures as your problem**
+which were already failing. Do not treat pre-existing failures as your problem
 unless the task explicitly asks you to fix them.
 
-Comment on the issue and update the issue body via the GitHub MCP to add a `## Status` section:
+**If `comments: verbose`:** comment on the issue and update the issue body to add:
 ```
 ## Status
 Branch: <issue-number>-<short-slug>
 Baseline: <N> passing, <M> pre-existing failures
 ```
 
+**If `comments: minimal`:** skip the baseline comment.
+
 #### N3. Implement
 
 Reference `PLAN.md`, `SPECS.md`, and the issue body. When a design decision is
 unclear, take the simpler path and document it in an issue comment.
 
-**As you implement, run tests progressively.** After each meaningful piece of work:
+**If `testing: skip`:** implement without running tests. Skip all test steps below.
+
+**Otherwise — run tests progressively.** After each meaningful piece of work:
 
 ```bash
 <test command>
 ```
 
-For each test, note:
+For each run, note:
 - What you expected it to show
 - What actually happened
 
 If a test that was **passing at baseline** is now **failing**: stop implementing and
 call `hackathon-debug`. Do not open a PR over a regression you introduced.
 
-If a test is failing that was **already failing at baseline**: note it but continue.
+If a test was **already failing at baseline**: note it but continue.
 
-#### N4. Capture discovered scope
+#### N4. Write and verify tests
+
+**If `testing: skip`:** skip this step.
+
+**If `testing: recommended`:** tests must cover the main logic paths of all new code.
+Missing edge-case coverage should be noted but is not blocking.
+
+**If `testing: required`:** tests must achieve full path coverage of all new code —
+every branch, every code path must be exercised. This is a hard stop before proceeding.
+
+  After writing tests, run the suite:
+  ```bash
+  <test command>
+  ```
+
+  Check that:
+  1. All new tests pass
+  2. No previously passing tests regressed (call `hackathon-debug` if so)
+  3. Coverage is complete (for `required`) — if gaps exist, write more tests and
+     re-run. Do not proceed until coverage is satisfactory.
+
+#### N5. Capture discovered scope
 
 When you find work outside this issue, create an issue via the GitHub MCP:
 ```
@@ -153,19 +188,46 @@ Labels: needs-human-review
 Body: ## Parent / ## Goal / ## Context / ## Acceptance Criteria
 ```
 
-#### N5. Run the full test suite before PR
+#### N6. Run the full test suite before close-out
 
+**If `testing: skip`:** skip this step.
+
+**Otherwise:**
 ```bash
 <test command>
 ```
 
-All tests that were passing at baseline must still be passing. Document the results
-explicitly in the PR body — include the baseline count, current count, and any
-regressions with their test names. If a regression remains after debugging, note it
-explicitly — do not hide it. The PR body must answer: "what was passing before, what
-is passing now, and what changed?"
+All tests that were passing at baseline must still be passing. If any are not,
+call `hackathon-debug` before proceeding.
 
-#### N6. Close out → Phase 3
+#### N7. Task completion gate (conditional)
+
+**If `task_completion.human_required: false`:** skip to Phase 3.
+
+**If `task_completion.human_required: true`:**
+
+Present completed work in chat:
+```
+Task #<n> implementation complete. Ready for your review before I open the PR.
+
+What was built: <2–3 sentences>
+Files changed: <list>
+Tests: <N passing> (<coverage note if testing: required>)
+Discovered scope: <new issues created, or "none">
+Anything to know: <gotchas or "none">
+
+Say "looks good" to open the PR, or describe any changes needed.
+```
+
+Wait for the human's response.
+
+- If **"looks good"** (or equivalent) → proceed to Phase 3.
+- If **changes requested** → apply the changes, then:
+  - If `testing` is not `skip`: re-run the full test suite. If new tests were written
+    to satisfy the changes, verify they pass before continuing.
+  - Present the updated summary again with the same format.
+  - Loop until the human explicitly approves.
+  Never open a PR without explicit approval.
 
 ---
 
@@ -197,18 +259,19 @@ existing branch (do not open a new PR).
 
 1. Read the comment and the PR review comments for the exact changes needed.
 2. Check out the existing branch.
-3. Run the full test suite to establish the current baseline before touching anything:
-   ```bash
-   <test command from PLAN.md>
-   ```
-   Record which tests are passing now — this is your pre-fix baseline.
+3. **If `testing` is not `skip`:** run the full test suite to establish the current
+   baseline before touching anything. Record which tests are passing now.
 4. Implement only the requested changes — do not re-implement the whole feature.
-5. Run the full test suite. All tests passing at the pre-fix baseline must still pass.
-6. Push to the existing branch.
-7. Comment on PR: `agent: changes implemented — re-requesting review`
-8. Change issue label back to `in-review`.
-9. Comment on issue: what was fixed, test results before and after.
-10. Continue loop.
+5. **If `testing` is not `skip`:** run the full test suite. All tests passing at the
+   pre-fix baseline must still pass. If new tests were required by the feedback,
+   verify they pass.
+6. **If `task_completion.human_required: true`:** present the fixes in chat before
+   pushing, using the same approval loop as N7. Loop until approved.
+7. Push to the existing branch.
+8. Comment on PR: `agent: changes implemented — re-requesting review`
+9. Change issue label back to `in-review`.
+10. Comment on issue: what was fixed, test results before and after.
+11. Continue loop.
 
 ---
 
@@ -224,20 +287,20 @@ existing branch (do not open a new PR).
 2. Open a PR via the GitHub MCP:
    - Title: same as the issue title
    - Body: `Closes #<issue number>` on its own line, then a 2–3 sentence summary
+     including test results
    - Base: the **epic branch** (e.g. `epic-<n>-<slug>`) — NOT main
 
 3. Change the issue label to `in-review` via the GitHub MCP.
 
-4. Update the issue body via the GitHub MCP — add or update the `## Status` section:
+4. **If `comments: verbose`:** update the issue body to add or update `## Status`:
    ```
    ## Status
    Branch: <branch-name>
    PR: #<number> (base: epic-<n>-<slug>)
-   Tests: <N passing at baseline> → <N passing now> (<any regressions noted in PR>)
+   Tests: <N passing at baseline> → <N passing now>
    New issues: <list or "none">
    ```
-
-5. Comment on the issue:
+   Comment on the issue:
    ```
    agent: done — PR #<number> open for review
 
@@ -249,7 +312,29 @@ existing branch (do not open a new PR).
    Reviewers should know: <gotchas or "none">
    ```
 
-6. Return to Phase 2 — Task loop.
+   **If `comments: minimal`:** comment on the issue:
+   ```
+   agent: done — PR #<number>
+   ```
+
+---
+
+## Phase 3b — Code review gate
+
+**If `code_review.human_required: true`:**
+Leave the PR in `in-review`. Stop here and return to Phase 2.
+The human will trigger `hackathon-review` when ready.
+
+**If `code_review.human_required: false`:**
+Immediately call `hackathon-review` internally for this PR.
+
+- If verdict is **APPROVE** → merge the PR via the GitHub MCP (squash preferred).
+  Confirm the issue was auto-closed. Remove the `in-review` label.
+  Return to Phase 2.
+
+- If verdict is **REQUEST CHANGES** → apply every requested fix on the existing
+  branch. If `testing` is not `skip`, re-run the full suite and verify it passes.
+  Push. Call `hackathon-review` again. Loop until the verdict is APPROVE.
 
 ---
 
@@ -268,8 +353,7 @@ updates) and that comment is more than 30 minutes old. If any stalled issues exi
 
 Only proceed to the report below if no stalled tasks exist.
 
-When the task list is empty and no stalled tasks, report:
-
+**If `comments: verbose`:**
 ```
 Session complete. No more ai-approved tasks.
 
@@ -280,6 +364,11 @@ Blocked tasks: <count>
 Next steps for the human:
 - Review open PRs with hackathon-review
 - Approve more tasks with `ai-approved` label to continue implementation
+```
+
+**If `comments: minimal`:**
+```
+Session complete. PRs open: <list>. Blocked: <count>.
 ```
 
 Stop.
@@ -301,7 +390,7 @@ Branch: <branch-name>
 Done so far: <what's complete>
 Remaining: <what's left>
 Next agent should: <file paths, where to pick up, anything non-obvious>
-Baseline test state: <what was passing/failing at start>
+Baseline test state: <what was passing/failing at start, or "skipped">
 ```
 
 ---
@@ -311,8 +400,10 @@ Baseline test state: <what was passing/failing at start>
 - **Never commit to main or the epic branch directly.** Always branch.
 - **Never open a PR against main** (except the verify task which opens the epic→main PR).
 - **Never close an issue without a PR.**
-- **Never let a regression go undetected.** Run baseline tests before starting.
+- **Never let a regression go undetected** (unless `testing: skip`). Run baseline tests before starting.
 - **Debug before PR if tests regressed.** Call hackathon-debug automatically.
 - **Never edit PLAN.md in a task branch.** Create a plan-update issue instead.
 - **Never fire MCP calls in parallel.**
 - **Never let discovered scope stay uncaptured.** Issue first, then continue.
+- **When task_completion.human_required: true and changes requested:** apply changes,
+  re-run tests, verify they pass, then re-present. Never open PR without explicit approval.

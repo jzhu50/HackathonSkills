@@ -24,36 +24,35 @@ The coordination primitives are:
 
 ---
 
-## Human-in-the-loop workflow
+## Oversight configuration
 
-This project uses a human review gate between every major AI step.
+All human-in-the-loop gates are governed by `hackathon.config.yml` at the repo root.
+Read this file at the start of every skill. Missing file or missing keys default to
+maximum oversight (all gates `true`, `testing: required`, `comments: verbose`).
 
-```
-Human fills PLAN.md
-       ↓
-hackathon-setup  →  epics created (needs-human-review)
-       ↓
-Human reviews each epic → labels ai-approved
-       ↓
-hackathon-decompose  →  tasks created (needs-human-review)
-       ↓
-Human reviews each task → labels ai-approved
-       ↓
-hackathon-session  →  tasks implemented → PRs opened (in-review)
-       ↓
-Human triggers hackathon-review  →  AI posts findings
-       ↓
-Human decides → tells Claude to merge or request changes
-       ↓
-On request-changes: task returns to ai-approved for fixes
-On merge: epic branch accumulates merged tasks
-       ↓
-Last task per epic is verify → opens PR: epic branch → main
-       ↓
-Human reviews and merges the epic PR
-```
+The gates and what they control:
 
-**No AI agent merges anything without explicit human instruction.**
+| Gate | `true` (default) | `false` |
+|---|---|---|
+| `epic_breakdown.human_required` | Show proposed epics in chat, wait for approval before GitHub | Create epics on GitHub immediately |
+| `epic_breakdown.grilling` | Call `hackathon-grilling` before scoping epics | Skip interrogation, best-guess scoping |
+| `task_breakdown.human_required` | Show proposed tasks in chat, wait for approval before GitHub | Create tasks on GitHub immediately |
+| `task_breakdown.grilling` | Call `hackathon-grilling` before decomposing each epic | Skip interrogation, best-guess decomposition |
+| `task_completion.human_required` | Show completed work in chat, wait for approval before opening PR | Open PR immediately after tests pass |
+| `code_review.human_required` | Human triggers `hackathon-review` and decides merge/changes | Session auto-reviews and merges; loops until clean |
+| `epic_review.human_required` | Human reviews and merges epic→main PR | Auto-merge on clean verify; failures always escalate |
+
+**When `human_required: true`:** the skill presents its output in chat and waits for
+approval before writing to GitHub. If the human requests changes, apply them, then
+loop back for approval again. GitHub receives only approved work.
+
+**When `human_required: false` at every gate:** a single `/hackathon-goal` invocation
+runs the full pipeline end-to-end without pausing. Any failure (test regression,
+verify failure) escalates to human regardless of config.
+
+**Merging:** `code_review.human_required: false` enables auto-merge of task PRs.
+`epic_review.human_required: false` enables auto-merge of epic→main PRs.
+Both default to `true` — AI does not merge without explicit permission unless configured.
 
 ---
 
@@ -74,18 +73,21 @@ permission prompt and require a full retry cycle.
 
 | Label | Meaning |
 |---|---|
-| `needs-human-review` | AI produced output waiting for human review and approval |
-| `ai-approved` | Human approved — AI can proceed with this issue |
+| `needs-human-review` | Used only for bug issues filed during verify and discovered-scope issues — always requires human review regardless of config |
+| `ai-approved` | Ready for an agent to claim and work |
 | `in-progress` | Actively being worked — has an assignee |
 | `blocked` | Cannot proceed — comment on the issue explains why |
-| `in-review` | PR is open and waiting for human to trigger AI review |
+| `in-review` | PR is open and waiting for review/merge |
 | `epic` | Parent container — work happens in child task issues |
 | `bug` | Something is broken — routed to hackathon-debug |
 
+**Note:** when `human_required: true` gates are on, human approval happens in chat
+before issues are created. Issues therefore land on GitHub already labeled `ai-approved`,
+not `needs-human-review`. The `needs-human-review` label is reserved for bug issues
+and discovered scope that always require human judgment regardless of config.
+
 An issue has exactly one of: `needs-human-review`, `ai-approved`, `in-progress`,
-`blocked`, `in-review`. `epic`, `bug`, and `blocked` are additive — `blocked` may
-coexist with `needs-human-review` on tasks that have an unmet dependency AND still
-need human approval before work begins.
+`blocked`, `in-review`. `epic`, `bug`, and `blocked` are additive.
 
 `in-review` means exactly one thing: a PR is open and unmerged. Do not apply it
 in any other situation.

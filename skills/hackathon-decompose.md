@@ -1,14 +1,13 @@
 ---
-description: Loop through all ai-approved epics and break each into concrete tasks with needs-human-review. Creates the epic branch and a mandatory verify task per epic. Run after human approves epics.
-allowed-tools: mcp__github__*, Bash
+description: Loop through all ai-approved epics and break each into concrete tasks. Reads config for grilling and human approval gates. Creates the epic branch and a mandatory verify task per epic. Run after setup.
+allowed-tools: mcp__github__*, Bash, Read
 ---
 
 # Skill: hackathon-decompose
 
-**One growing context, all ai-approved epics.** This skill loops through every epic
-labeled `ai-approved` whose dependencies are met, decomposes it into tasks, and
-continues until none remain. Tasks are created with `needs-human-review` — a human
-must approve them before the task worker can pick them up.
+**One growing context, all ai-approved epics.** Loops through every epic labeled
+`ai-approved` whose dependencies are met, decomposes it into tasks, and continues
+until none remain. Gate behavior depends on `hackathon.config.yml`.
 
 ---
 
@@ -23,7 +22,16 @@ Make all MCP calls **sequentially, not in parallel.**
 ## Trigger
 
 - "Decompose the epics", "Break down the approved epics", "Create tasks"
-- Or any instruction to decompose after human has approved epics.
+- Or any instruction to decompose after setup has run.
+
+---
+
+## Phase 0 — Read config
+
+Read `hackathon.config.yml`. Extract and hold for the entire skill:
+- `gates.task_breakdown.human_required` (default: `true`)
+- `gates.task_breakdown.grilling` (default: `true`)
+- `quality.comments` (default: `verbose`)
 
 ---
 
@@ -43,7 +51,6 @@ Read sequentially via the GitHub MCP:
 
 Then list all open `epic`-labeled issues:
 - **Decomposable:** labeled `ai-approved`, AND every issue in `## Dependencies` is closed
-- **Skip:** labeled `needs-human-review` (awaiting human approval)
 - **Skip:** labeled `in-progress` (already decomposed or being decomposed)
 - **Skip:** dependencies still open
 
@@ -53,7 +60,7 @@ If no decomposable epics exist: report state and stop.
 
 ## Phase 2 — Decompose loop
 
-Repeat for each decomposable epic (pick in dependency order, earliest deps first):
+Repeat for each decomposable epic (Wave 1 first, then Wave 2, then Wave 3):
 
 ### Step 0 — Claim the epic
 
@@ -74,30 +81,34 @@ git checkout -b epic-<n>-<slug>
 git push -u origin epic-<n>-<slug>
 ```
 
-Post a comment on the epic via the GitHub MCP:
-```
-agent: epic branch created — epic-<n>-<slug>
-```
+**If `comments: verbose`:** post on the epic: `agent: epic branch created — epic-<n>-<slug>`
+**If `comments: minimal`:** skip this comment.
 
 ### Step 2 — Load context
 
-Read all of the following via the GitHub MCP before forming any tasks:
+Read all of the following via the GitHub MCP before grilling or forming tasks:
 
 1. The epic issue itself — full body, all comments
 2. `SPECS.md` if it exists — data models, routes, UI flows relevant to this epic
 3. Any issues referenced in the epic body (linked as `#X`)
 4. Existing code relevant to this epic (via `get_file_contents` or `get_repository_tree`)
 
-(`PLAN.md` was already loaded in Phase 1 — do not re-fetch it.)
+(`PLAN.md` and `AGENTS.md` were already loaded in Phase 1.)
 
-Do not start decomposing until you have read all of the above.
+### Step 3 — Grilling (conditional)
 
-### Step 3 — Identify tasks
+**If `grilling: true`:** call `hackathon-grilling` with context:
+`"task breakdown for epic #<n>: <epic title>"`.
+Use the returned brief when identifying tasks in Step 4.
+
+**If `grilling: false`:** proceed immediately. Make best-guess decisions on ambiguities.
+
+### Step 4 — Identify tasks
 
 A good task is:
 - **Completable in one agent session** (a few hours of focused work)
 - **Has a single clear output** — a file, a route, a component, a passing test
-- **Has all the context needed to start cold** — the next agent reads only the issue
+- **Has all context needed to start cold** — the next agent reads only the issue
   and the linked PLAN.md/SPECS.md sections, nothing else
 - **Has clear dependencies** — you know exactly what must be done before it can start
 
@@ -111,15 +122,47 @@ Common decomposition patterns:
 - **Happy path first:** core feature end-to-end → then edge cases → then polish
 - **Vertical slices:** one thin slice (data + API + UI) per task
 
-**Every non-trivial feature must have a test task** (or test criteria folded into
-the implementation task). Every task's acceptance criteria must include the testing bar.
+**Every non-trivial feature must have test criteria** folded into each implementation
+task's Acceptance Criteria.
 
-**Reserve the last task slot for the mandatory verify task** (Step 4 below).
+**Reserve the last task slot for the mandatory verify task** (Step 5 below).
 
-### Step 4 — Create the mandatory verify task
+### Step 5 — Human approval loop (conditional)
 
-The last task for every epic is always the verify task. Create it after all other
-tasks are created, so its `## Blocked By` can reference all sibling tasks.
+**If `human_required: true`:**
+
+Present the proposed task breakdown in chat. Use this format:
+
+```
+Proposed tasks for Epic #<n>: <title>
+
+Task 1: <title>
+  Goal: <one sentence>
+  Depends on: <task numbers or "none">
+  Acceptance criteria: <bullet list>
+
+Task 2: <title>
+  ...
+
+Verify task: [#<epic>] Verify epic end-to-end and merge to main
+  Blocked by: all above tasks
+
+Does this look right? Say "looks good" to proceed, or describe any changes.
+```
+
+Wait for the human's response.
+
+- If **"looks good"** (or equivalent) → proceed to Step 6.
+- If **changes requested** → apply changes to the task plan, then present the updated
+  plan again with the same format. Loop until the human explicitly approves.
+  Never create GitHub issues without explicit approval.
+
+**If `human_required: false`:** skip this step entirely.
+
+### Step 6 — Create the mandatory verify task
+
+The last task for every epic is always the verify task. Create it first so its
+issue number is known when creating sibling tasks' `## Blocked By` sections.
 
 **Title:** `[#<epic>] Verify epic end-to-end and merge to main`
 
@@ -150,14 +193,17 @@ Epic acceptance bar: (copy verbatim from the epic issue)
 - [ ] PR opened from epic branch to main with `Closes #<epic-number>` and `Closes #<verify-task-number>`
 
 ## Blocked By
-blocked-by: #<task-1>, #<task-2>, ... (all other child tasks for this epic)
+blocked-by: #<task-1>, #<task-2>, ... (all other child tasks for this epic — fill in after creating them)
 ```
 
-**Labels:** `needs-human-review`
+**Labels:** `ai-approved`
 
-### Step 5 — Create all other task issues
+After creating sibling tasks (Step 7), update this verify task's `## Blocked By`
+via the GitHub MCP to list all sibling task issue numbers.
 
-For each task (except the verify task), create a GitHub issue via the GitHub MCP:
+### Step 7 — Create all other task issues
+
+For each task identified in Step 4, create a GitHub issue via the GitHub MCP:
 
 **Title format:** `[#<epic number>] <short imperative description>`
 Examples:
@@ -178,7 +224,8 @@ Examples:
 - Relevant file paths
 - Which part of PLAN.md / SPECS.md applies
 - Decisions already made that constrain this task
-- What the task above this one will have left in place>
+- What the task above this one will have left in place
+- Stub contracts this task depends on or must implement (if parallelism: true epic)>
 
 ## Acceptance Criteria
 - [ ] <specific, verifiable thing>
@@ -191,23 +238,19 @@ Examples:
 ```
 
 **Labels:**
-- `needs-human-review` — all tasks start here; human approves before work begins
+- `ai-approved`
 - If the task has a `## Blocked By` section: also add `blocked`
 
-A task with both `needs-human-review` and `blocked` is waiting for two things: a
-dependency to close (removes `blocked`) AND human approval (removes `needs-human-review`
-and adds `ai-approved`). The dependency unblock sweep in hackathon-session removes the
-`blocked` label when all referenced issues close; the human then approves the now-visible
-task.
+### Step 8 — Update verify task blocked-by
 
-**Do not assign** any tasks — agents claim them during session start.
+After all sibling tasks are created, update the verify task's `## Blocked By` section
+via the GitHub MCP to include all sibling issue numbers.
 
-### Step 6 — Update the epic issue
+### Step 9 — Update the epic issue
 
 After all tasks are created, update the epic issue body via the GitHub MCP.
 
 Add or replace `## Child Issues`:
-
 ```
 ## Child Issues
 - [ ] #<n> [#<epic>] <task title>
@@ -217,39 +260,47 @@ Add or replace `## Child Issues`:
 
 Epic label stays `in-progress` (children are being worked). Unassign yourself.
 
-Comment on the epic:
+**If `comments: verbose`:**
 ```
 agent: decomposed into <N> tasks
 Epic branch: epic-<n>-<slug>
-Tasks (all need-human-review): #<n>, #<n>, ...
-Verify task (last): #<n>
-Human: review and approve tasks with `ai-approved` label when ready
+Tasks (all ai-approved): #<n>, #<n>, ...
+Verify task (last, blocked by all): #<n>
 ```
 
-### Step 7 — Update the tracking issue
-
-Comment via the GitHub MCP:
+**If `comments: minimal`:**
 ```
-Epic #<n> decomposed: <N> tasks created. All labeled needs-human-review.
+agent: decomposed into <N> tasks — #<list>
+```
+
+### Step 10 — Update the tracking issue
+
+**If `comments: verbose`:** comment via the GitHub MCP:
+```
+Epic #<n> decomposed: <N> tasks created. All labeled ai-approved.
 Epic branch: epic-<n>-<slug>
 ```
+
+**If `comments: minimal`:** skip this comment.
 
 ---
 
 ## Phase 3 — After all epics decomposed
 
-Report:
-
+**If `comments: verbose`:**
 ```
 Decomposition complete.
 
 Epics processed: <list>
-Total tasks created: <N> (all labeled needs-human-review)
+Total tasks created: <N> (all labeled ai-approved)
 
-Next steps for the human:
-Review each task issue and add `ai-approved` to any task ready to be implemented.
-Blocked tasks will unblock automatically when their dependencies close; they will
-then be moved to needs-human-review for your review.
+Next steps:
+Run /hackathon-session to begin implementation.
+```
+
+**If `comments: minimal`:**
+```
+Decomposition complete. <N> tasks created across <M> epics.
 ```
 
 ---
@@ -257,11 +308,12 @@ then be moved to needs-human-review for your review.
 ## Rules
 
 - **Never** decompose an epic before its `## Dependencies` are all closed.
-- **Never** assign tasks — agents claim them when the session loop runs.
 - **Never** skip creating the verify task — it is mandatory for every epic.
 - **Always** claim the epic before decomposing to prevent duplicate task creation.
 - **Always** include the epic branch name in every task's `## Context` section.
 - **Always** reset the label to `ai-approved` on collision back-off, not leave it `in-progress`.
+- **When human_required: true and changes requested:** apply changes and re-present.
+  Never create issues without explicit "looks good" or equivalent.
 
 **Before finishing each epic's decomposition, verify every task:**
 - Can an agent start this with zero additional context beyond the issue + PLAN.md?

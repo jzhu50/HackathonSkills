@@ -5,7 +5,7 @@ AI agents write the code. Humans stay in control.
 Fill in the plan, run setup, approve what you want built — agents implement, test,
 and open PRs. You review every PR before anything merges.
 
-**This repo is your project.** Clone or fork it, fill in `PLAN.md`, and follow the
+**This repo is a template.** Create a repo using this as a template, fill in `PLAN.md`, and follow the
 workflow below.
 
 ---

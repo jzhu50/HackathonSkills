@@ -128,9 +128,7 @@ function Install-HackathonSkills {
         $HasChecksums = $false
 
         try {
-            $headers = @{}
-            if ($env:GITHUB_TOKEN) { $headers["Authorization"] = "token $($env:GITHUB_TOKEN)" }
-            Invoke-WebRequest -Uri $ChecksumUrl -OutFile $TempChecksum -UseBasicParsing -Headers $headers
+            Invoke-WebRequest -Uri $ChecksumUrl -OutFile $TempChecksum -UseBasicParsing
             $HasChecksums = $true
             Write-Info "Checksums available for verification."
         } catch {
@@ -148,11 +146,8 @@ function Install-HackathonSkills {
             $DownloadUrl = if ($BaseUrl) { "$BaseUrl/$AssetName" } else { "https://github.com/$Repo/releases/download/$Version/$AssetName" }
             $TempFile = Join-Path $TempDir $AssetName
             
-            $headers = @{}
-            if ($env:GITHUB_TOKEN) { $headers["Authorization"] = "token $($env:GITHUB_TOKEN)" }
-            
             try {
-                Invoke-WebRequest -Uri $DownloadUrl -OutFile $TempFile -UseBasicParsing -Headers $headers
+                Invoke-WebRequest -Uri $DownloadUrl -OutFile $TempFile -UseBasicParsing
             } catch {
                 throw "Failed to download ${AssetName}: $_"
             }
@@ -221,7 +216,7 @@ powershell.exe -NoLogo -ExecutionPolicy Bypass -File "%~dp0$BaseName.ps1" %*
     # Auto-bootstrap if running inside a git repo
     if (git rev-parse --git-dir 2>$null) {
         Write-Host "Git repo detected - running bootstrap..."
-        & hackathon-bootstrap
+        & "$InstallDir\hackathon-bootstrap.ps1"
     } else {
         Write-Host "Next steps:"
         Write-Host "  1. Create a new repo from the template on GitHub"
@@ -236,3 +231,4 @@ powershell.exe -NoLogo -ExecutionPolicy Bypass -File "%~dp0$BaseName.ps1" %*
 }
 
 Install-HackathonSkills
+exit 0

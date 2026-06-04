@@ -20,9 +20,12 @@ jobs:
 
       # ── 1. Branch contract ──────────────────────────────────────────────────
       - name: Branch contract
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          BASE_REF: ${{ github.base_ref }}
         run: |
-          HEAD="${{ github.head_ref }}"
-          BASE="${{ github.base_ref }}"
+          HEAD="$HEAD_REF"
+          BASE="$BASE_REF"
           failed=0
 
           if [[ "$HEAD" == task/* ]]; then
@@ -48,6 +51,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           HEAD_REF: ${{ github.head_ref }}
+          BASE_REF: ${{ github.base_ref }}
           REPO: ${{ github.repository }}
         run: |
           HEAD="$HEAD_REF"
@@ -66,7 +70,7 @@ jobs:
           fi
 
           PROTECTED="PLAN.md SPECS.md AGENTS.md HARNESS.md"
-          CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+          CHANGED=$(git diff --name-only origin/"$BASE_REF"...HEAD)
           failed=0
 
           for f in $PROTECTED; do
@@ -82,8 +86,10 @@ jobs:
 
       # ── 3. Environment contract ─────────────────────────────────────────────
       - name: Environment contract
+        env:
+          BASE_REF: ${{ github.base_ref }}
         run: |
-          DIFF=$(git diff origin/${{ github.base_ref }}...HEAD -- . \
+          DIFF=$(git diff origin/"$BASE_REF"...HEAD -- . \
             ':(exclude).env.example' \
             ':(exclude)*.md' \
             ':(exclude)*.lock' \
@@ -98,7 +104,7 @@ jobs:
             exit 0
           fi
 
-          ENV_CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD \
+          ENV_CHANGED=$(git diff --name-only origin/"$BASE_REF"...HEAD \
             | grep -c '\.env\.example' || true)
 
           if [ "$ENV_CHANGED" -gt 0 ]; then

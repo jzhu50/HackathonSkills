@@ -180,3 +180,4 @@ echo "Bootstrap complete -> $TARGET_DIR"
 echo ""
 echo "Interactive Claude Code: open the project - /hackathon-* commands available"
 echo "Other agent CLIs:        see HARNESS.md"
+exit 0

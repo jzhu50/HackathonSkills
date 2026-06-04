@@ -194,3 +194,4 @@ Write-Host "Bootstrap complete -> $TargetDir"
 Write-Host ""
 Write-Host "Interactive Claude Code: open the project -- /hackathon-* commands available"
 Write-Host "Other agent CLIs:        see HARNESS.md"
+exit 0

@@ -21,11 +21,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          ASSETS="runner.sh runner.ps1 install.sh install.ps1 make-claude-md.sh make-claude-md.ps1"
+          ASSETS=(runner.sh runner.ps1 install.sh install.ps1 make-claude-md.sh make-claude-md.ps1)
           if gh release view "${{ github.ref_name }}" > /dev/null 2>&1; then
-            gh release upload "${{ github.ref_name }}" $ASSETS --clobber
+            gh release upload "${{ github.ref_name }}" "${ASSETS[@]}" --clobber
           else
-            gh release create "${{ github.ref_name }}" $ASSETS \
+            gh release create "${{ github.ref_name }}" "${ASSETS[@]}" \
               --title "${{ github.ref_name }}" \
               --generate-notes
           fi
@@ -62,8 +62,8 @@ jobs:
 
           [[ -s "$tmp/CLAUDE.md" ]] || { echo "FAIL: CLAUDE.md missing or empty"; exit 1; }
 
-          skill_count=$(ls skills/*.md | wc -l | tr -d ' ')
-          cmd_count=$(ls "$tmp/.claude/commands/"*.md 2>/dev/null | wc -l | tr -d ' ')
+          skill_count=$(find skills -maxdepth 1 -name '*.md' | wc -l | tr -d ' ')
+          cmd_count=$(find "$tmp/.claude/commands/" -maxdepth 1 -name '*.md' 2>/dev/null | wc -l | tr -d ' ')
           [[ "$skill_count" -eq "$cmd_count" ]] \
             || { echo "FAIL: $skill_count skills but $cmd_count commands"; exit 1; }
 

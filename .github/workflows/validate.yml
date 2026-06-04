@@ -70,7 +70,7 @@ jobs:
             grep -q '^description:'   "$f" || { echo "MISSING description: in $f";   failed=1; }
             grep -q '^allowed-tools:' "$f" || { echo "MISSING allowed-tools: in $f"; failed=1; }
           done
-          [[ $failed -eq 0 ]] && echo "Skill frontmatter OK ($(ls skills/*.md | wc -l | tr -d ' ') skills)"
+          [[ $failed -eq 0 ]] && echo "Skill frontmatter OK ($(find skills -maxdepth 1 -name '*.md' | wc -l | tr -d ' ') skills)"
           exit $failed
 
       - name: Run bootstrap and verify outputs
@@ -80,8 +80,8 @@ jobs:
 
           [[ -s "$tmp/CLAUDE.md" ]] || { echo "FAIL: CLAUDE.md missing or empty"; exit 1; }
 
-          skill_count=$(ls skills/*.md | wc -l | tr -d ' ')
-          cmd_count=$(ls "$tmp/.claude/commands/"*.md 2>/dev/null | wc -l | tr -d ' ')
+          skill_count=$(find skills -maxdepth 1 -name '*.md' | wc -l | tr -d ' ')
+          cmd_count=$(find "$tmp/.claude/commands/" -maxdepth 1 -name '*.md' 2>/dev/null | wc -l | tr -d ' ')
           if [[ "$skill_count" -ne "$cmd_count" ]]; then
             echo "FAIL: $skill_count skills but $cmd_count commands in .claude/commands/"
             exit 1

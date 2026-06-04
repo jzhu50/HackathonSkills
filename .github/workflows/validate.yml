@@ -27,6 +27,10 @@ jobs:
           bash -n runner.sh
           echo "Shell syntax OK"
 
+      - name: Install shellcheck (macOS)
+        if: runner.os == 'macOS'
+        run: brew install shellcheck
+
       - name: ShellCheck
         run: shellcheck make-claude-md.sh install.sh runner.sh
 
@@ -114,7 +118,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: actionlint
-        uses: rhysd/actionlint@v1
+        run: |
+          bash <(curl -s https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+          ./actionlint -color
 
   # ── PowerShell bootstrap (Windows) ───────────────────────────────────────────
   validate-windows:

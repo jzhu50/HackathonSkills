@@ -63,6 +63,7 @@ _add_to_path() {
     *)      shell_rc="${HOME}/.bashrc" ;;
   esac
 
+  # shellcheck disable=SC2016  # intentional: literal string written to shell rc, expands at shell init
   local export_line='export PATH="${HOME}/.local/bin:${PATH}"'
   if [[ "$SHELL" == */fish ]]; then
     export_line='fish_add_path ~/.local/bin'
@@ -86,6 +87,7 @@ _install_script() {
 
   local tmp
   tmp=$(mktemp /tmp/hs-XXXXXX.sh)
+  # shellcheck disable=SC2064  # intentional: expand $tmp now to capture current value
   trap "rm -f '$tmp'" RETURN
 
   _download "$url" "$tmp"

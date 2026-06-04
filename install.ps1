@@ -64,10 +64,10 @@ function Install-Script([string]$Tag, [string]$Name, [string]$ScriptDst, [string
         try {
             $resp = Invoke-RestMethod -Uri $releaseUrl -UseBasicParsing -Headers $headers
             $asset = $resp.assets | Where-Object { $_.name -eq $Name }
-            if (-not $asset) { throw "Asset $Name not found in release $Tag" }
+            if (-not $asset) { throw "Asset ${Name} not found in release $Tag" }
             Invoke-Download -Url $asset.url -Dest $Tmp -Accept "application/octet-stream"
         } catch {
-            Write-Error "Could not resolve asset $Name: $_"
+            Write-Error "Could not resolve asset ${Name}: $_"
             exit 1
         }
     } else {

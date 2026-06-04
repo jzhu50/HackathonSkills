@@ -34,7 +34,7 @@ _require_python3() {
 
 _detect_clis() {
   local found=()
-  for cli in claude aider codex; do
+  for cli in claude aider codex antigravity; do
     command -v "$cli" &>/dev/null && found+=("$cli")
   done
   printf '%s\n' "${found[@]:-}"
@@ -49,7 +49,7 @@ _first_run_setup() {
   done < <(_detect_clis)
 
   if [[ ${#found[@]} -eq 0 ]]; then
-    printf '\nNo known AI CLIs found (claude, aider, codex).\n'
+    printf '\nNo known AI CLIs found (claude, aider, codex, antigravity).\n'
     printf 'Enter the command to use (e.g. my-ai-cli): '
     read -r custom
     [[ -z "$custom" ]] && _die "no AI CLI specified"

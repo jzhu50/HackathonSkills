@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # install.sh — hackathon-skills installer (macOS/Linux)
 #
-# Downloads runner.sh from the latest GitHub release, installs it as
-#   ~/.local/bin/hackathon-skills
-# and ensures ~/.local/bin is on PATH.
+# Downloads runner.sh and make-claude-md.sh from the latest GitHub release:
+#   ~/.local/bin/hackathon-skills      — PTY runner (launch your AI CLI)
+#   ~/.local/bin/hackathon-bootstrap   — project bootstrapper (run once per project)
 #
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/Victor-Casado/HackathonSkills/main/install.sh | bash
@@ -14,17 +14,15 @@ set -euo pipefail
 
 REPO="Victor-Casado/HackathonSkills"
 TOOL_NAME="hackathon-skills"
+BOOTSTRAP_NAME="hackathon-bootstrap"
 INSTALL_DIR="${HOME}/.local/bin"
 INSTALL_PATH="${INSTALL_DIR}/${TOOL_NAME}"
+BOOTSTRAP_PATH="${INSTALL_DIR}/${BOOTSTRAP_NAME}"
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 
 _die() { printf 'error: %s\n' "$*" >&2; exit 1; }
 _info() { printf '  %s\n' "$*"; }
-
-_require() {
-  command -v "$1" &>/dev/null || _die "$1 is required but not found in PATH"
-}
 
 # ── resolve latest release tag ────────────────────────────────────────────────
 
@@ -79,6 +77,28 @@ _add_to_path() {
   fi
 }
 
+# ── install one script ────────────────────────────────────────────────────────
+
+_install_script() {
+  local url="$1"
+  local dest="$2"
+  local label="$3"
+
+  local tmp
+  tmp=$(mktemp /tmp/hs-XXXXXX.sh)
+  trap "rm -f '$tmp'" RETURN
+
+  _download "$url" "$tmp"
+  chmod +x "$tmp"
+
+  head -1 "$tmp" | grep -q 'bash\|sh' \
+    || _die "downloaded ${label} does not look like a shell script"
+
+  mv "$tmp" "$dest"
+  chmod +x "$dest"
+  _info "installed: ${dest}"
+}
+
 # ── main ──────────────────────────────────────────────────────────────────────
 
 printf '\nhackathon-skills installer\n'
@@ -91,28 +111,17 @@ if [[ -z "$TAG" ]]; then
   [[ -n "$TAG" ]] || _die "could not determine latest release tag"
 fi
 _info "version: ${TAG}"
-
-DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${TAG}/runner.sh"
-_info "source:  ${DOWNLOAD_URL}"
-_info "target:  ${INSTALL_PATH}"
 printf '\n'
 
 mkdir -p "$INSTALL_DIR"
 
-TMP=$(mktemp /tmp/hs-runner-XXXXXX.sh)
-trap "rm -f '$TMP'" EXIT
+BASE_URL="https://github.com/${REPO}/releases/download/${TAG}"
 
 printf 'Downloading...\n'
-_download "$DOWNLOAD_URL" "$TMP"
-chmod +x "$TMP"
+_install_script "${BASE_URL}/runner.sh"         "$INSTALL_PATH"   "runner.sh"
+_install_script "${BASE_URL}/make-claude-md.sh" "$BOOTSTRAP_PATH" "make-claude-md.sh"
 
-# Basic sanity check: verify it's a shell script
-head -1 "$TMP" | grep -q 'bash\|sh' \
-  || _die "downloaded file does not look like a shell script"
-
-mv "$TMP" "$INSTALL_PATH"
-chmod +x "$INSTALL_PATH"
-printf 'Installed: %s\n\n' "$INSTALL_PATH"
+printf '\n'
 
 # Ensure ~/.local/bin is on PATH
 if ! printf '%s' "$PATH" | tr ':' '\n' | grep -qxF "$INSTALL_DIR"; then
@@ -120,8 +129,12 @@ if ! printf '%s' "$PATH" | tr ':' '\n' | grep -qxF "$INSTALL_DIR"; then
 fi
 
 printf 'Done.\n\n'
-printf 'Run:  hackathon-skills --help\n'
-printf '      hackathon-skills            # launches configured AI CLI in PTY\n'
-printf '      hackathon-skills --reconfigure  # change AI CLI selection\n\n'
-printf 'Note: a GitHub release with runner.sh as an asset must exist for this\n'
-printf '      installer to work end-to-end.  See the repo README for details.\n\n'
+printf 'Next steps:\n'
+printf '  1. Create a new repo from the template on GitHub\n'
+printf '  2. Clone it, cd into it\n'
+printf '  3. hackathon-bootstrap        — generates CLAUDE.md + slash commands\n'
+printf '  4. Fill in PLAN.md\n'
+printf '  5. Open Claude Code and run /hackathon-setup\n\n'
+printf 'Other commands:\n'
+printf '  hackathon-skills --help       — PTY runner help\n'
+printf '  hackathon-skills --reconfigure — change AI CLI selection\n\n'

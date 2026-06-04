@@ -155,8 +155,8 @@ skills/
   hackathon-verify.md      — last task per epic: verifies E2E, opens epic→main PR
   hackathon-test.md        — runs test suite, reports expected vs actual
   hackathon-debug.md       — reproduces, fixes, and regression-tests a failure
-make-claude-md.sh          — bootstrap (Mac/Linux): generates CLAUDE.md + .claude/
-make-claude-md.ps1         — bootstrap (Windows): generates CLAUDE.md + .claude/
+make-claude-md.sh          — bootstrap script (installed as hackathon-bootstrap on Mac/Linux)
+make-claude-md.ps1         — bootstrap script (installed as hackathon-bootstrap on Windows)
 PLAN.md                    — fill this in before setup
 SPECS.md                   — optional: data models, API routes, UI flows
 AGENTS.md                  — coordination protocol (read by all harnesses)
@@ -176,30 +176,46 @@ Regenerate after any skill change. Every teammate runs this after cloning.
 
 ## Setup
 
-### 1 — Clone as your project
+### 1 — Install hackathon-skills
 
 ```bash
-git clone https://github.com/<you>/hackathon-agent-template <project-name>
-cd <project-name>
-git remote set-url origin https://github.com/<you>/<project-name>
-git push -u origin main
+# Mac/Linux
+curl -fsSL https://raw.githubusercontent.com/Victor-Casado/HackathonSkills/main/install.sh | bash
+
+# Windows (PowerShell)
+irm https://raw.githubusercontent.com/Victor-Casado/HackathonSkills/main/install.ps1 | iex
 ```
 
-### 2 — Fill in `PLAN.md`
+This installs two commands:
+- `hackathon-skills` — PTY runner that launches your AI CLI
+- `hackathon-bootstrap` — project bootstrapper (run once per cloned project)
+
+### 2 — Create your project from the template
+
+Click **"Use this template"** on GitHub to create a new repo, then clone it:
+
+```bash
+git clone https://github.com/<you>/<project-name>
+cd <project-name>
+```
+
+### 3 — Bootstrap the project
+
+```bash
+hackathon-bootstrap      # Mac/Linux
+hackathon-bootstrap      # Windows
+```
+
+This generates `CLAUDE.md` and `.claude/` locally (gitignored). Re-run after any skill update or after cloning on a new machine.
+
+### 4 — Fill in `PLAN.md`
 
 Vision, demo goal, tech stack, core features, out-of-scope, open questions.
 
 **The Test command row is required** — agents run it before every PR.
 (`npm test`, `pytest`, `go test ./...`, `cargo test`, etc.)
 
-### 3 — Bootstrap each machine
-
-```bash
-./make-claude-md.sh      # Mac/Linux
-.\make-claude-md.ps1     # Windows
-```
-
-### 4 — Configure GitHub MCP
+### 5 — Configure GitHub MCP
 
 Each teammate needs a Personal Access Token with `repo` scope (add `read:org` for
 org repos) configured in their Claude Code MCP settings:
@@ -223,7 +239,7 @@ Enable branch protection on `main` (Settings → Branches → Require a pull req
 before merging). Do **not** also require approvals unless you have two distinct
 accounts — GitHub won't let you approve your own PR.
 
-### 5 — Run setup
+### 6 — Run setup
 
 ```
 /hackathon-setup

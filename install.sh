@@ -105,29 +105,36 @@ download_file() {
         # 1. Fetch release JSON to get asset ID
         local api_url="https://api.github.com/repos/${REPO}/releases/tags/${version}"
         local release_json
-        if ! release_json=$(curl -fsSL -u :"$GITHUB_TOKEN" "$api_url"); then
+        if ! release_json=$(curl -fsSL -H "Authorization: token ${GITHUB_TOKEN}" "$api_url"); then
             echo "Error: Failed to fetch release info from API for tag ${version}" >&2
             return 1
         fi
 
-        # 2. Extract asset ID using awk
+        # 2. Extract asset ID
         local asset_id
-        asset_id=$(echo "$release_json" | awk -v name="$asset_name" '
-          /^[[:space:]]*"name":/ {
-            gsub(/[",[:space:]]/, "", $2)
-            curr_name = $2
-          }
-          /^[[:space:]]*"id":/ {
-            gsub(/[",[:space:]]/, "", $2)
-            curr_id = $2
-          }
-          /^[[:space:]]*\}/ {
-            if (curr_name == name) {
-              print curr_id
-              exit
-            }
-          }
-        ')
+        if command -v python3 &> /dev/null; then
+            asset_id=$(python3 -c "import json, sys; data = json.load(sys.stdin); print(next((a['id'] for a in data.get('assets', []) if a['name'] == '$asset_name'), ''))" <<< "$release_json")
+        elif command -v python &> /dev/null; then
+            asset_id=$(python -c "import json, sys; data = json.load(sys.stdin); print(next((a['id'] for a in data.get('assets', []) if a['name'] == '$asset_name'), ''))" <<< "$release_json")
+        else
+            # Fallback to awk if python is not available
+            asset_id=$(echo "$release_json" | awk -v name="$asset_name" '
+              /^[[:space:]]*"name":/ {
+                gsub(/[",\r\n[:space:]]/, "", $2)
+                curr_name = $2
+              }
+              /^[[:space:]]*"id":/ {
+                gsub(/[",\r\n[:space:]]/, "", $2)
+                curr_id = $2
+              }
+              /^[[:space:]]*\}/ {
+                if (curr_name == name) {
+                  print curr_id
+                  exit
+                }
+              }
+            ')
+        fi
 
         if [[ -z "$asset_id" ]]; then
             echo "Error: Asset ID for $asset_name not found in release info" >&2
@@ -136,7 +143,7 @@ download_file() {
 
         # 3. Download via API
         local download_url="https://api.github.com/repos/${REPO}/releases/assets/${asset_id}"
-        if ! curl -fsSL -H "Accept: application/octet-stream" -u :"$GITHUB_TOKEN" -o "$dest" "$download_url"; then
+        if ! curl -fsSL -H "Accept: application/octet-stream" -H "Authorization: token ${GITHUB_TOKEN}" -o "$dest" "$download_url"; then
             echo "Error: Failed to download ${asset_name} via API" >&2
             return 1
         fi

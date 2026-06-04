@@ -102,11 +102,12 @@ function Download-File {
     if ($env:GITHUB_TOKEN) {
         # 1. Fetch release JSON to get asset ID
         $ApiUrl = "https://api.github.com/repos/$Repo/releases/tags/$Version"
-        $SecPassword = ConvertTo-SecureString $env:GITHUB_TOKEN -AsPlainText -Force
-        $Cred = New-Object System.Management.Automation.PSCredential ("token", $SecPassword)
+        $Headers = @{
+            "Authorization" = "token $($env:GITHUB_TOKEN)"
+        }
         
         try {
-            $ReleaseJson = Invoke-RestMethod -Uri $ApiUrl -UseBasicParsing -Credential $Cred
+            $ReleaseJson = Invoke-RestMethod -Uri $ApiUrl -UseBasicParsing -Headers $Headers
         } catch {
             throw "Failed to fetch release info from API: $_"
         }
@@ -120,8 +121,11 @@ function Download-File {
         
         # 3. Download via API
         $DownloadUrl = "https://api.github.com/repos/$Repo/releases/assets/$AssetId"
-        $Headers = @{ Accept = "application/octet-stream" }
-        Invoke-WebRequest -Uri $DownloadUrl -OutFile $Path -UseBasicParsing -Headers $Headers -Credential $Cred
+        $Headers = @{
+            "Authorization" = "token $($env:GITHUB_TOKEN)"
+            "Accept" = "application/octet-stream"
+        }
+        Invoke-WebRequest -Uri $DownloadUrl -OutFile $Path -UseBasicParsing -Headers $Headers
     } else {
         # Public download fallback
         $DownloadUrl = if ($BaseUrl) { "$BaseUrl/$AssetName" } else { "https://github.com/$Repo/releases/download/$Version/$AssetName" }

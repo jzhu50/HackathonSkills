@@ -34,7 +34,7 @@ _require_python3() {
 
 _detect_clis() {
   local found=()
-  for cli in claude aider codex; do
+  for cli in claude aider codex antigravity; do
     command -v "$cli" &>/dev/null && found+=("$cli")
   done
   printf '%s\n' "${found[@]:-}"
@@ -49,7 +49,7 @@ _first_run_setup() {
   done < <(_detect_clis)
 
   if [[ ${#found[@]} -eq 0 ]]; then
-    printf '\nNo known AI CLIs found (claude, aider, codex).\n'
+    printf '\nNo known AI CLIs found (claude, aider, codex, antigravity).\n'
     printf 'Enter the command to use (e.g. my-ai-cli): '
     read -r custom
     [[ -z "$custom" ]] && _die "no AI CLI specified"
@@ -65,7 +65,9 @@ _first_run_setup() {
     read -r selection
     if [[ -n "$selection" ]]; then
       local chosen=()
-      for n in $selection; do
+      # Use read -ra to split selection into an array
+      read -ra sel_array <<< "$selection"
+      for n in "${sel_array[@]}"; do
         [[ $n -ge 1 && $n -le ${#found[@]} ]]\
           || _die "invalid selection: $n"
         chosen+=("${found[$((n - 1))]}")
@@ -225,9 +227,9 @@ OVERRIDE_CLI=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --reconfigure)   RECONFIGURE=true; shift ;;
-    --cli)           OVERRIDE_CLI="${2:?--cli requires a value}"; shift 2 ;;
-    --help|-h)
+    --reconfigure|-reconfigure)   RECONFIGURE=true; shift ;;
+    --cli|-cli)                   OVERRIDE_CLI="${2:?--cli requires a value}"; shift 2 ;;
+    --help|-h|-help)
       cat <<EOF
 Usage: hackathon-skills [--cli <name>] [--reconfigure] [args...]
 

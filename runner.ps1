@@ -54,12 +54,12 @@ function Set-ConsoleGeometry {
 function Invoke-FirstRunSetup {
     Write-Host "$ToolName : first run - scanning PATH for AI CLIs..."
 
-    $known = @("claude", "aider", "codex")
+    $known = @("claude", "aider", "codex", "antigravity")
     $found = @($known | Where-Object { $null -ne (Get-Command $_ -ErrorAction SilentlyContinue) })
 
     if ($found.Count -eq 0) {
         Write-Host ""
-        Write-Host "No known AI CLIs found (claude, aider, codex)."
+        Write-Host "No known AI CLIs found (claude, aider, codex, antigravity)."
         $custom = Read-Host "Enter the command to use (e.g. my-ai-cli)"
         if ([string]::IsNullOrWhiteSpace($custom)) {
             Write-Error "No AI CLI specified."

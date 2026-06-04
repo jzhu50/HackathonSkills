@@ -1,0 +1,143 @@
+name: Verify Installers
+
+on:
+  push:
+    branches: ['**']
+    paths:
+      - 'install.sh'
+      - 'install.ps1'
+      - 'runner.sh'
+      - 'runner.ps1'
+      - 'make-claude-md.sh'
+      - 'make-claude-md.ps1'
+      - '.github/workflows/verify-installers.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'install.sh'
+      - 'install.ps1'
+      - 'runner.sh'
+      - 'runner.ps1'
+      - 'make-claude-md.sh'
+      - 'make-claude-md.ps1'
+      - '.github/workflows/verify-installers.yml'
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        cli: [claude, aider, codex, antigravity]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Prepare assets for local server
+        shell: bash
+        run: |
+          mkdir dist
+          cp runner.sh dist/
+          cp make-claude-md.sh dist/
+          cp runner.ps1 dist/
+          cp make-claude-md.ps1 dist/
+          
+          # Generate checksums (explicitly list files to avoid including the checksum file itself)
+          cd dist
+          files=(runner.sh make-claude-md.sh runner.ps1 make-claude-md.ps1)
+          if command -v sha256sum &> /dev/null; then
+            sha256sum "${files[@]}" > checksums.sha256
+          elif command -v shasum &> /dev/null; then
+            shasum -a 256 "${files[@]}" > checksums.sha256
+          fi
+          echo "Generated checksums:"
+          cat checksums.sha256
+
+      - name: Start local server
+        shell: bash
+        run: |
+          # Use 'python' which is more portable on Windows/Unix in GH Actions
+          python -m http.server 8000 --directory dist &
+          echo "SERVER_PID=$!" >> "$GITHUB_ENV"
+          # Give it a moment to start
+          for i in {1..10}; do
+            if curl -s --max-time 1 http://127.0.0.1:8000 > /dev/null; then
+              echo "Server is up"
+              break
+            fi
+            echo "Waiting for server... ($i/10)"
+            sleep 1
+          done
+
+      - name: Run Installer (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          bash install.sh --base-url http://127.0.0.1:8000
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          
+      - name: Run Installer (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          .\install.ps1 -BaseUrl http://127.0.0.1:8000
+          # Ensure UTF-8 and no BOM for GITHUB_PATH
+          $binDir = "$env:LOCALAPPDATA\hackathon-skills\bin"
+          $binDir | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Verify installed files (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          ls -l "$HOME/.local/bin/hackathon-skills"
+          ls -l "$HOME/.local/bin/hackathon-bootstrap"
+
+      - name: Verify installed files (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          ls "$env:LOCALAPPDATA\hackathon-skills\bin\hackathon-skills.ps1"
+          ls "$env:LOCALAPPDATA\hackathon-skills\bin\hackathon-skills.cmd"
+          ls "$env:LOCALAPPDATA\hackathon-skills\bin\hackathon-bootstrap.ps1"
+          ls "$env:LOCALAPPDATA\hackathon-skills\bin\hackathon-bootstrap.cmd"
+
+      - name: Mock AI CLI (${{ matrix.cli }})
+        shell: bash
+        run: |
+          mkdir -p mock_bin
+          echo '#!/usr/bin/env bash' > "mock_bin/${{ matrix.cli }}"
+          echo "echo \"Mock ${{ matrix.cli }} called with args: \$@\"" >> "mock_bin/${{ matrix.cli }}"
+          chmod +x "mock_bin/${{ matrix.cli }}"
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            echo '@echo off' > "mock_bin/${{ matrix.cli }}.cmd"
+            echo "echo Mock ${{ matrix.cli }} called with args: %*" >> "mock_bin/${{ matrix.cli }}.cmd"
+            # Convert Unix path to Windows path for GITHUB_PATH
+            MOCK_PATH=$(pwd -W)/mock_bin
+            echo "$MOCK_PATH" >> "$GITHUB_PATH"
+          else
+            echo "$(pwd)/mock_bin" >> "$GITHUB_PATH"
+          fi
+
+      - name: Test runner with ${{ matrix.cli }}
+        shell: bash
+        run: |
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            hackathon-skills.cmd -Cli ${{ matrix.cli }} test-arg
+          else
+            hackathon-skills --cli ${{ matrix.cli }} -- test-arg
+          fi
+
+      - name: Cleanup server
+        if: always()
+        shell: bash
+        run: |
+          if [[ -n "${SERVER_PID:-}" ]]; then
+            kill "$SERVER_PID"
+          fi

@@ -1,165 +1,233 @@
-# install.ps1 - hackathon-skills installer (Windows)
-#
-# Downloads runner.ps1 and make-claude-md.ps1 from the latest GitHub release:
-#   %LOCALAPPDATA%\hackathon-skills\bin\hackathon-skills.ps1    - PTY runner
-#   %LOCALAPPDATA%\hackathon-skills\bin\hackathon-bootstrap.ps1 - project bootstrapper
-# Creates .cmd shims for both so they're callable without the .ps1 extension.
-#
-# Usage (run in PowerShell as your normal user - no elevation needed):
-#   irm https://raw.githubusercontent.com/Victor-Casado/HackathonSkills/main/install.ps1 | iex
-#   # or locally:
-#   .\install.ps1
+#Requires -Version 5.1
+<#
+.SYNOPSIS
+    hackathon-skills installer for Windows
+
+.DESCRIPTION
+    Downloads and installs hackathon-skills to %LOCALAPPDATA%\hackathon-skills\bin
+
+.PARAMETER Tag
+    Install a specific version tag
+
+.PARAMETER Beta
+    Install from beta channel (pre-releases)
+
+.EXAMPLE
+    irm https://raw.githubusercontent.com/Victor-Casado/HackathonSkills/main/install.ps1 | iex
+
+.EXAMPLE
+    & { param($Beta) irm https://raw.githubusercontent.com/Victor-Casado/HackathonSkills/main/install.ps1 | iex } -Beta
+#>
 
 param(
-    [string]$Tag = ""   # pin to a specific release tag, e.g. "v1.0.0"
+    [string]$Tag = "",
+    [switch]$Beta,
+    [string]$BaseUrl = "" # For testing: override the download base URL
 )
+
+$ErrorActionPreference = "Stop"
+
+# -- Configuration ------------------------------------------------------------
 
 $Repo       = "Victor-Casado/HackathonSkills"
 $ToolName   = "hackathon-skills"
 $InstallDir = Join-Path $env:LOCALAPPDATA "$ToolName\bin"
 
-# -- helpers ------------------------------------------------------------------
+# Define assets to download and their installation targets
+$Assets = @(
+    @{
+        Name   = "runner.ps1"
+        Target = "hackathon-skills.ps1"
+        Shim   = "hackathon-skills.cmd"
+    },
+    @{
+        Name   = "make-claude-md.ps1"
+        Target = "hackathon-bootstrap.ps1"
+        Shim   = "hackathon-bootstrap.cmd"
+    }
+)
 
-function Write-Step([string]$Msg) { Write-Host "  $Msg" }
+# -- Helpers ------------------------------------------------------------------
 
-function Get-LatestTag {
-    $url = "https://api.github.com/repos/$Repo/releases/latest"
+function Write-Info {
+    param([string]$Message)
+    Write-Host "  $Message" -ForegroundColor Cyan
+}
+
+function Write-Success {
+    param([string]$Message)
+    Write-Host "  $Message" -ForegroundColor Green
+}
+
+function Write-Warn {
+    param([string]$Message)
+    Write-Host "  $Message" -ForegroundColor Yellow
+}
+
+function Get-LatestRelease {
+    if ($BaseUrl) { return "latest" }
+
+    $Url = "https://api.github.com/repos/$Repo/releases"
     $headers = @{}
     if ($env:GITHUB_TOKEN) {
         $headers["Authorization"] = "token $($env:GITHUB_TOKEN)"
     }
+    
     try {
-        $resp = Invoke-RestMethod -Uri $url -UseBasicParsing -Headers $headers
-        return $resp.tag_name
-    } catch {
-        Write-Error "Could not fetch latest release tag: $_"
-        exit 1
-    }
-}
-
-function Invoke-Download([string]$Url, [string]$Dest, [string]$Accept = "application/vnd.github.v3.raw") {
-    $headers = @{}
-    if ($env:GITHUB_TOKEN) {
-        $headers["Authorization"] = "token $($env:GITHUB_TOKEN)"
-    }
-    $headers["Accept"] = $Accept
-    try {
-        Invoke-WebRequest -Uri $Url -OutFile $Dest -UseBasicParsing -Headers $headers
-    } catch {
-        Write-Error "Download failed from ${Url}: $_"
-        exit 1
-    }
-}
-
-function Install-Script([string]$Tag, [string]$Name, [string]$ScriptDst, [string]$WrapperDst) {
-    $Tmp = Join-Path $env:TEMP "hs-$([System.IO.Path]::GetRandomFileName()).ps1"
-
-    if ($env:GITHUB_TOKEN) {
-        # Private repo: find asset API URL
-        $releaseUrl = "https://api.github.com/repos/$Repo/releases/tags/$Tag"
-        $headers = @{
-            "Authorization" = "token $($env:GITHUB_TOKEN)"
-            "Accept"        = "application/json"
+        if ($Beta) {
+            # Get latest release including pre-releases
+            $Releases = Invoke-RestMethod -Uri $Url -UseBasicParsing -Headers $headers
+            return $Releases[0].tag_name
+        } else {
+            # Get latest stable release only
+            $Release = Invoke-RestMethod -Uri "$Url/latest" -UseBasicParsing -Headers $headers
+            return $Release.tag_name
         }
+    } catch {
+        throw "Failed to get latest release: $_"
+    }
+}
+
+function Get-FileHash256 {
+    param([string]$Path)
+    $Hash = Get-FileHash -Path $Path -Algorithm SHA256
+    return $Hash.Hash.ToLower()
+}
+
+# -- Installation -------------------------------------------------------------
+
+function Install-HackathonSkills {
+    Write-Host ""
+    Write-Host "$ToolName installer" -ForegroundColor Cyan
+    Write-Host ("=" * ($ToolName.Length + 10)) -ForegroundColor Cyan
+    Write-Host ""
+    
+    $Version = $Tag
+    if ([string]::IsNullOrWhiteSpace($Version)) {
+        Write-Info "Fetching latest release tag..."
+        $Version = Get-LatestRelease
+    }
+    
+    Write-Info "Version: $Version"
+    if ($Beta) { Write-Info "Channel: beta" }
+    Write-Host ""
+
+    # Create install directory
+    if (-not (Test-Path $InstallDir)) {
+        New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
+    }
+
+    # Create temp directory for downloads
+    $TempDir = Join-Path $env:TEMP "$ToolName-install-$(Get-Random)"
+    New-Item -ItemType Directory -Path $TempDir -Force | Out-Null
+    
+    try {
+        # Optional: Download checksums
+        $ChecksumUrl = if ($BaseUrl) { "$BaseUrl/checksums.sha256" } else { "https://github.com/$Repo/releases/download/$Version/checksums.sha256" }
+        $TempChecksum = Join-Path $TempDir "checksums.sha256"
+        $HasChecksums = $false
+
         try {
-            $resp = Invoke-RestMethod -Uri $releaseUrl -UseBasicParsing -Headers $headers
-            $asset = $resp.assets | Where-Object { $_.name -eq $Name }
-            if (-not $asset) { throw "Asset ${Name} not found in release $Tag" }
-            Invoke-Download -Url $asset.url -Dest $Tmp -Accept "application/octet-stream"
+            $headers = @{}
+            if ($env:GITHUB_TOKEN) { $headers["Authorization"] = "token $($env:GITHUB_TOKEN)" }
+            Invoke-WebRequest -Uri $ChecksumUrl -OutFile $TempChecksum -UseBasicParsing -Headers $headers
+            $HasChecksums = $true
+            Write-Info "Checksums available for verification."
         } catch {
-            Write-Error "Could not resolve asset ${Name}: $_"
-            exit 1
+            # Gracefully handle missing checksum file
+            Write-Warn "Note: No checksums found for this release, skipping verification."
         }
-    } else {
-        # Public repo: use standard download URL
-        $url = "https://github.com/$Repo/releases/download/$Tag/$Name"
-        Invoke-Download -Url $url -Dest $Tmp
-    }
 
-    $firstLine = Get-Content $Tmp -TotalCount 1 -ErrorAction Stop
-    if ($firstLine -notmatch '(?i)(param|#|function)') {
-        Remove-Item $Tmp -Force -ErrorAction SilentlyContinue
-        Write-Error "Downloaded $Name does not look like a PowerShell script."
-        exit 1
-    }
+        foreach ($Asset in $Assets) {
+            $AssetName = $Asset.Name
+            $TargetName = $Asset.Target
+            $ShimName = $Asset.Shim
+            
+            Write-Info "Downloading $AssetName..."
+            
+            $DownloadUrl = if ($BaseUrl) { "$BaseUrl/$AssetName" } else { "https://github.com/$Repo/releases/download/$Version/$AssetName" }
+            $TempFile = Join-Path $TempDir $AssetName
+            
+            $headers = @{}
+            if ($env:GITHUB_TOKEN) { $headers["Authorization"] = "token $($env:GITHUB_TOKEN)" }
+            
+            try {
+                Invoke-WebRequest -Uri $DownloadUrl -OutFile $TempFile -UseBasicParsing -Headers $headers
+            } catch {
+                throw "Failed to download ${AssetName}: $_"
+            }
 
-    Copy-Item -Path $Tmp -Destination $ScriptDst -Force
-    Remove-Item $Tmp -Force -ErrorAction SilentlyContinue
+            # Verify checksum if available
+            if ($HasChecksums) {
+                Write-Info "Verifying checksum for $AssetName..."
+                $ExpectedHash = (Get-Content $TempChecksum | 
+                    Where-Object { $_ -match [regex]::Escape($AssetName) } |
+                    ForEach-Object { ($_ -split '\s+')[0] }).ToLower()
+                
+                if (-not [string]::IsNullOrWhiteSpace($ExpectedHash)) {
+                    $ActualHash = Get-FileHash256 -Path $TempFile
+                    if ($ExpectedHash -ne $ActualHash) {
+                        throw "Checksum verification failed for ${AssetName}!`nExpected: $ExpectedHash`nActual: $ActualHash"
+                    }
+                    Write-Success "Checksum verified."
+                } else {
+                    Write-Warn "No hash found for $AssetName in checksums file."
+                }
+            }
 
-    $cmdName = [System.IO.Path]::GetFileNameWithoutExtension($ScriptDst)
-    @"
+            # Install script
+            $FinalPath = Join-Path $InstallDir $TargetName
+            Move-Item $TempFile $FinalPath -Force
+            Write-Success "Installed: $FinalPath"
+
+            # Create shim
+            if ($ShimName) {
+                $ShimPath = Join-Path $InstallDir $ShimName
+                $BaseName = [System.IO.Path]::GetFileNameWithoutExtension($TargetName)
+                @"
 @echo off
-powershell.exe -NoLogo -ExecutionPolicy Bypass -File "%~dp0$cmdName.ps1" %*
-"@ | Out-File -FilePath $WrapperDst -Encoding ascii -NoNewline
-
-    Write-Step "installed : $ScriptDst"
-    Write-Step "shim      : $WrapperDst"
-}
-
-# -- PATH management ----------------------------------------------------------
-
-function Add-ToUserPath([string]$Dir) {
-    $current = [Environment]::GetEnvironmentVariable("PATH", "User")
-    $parts   = $current -split ";" | Where-Object { $_ -ne "" }
-    if ($parts -contains $Dir) {
-        Write-Step "PATH already includes $Dir"
-        return
+powershell.exe -NoLogo -ExecutionPolicy Bypass -File "%~dp0$BaseName.ps1" %*
+"@ | Out-File -FilePath $ShimPath -Encoding ascii -NoNewline
+                Write-Success "Created shim: $ShimPath"
+            }
+        }
+        
+    } finally {
+        # Cleanup
+        if (Test-Path $TempDir) {
+            Remove-Item $TempDir -Recurse -Force
+        }
     }
-    $newPath = ($parts + $Dir) -join ";"
-    [Environment]::SetEnvironmentVariable("PATH", $newPath, "User")
-    Write-Step "Added to user PATH: $Dir"
-    Write-Step "Restart your terminal for PATH changes to take effect."
+    
+    # Add to PATH if needed
+    $UserPath = [Environment]::GetEnvironmentVariable("Path", "User")
+    if ($UserPath -notlike "*$InstallDir*") {
+        Write-Host ""
+        Write-Info "Adding $InstallDir to PATH..."
+        
+        $NewPath = "$InstallDir;$UserPath"
+        [Environment]::SetEnvironmentVariable("Path", $NewPath, "User")
+        
+        # Update current session
+        $env:Path = "$InstallDir;$env:Path"
+        
+        Write-Success "PATH updated. You may need to restart your terminal."
+    }
+    
+    Write-Host ""
+    Write-Success "$ToolName $Version installed successfully!"
+    Write-Host ""
+    Write-Host "Next steps:"
+    Write-Host "  1. Create a new repo from the template on GitHub"
+    Write-Host "  2. Clone it, cd into it"
+    Write-Host "  3. hackathon-bootstrap          -- generates CLAUDE.md + slash commands"
+    Write-Host "  4. Fill in PLAN.md"
+    Write-Host "  5. Open Claude Code and run /hackathon-setup"
+    Write-Host ""
+    Write-Host "Other commands:"
+    Write-Host "  hackathon-skills --help         -- PTY runner help"
+    Write-Host "  hackathon-skills --reconfigure  -- change AI CLI selection (Claude, Aider, Codex, Antigravity)"
+    Write-Host ""
 }
 
-# -- main ---------------------------------------------------------------------
-
-Write-Host ""
-Write-Host "hackathon-skills installer"
-Write-Host "=========================="
-Write-Host ""
-
-if ([string]::IsNullOrWhiteSpace($Tag)) {
-    Write-Host "Fetching latest release tag..."
-    $Tag = Get-LatestTag
-}
-Write-Step "version : $Tag"
-Write-Host ""
-
-if (-not (Test-Path $InstallDir)) {
-    New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
-}
-
-Write-Host "Downloading..."
-
-Install-Script `
-    -Tag        $Tag `
-    -Name       "runner.ps1" `
-    -ScriptDst  (Join-Path $InstallDir "hackathon-skills.ps1") `
-    -WrapperDst (Join-Path $InstallDir "hackathon-skills.cmd")
-
-Install-Script `
-    -Tag        $Tag `
-    -Name       "make-claude-md.ps1" `
-    -ScriptDst  (Join-Path $InstallDir "hackathon-bootstrap.ps1") `
-    -WrapperDst (Join-Path $InstallDir "hackathon-bootstrap.cmd")
-
-Write-Host ""
-
-Add-ToUserPath -Dir $InstallDir
-
-Write-Host ""
-Write-Host "Done."
-Write-Host ""
-Write-Host "Next steps:"
-Write-Host "  1. Create a new repo from the template on GitHub"
-Write-Host "  2. Clone it, cd into it"
-Write-Host "  3. hackathon-bootstrap          -- generates CLAUDE.md + slash commands"
-Write-Host "  4. Fill in PLAN.md"
-Write-Host "  5. Open Claude Code and run /hackathon-setup"
-Write-Host ""
-Write-Host "Other commands:"
-Write-Host "  hackathon-skills -Help          -- PTY runner help"
-Write-Host "  hackathon-skills -Reconfigure   -- change AI CLI selection"
-Write-Host ""
-
-exit 0
+Install-HackathonSkills

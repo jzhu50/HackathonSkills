@@ -1,152 +1,248 @@
 #!/usr/bin/env bash
-# install.sh - hackathon-skills installer (macOS/Linux)
 #
-# Downloads runner.sh and make-claude-md.sh from the latest GitHub release:
-#   ~/.local/bin/hackathon-skills      - PTY runner (launch your AI CLI)
-#   ~/.local/bin/hackathon-bootstrap   - project bootstrapper (run once per project)
+# hackathon-skills installer for macOS and Linux
 #
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/Victor-Casado/HackathonSkills/main/install.sh | bash
-#   # or locally:
-#   ./install.sh
+#   curl -fsSL https://raw.githubusercontent.com/Victor-Casado/HackathonSkills/main/install.sh | bash -s -- --beta
+#
 
 set -euo pipefail
 
+# -- Configuration ------------------------------------------------------------
+
 REPO="Victor-Casado/HackathonSkills"
 TOOL_NAME="hackathon-skills"
-BOOTSTRAP_NAME="hackathon-bootstrap"
 INSTALL_DIR="${HOME}/.local/bin"
-INSTALL_PATH="${INSTALL_DIR}/${TOOL_NAME}"
-BOOTSTRAP_PATH="${INSTALL_DIR}/${BOOTSTRAP_NAME}"
 
-# -- helpers ------------------------------------------------------------------
+# Define assets to download and their installation targets (source:target)
+ASSETS=(
+    "runner.sh:hackathon-skills"
+    "make-claude-md.sh:hackathon-bootstrap"
+)
 
-_die() { printf 'error: %s\n' "$*" >&2; exit 1; }
-_info() { printf '  %s\n' "$*"; }
+# -- Colours ------------------------------------------------------------------
 
-# -- resolve latest release tag ------------------------------------------------
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+CYAN='\033[0;36m'
+NC='\033[0m' # No Colour
 
-_latest_tag() {
-  local url="https://api.github.com/repos/${REPO}/releases/latest"
-  local auth_header=()
-  if [[ -n "${GITHUB_TOKEN:-}" ]]; then
-    auth_header=(-H "Authorization: token ${GITHUB_TOKEN}")
-  fi
+# -- Arguments ----------------------------------------------------------------
 
-  if command -v curl &>/dev/null; then
-    curl -fsSL "${auth_header[@]}" "$url"\
-      | grep '"tag_name"'\
-      | sed -E 's/.*"tag_name": *"([^"]+)".*/\1/'
-  elif command -v wget &>/dev/null; then
-    local wget_auth=()
-    if [[ -n "${GITHUB_TOKEN:-}" ]]; then
-      wget_auth=(--header="Authorization: token ${GITHUB_TOKEN}")
+BETA=false
+TAG=""
+BASE_URL=""
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --beta)
+            BETA=true
+            shift
+            ;;
+        --tag)
+            TAG="$2"
+            shift 2
+            ;;
+        --base-url)
+            BASE_URL="$2"
+            shift 2
+            ;;
+        *)
+            echo -e "${RED}Unknown option: $1${NC}"
+            exit 1
+            ;;
+    esac
+done
+
+# -- Helpers ------------------------------------------------------------------
+
+info() {
+    echo -e "${CYAN}  $1${NC}"
+}
+
+success() {
+    echo -e "${GREEN}  $1${NC}"
+}
+
+warn() {
+    echo -e "${YELLOW}  $1${NC}"
+}
+
+error() {
+    echo -e "${RED}error: $1${NC}" >&2
+    exit 1
+}
+
+# Get latest release tag from GitHub API
+get_latest_release() {
+    if [[ -n "$BASE_URL" ]]; then
+        echo "latest"
+        return
     fi
-    wget -qO- "${wget_auth[@]}" "$url"\
-      | grep '"tag_name"'\
-      | sed -E 's/.*"tag_name": *"([^"]+)".*/\1/'
-  else
-    _die "curl or wget is required to download releases"
-  fi
-}
 
-# -- download ------------------------------------------------------------------
-
-_download() {
-  local url="$1"
-  local dest="$2"
-  local accept="${3:-application/vnd.github.v3.raw}"
-  local auth_header=()
-  if [[ -n "${GITHUB_TOKEN:-}" ]]; then
-    auth_header=(-H "Authorization: token ${GITHUB_TOKEN}")
-  fi
-
-  if command -v curl &>/dev/null; then
-    curl -fsSL "${auth_header[@]}" -H "Accept: ${accept}" -o "$dest" "$url"
-  else
-    local wget_auth=()
+    local url="https://api.github.com/repos/${REPO}/releases"
+    local auth_header=()
     if [[ -n "${GITHUB_TOKEN:-}" ]]; then
-      wget_auth=(--header="Authorization: token ${GITHUB_TOKEN}")
+        auth_header=(-H "Authorization: token ${GITHUB_TOKEN}")
     fi
-    wget -qO "$dest" "${wget_auth[@]}" --header="Accept: ${accept}" "$url"
-  fi
+
+    if [[ "$BETA" == "true" ]]; then
+        # Get latest release including pre-releases
+        curl -fsSL "${auth_header[@]}" "$url" | grep '"tag_name":' | head -1 | sed -E 's/.*"([^"]+)".*/\1/'
+    else
+        # Get latest stable release only
+        curl -fsSL "${auth_header[@]}" "${url}/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/'
+    fi
 }
 
-# -- install one script --------------------------------------------------------
-
-_install_script() {
-  local tag="$1"
-  local name="$2"
-  local dest="$3"
-
-  local tmp
-  tmp=$(mktemp /tmp/hs-XXXXXX.sh)
-  # shellcheck disable=SC2064  # intentional: expand $tmp now to capture current value
-  trap "rm -f '$tmp'" RETURN
-
-  if [[ -n "${GITHUB_TOKEN:-}" ]]; then
-    # Private repo: find asset API URL
-    local release_url="https://api.github.com/repos/${REPO}/releases/tags/${tag}"
-    local asset_url
-    asset_url=$(_download "$release_url" - "application/json" \
-      | grep -C 10 "\"name\": \"${name}\"" \
-      | grep "\"url\":" \
-      | head -1 \
-      | sed -E 's/.*"url": *"([^"]+)".*/\1/')
-
-    [[ -n "$asset_url" ]] || _die "could not find asset ${name} in release ${tag}"
-    _download "$asset_url" "$tmp" "application/octet-stream"
-  else
-    # Public repo: use standard download URL
-    local url="https://github.com/${REPO}/releases/download/${tag}/${name}"
-    _download "$url" "$tmp"
-  fi
-
-  chmod +x "$tmp"
-  head -1 "$tmp" | grep -q 'bash\|sh'\
-    || _die "downloaded ${name} does not look like a shell script"
-
-  mv "$tmp" "$dest"
-  chmod +x "$dest"
-  _info "installed: ${dest}"
+curl_auth() {
+    if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+        curl -fsSL -H "Authorization: token ${GITHUB_TOKEN}" "$@"
+    else
+        curl -fsSL "$@"
+    fi
 }
 
-# -- main ----------------------------------------------------------------------
+# Global temp dir for cleanup trap
+TEMP_DIR=""
 
-printf '\nhackathon-skills installer\n'
-printf '==========================\n\n'
+cleanup() {
+    if [[ -n "$TEMP_DIR" && -d "$TEMP_DIR" ]]; then
+        rm -rf "$TEMP_DIR"
+    fi
+}
+trap cleanup EXIT
 
-TAG="${1:-}"
-if [[ -z "$TAG" ]]; then
-  printf 'Fetching latest release tag...\n'
-  TAG=$(_latest_tag)
-  [[ -n "$TAG" ]] || _die "could not determine latest release tag"
-fi
-_info "version: ${TAG}"
-printf '\n'
+# -- Installation -------------------------------------------------------------
 
-mkdir -p "$INSTALL_DIR"
+main() {
+    echo ""
+    echo -e "${CYAN}${TOOL_NAME} installer${NC}"
+    echo -e "${CYAN}========================${NC}"
+    echo ""
+    
+    local version="$TAG"
+    if [[ -z "$version" ]]; then
+        info "Fetching latest release tag..."
+        version="$(get_latest_release)"
+    fi
 
-printf 'Downloading...\n'
-_install_script "$TAG" "runner.sh"         "$INSTALL_PATH"
-_install_script "$TAG" "make-claude-md.sh" "$BOOTSTRAP_PATH"
+    if [[ -z "$version" ]]; then
+        error "Could not determine version"
+    fi
+    
+    info "Version: ${version}"
+    if [[ "$BETA" == "true" ]]; then
+        info "Channel: beta"
+    fi
+    echo ""
 
-printf '\n'
+    TEMP_DIR="$(mktemp -d)"
+    
+    # Optional: Download checksums
+    local checksum_url
+    if [[ -n "${BASE_URL:-}" ]]; then
+        checksum_url="${BASE_URL}/checksums.sha256"
+    else
+        checksum_url="https://github.com/${REPO}/releases/download/${version}/checksums.sha256"
+    fi
 
-# Ensure ~/.local/bin is on PATH
-if ! printf '%s' "$PATH" | tr ':' '\n' | grep -qxF "$INSTALL_DIR"; then
-  _add_to_path
-fi
+    local has_checksums=false
+    if curl_auth -o "${TEMP_DIR}/checksums.sha256" "$checksum_url" 2>/dev/null; then
+        has_checksums=true
+        info "Checksums available for verification."
+    else
+        warn "Note: No checksums found for this release, skipping verification."
+    fi
 
-printf 'Done.\n\n'
-printf 'Next steps:\n'
-printf '  1. Create a new repo from the template on GitHub\n'
-printf '  2. Clone it, cd into it\n'
-printf '  3. hackathon-bootstrap        - generates CLAUDE.md + slash commands\n'
-printf '  4. Fill in PLAN.md\n'
-printf '  5. Open Claude Code and run /hackathon-setup\n\n'
-printf 'Other commands:\n'
-printf '  hackathon-skills --help       - PTY runner help\n'
-printf '  hackathon-skills --reconfigure - change AI CLI selection\n\n'
+    mkdir -p "$INSTALL_DIR"
 
-exit 0
+    for asset_pair in "${ASSETS[@]}"; do
+        local asset_name="${asset_pair%%:*}"
+        local target_name="${asset_pair##*:}"
+        local download_url
+        if [[ -n "${BASE_URL:-}" ]]; then
+            download_url="${BASE_URL}/${asset_name}"
+        else
+            download_url="https://github.com/${REPO}/releases/download/${version}/${asset_name}"
+        fi
+        local target_path="${INSTALL_DIR}/${target_name}"
+
+        info "Downloading ${asset_name}..."
+        if ! curl_auth -o "${TEMP_DIR}/${asset_name}" "$download_url"; then
+            error "Failed to download ${asset_name}"
+        fi
+
+        # Verify checksum if available
+        if [[ "$has_checksums" == "true" ]]; then
+            info "Verifying checksum for ${asset_name}..."
+            local expected_hash
+            expected_hash=$(awk -v file="$asset_name" '{name=$2; sub(/^\*/, "", name)} name == file {print tolower($1); exit}' "${TEMP_DIR}/checksums.sha256" || true)
+            
+            if [[ -n "$expected_hash" ]]; then
+                local actual_hash=""
+                if command -v sha256sum &> /dev/null; then
+                    actual_hash=$(sha256sum "${TEMP_DIR}/${asset_name}" | awk '{print $1}' | tr '[:upper:]' '[:lower:]')
+                elif command -v shasum &> /dev/null; then
+                    actual_hash=$(shasum -a 256 "${TEMP_DIR}/${asset_name}" | awk '{print $1}' | tr '[:upper:]' '[:lower:]')
+                fi
+
+                if [[ -n "$actual_hash" ]]; then
+                    if [[ "$expected_hash" != "$actual_hash" ]]; then
+                        error "Checksum verification failed for ${asset_name}!\nExpected: ${expected_hash}\nActual: ${actual_hash}"
+                    fi
+                    success "Checksum verified."
+                else
+                    warn "No checksum utility found, skipping verification"
+                fi
+            else
+                warn "No hash found for ${asset_name} in checksums file."
+            fi
+        fi
+
+        mv "${TEMP_DIR}/${asset_name}" "$target_path"
+        chmod +x "$target_path"
+        success "Installed: ${target_path}"
+    done
+    
+    echo ""
+    success "✓ ${TOOL_NAME} ${version} installed successfully!"
+    
+    # Check if install directory is in PATH
+    if [[ ":$PATH:" != *":${INSTALL_DIR}:"* ]]; then
+        echo ""
+        warn "Note: ${INSTALL_DIR} is not in your PATH"
+        echo ""
+        echo "Add it to your shell configuration:"
+        
+        local shell_name
+        shell_name="$(basename "$SHELL")"
+        
+        case "$shell_name" in
+            bash)
+                echo "  echo 'export PATH=\"\$HOME/.local/bin:\$PATH\"' >> ~/.bashrc"
+                echo "  source ~/.bashrc"
+                ;;
+            zsh)
+                echo "  echo 'export PATH=\"\$HOME/.local/bin:\$PATH\"' >> ~/.zshrc"
+                echo "  source ~/.zshrc"
+                ;;
+            fish)
+                echo "  fish_add_path ~/.local/bin"
+                ;;
+            *)
+                echo "  export PATH=\"\$HOME/.local/bin:\$PATH\""
+                ;;
+        esac
+    fi
+
+    echo ""
+    echo "Get started:"
+    echo "  hackathon-bootstrap           # generates CLAUDE.md + slash commands"
+    echo "  hackathon-skills --help       # Show all commands (Claude, Aider, Codex, Antigravity)"
+    echo ""
+}
+
+main "$@"

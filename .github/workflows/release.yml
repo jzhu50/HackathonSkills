@@ -43,7 +43,14 @@ jobs:
 
       - name: Install via install.sh (Linux / macOS)
         if: runner.os != 'Windows'
-        run: bash install.sh "${{ github.ref_name }}"
+        run: |
+          # GitHub's CDN can take a few seconds after release creation to serve assets.
+          # Retry up to 5 times with 10s gaps before failing.
+          for i in 1 2 3 4 5; do
+            bash install.sh "${{ github.ref_name }}" && break
+            echo "Attempt $i failed — waiting 10s before retry..."
+            sleep 10
+          done
 
       - name: Smoke test — bootstrap after install (Linux / macOS)
         if: runner.os != 'Windows'
@@ -68,7 +75,17 @@ jobs:
       - name: Install via install.ps1 (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
-        run: .\install.ps1 -Tag "${{ github.ref_name }}"
+        run: |
+          # GitHub's CDN can take a few seconds after release creation to serve assets.
+          # Retry up to 5 times with 10s gaps before failing.
+          $tag = "${{ github.ref_name }}"
+          for ($i = 1; $i -le 5; $i++) {
+            & .\install.ps1 -Tag $tag
+            if ($LASTEXITCODE -eq 0) { break }
+            if ($i -eq 5) { Write-Host "All install attempts failed"; exit 1 }
+            Write-Host "Attempt $i failed — waiting 10s before retry..."
+            Start-Sleep 10
+          }
 
       - name: Smoke test — bootstrap after install (Windows)
         if: runner.os == 'Windows'

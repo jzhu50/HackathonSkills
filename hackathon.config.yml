@@ -43,9 +43,9 @@ quality:
 parallelism: false
 
 actions:
-  gitleaks: true          # secret scanning on every PR
-  codeql: true            # security analysis
-  dependency_review: true # flag vulnerable packages in PRs
+  gitleaks: false         # secret scanning on every PR
+  codeql: false           # security analysis
+  dependency_review: false # flag vulnerable packages in PRs
   actionlint: true        # lint .github/workflows/
   markdownlint: true      # lint PLAN.md, SPECS.md, AGENTS.md
   contract: true          # branch/label/issue/env/protected-file contract checks

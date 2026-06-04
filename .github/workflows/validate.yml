@@ -10,8 +10,13 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  validate:
-    runs-on: ubuntu-latest
+  # ── bash bootstrap (Linux + macOS) ───────────────────────────────────────────
+  validate-bash:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
 
@@ -71,6 +76,12 @@ jobs:
 
           echo "Bootstrap OK — $skill_count skills, CLAUDE.md $(wc -c < "$tmp/CLAUDE.md" | tr -d ' ') bytes"
 
+  # ── PowerShell bootstrap (Windows) ───────────────────────────────────────────
+  validate-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
       - name: Validate PowerShell script syntax
         shell: pwsh
         run: |
@@ -89,3 +100,51 @@ jobs:
             }
           }
           exit $failed
+
+      - name: Run bootstrap and verify outputs
+        shell: pwsh
+        run: |
+          $tmp = Join-Path $env:TEMP "hs-validate-$([System.IO.Path]::GetRandomFileName())"
+          New-Item -ItemType Directory -Force -Path $tmp | Out-Null
+
+          & .\make-claude-md.ps1 $tmp
+          if ($LASTEXITCODE -ne 0) { Write-Host "FAIL: make-claude-md.ps1 exited $LASTEXITCODE"; exit 1 }
+
+          # CLAUDE.md must exist and be non-empty
+          $claudeMd = Join-Path $tmp "CLAUDE.md"
+          if (-not (Test-Path $claudeMd) -or (Get-Item $claudeMd).Length -eq 0) {
+            Write-Host "FAIL: CLAUDE.md missing or empty"; exit 1
+          }
+
+          # command count must match skill count
+          $skillCount  = (Get-ChildItem skills\*.md).Count
+          $cmdCount    = (Get-ChildItem (Join-Path $tmp ".claude\commands\*.md") -ErrorAction SilentlyContinue).Count
+          if ($skillCount -ne $cmdCount) {
+            Write-Host "FAIL: $skillCount skills but $cmdCount commands in .claude\commands\"; exit 1
+          }
+
+          # settings.json must exist and be valid JSON
+          $settingsPath = Join-Path $tmp ".claude\settings.json"
+          if (-not (Test-Path $settingsPath)) {
+            Write-Host "FAIL: .claude\settings.json not generated"; exit 1
+          }
+          try {
+            $null = Get-Content $settingsPath -Raw | ConvertFrom-Json
+          } catch {
+            Write-Host "FAIL: .claude\settings.json is not valid JSON: $_"; exit 1
+          }
+
+          # CLAUDE.md must contain a section for every skill
+          $claudeContent = Get-Content $claudeMd -Raw
+          $missing = 0
+          foreach ($skill in Get-ChildItem skills\*.md) {
+            $name = $skill.BaseName
+            if ($claudeContent -notmatch "# Skill: $name") {
+              Write-Host "FAIL: CLAUDE.md missing section for $name"
+              $missing = 1
+            }
+          }
+          if ($missing) { exit 1 }
+
+          $bytes = (Get-Item $claudeMd).Length
+          Write-Host "Bootstrap OK — $skillCount skills, CLAUDE.md $bytes bytes"

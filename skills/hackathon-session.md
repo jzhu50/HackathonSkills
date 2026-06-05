@@ -1,6 +1,6 @@
 ---
 description: Phase 4 Implementation. Claims ai-approved tasks, syncs, validates, implements, opens PR. Zero human escalation.
-allowed-tools: mcp__github__*, Read, Write, Edit, Bash
+allowed-tools: mcp__github__*, Read, Write, Edit, Bash, Skill
 ---
 
 # Skill: hackathon-session

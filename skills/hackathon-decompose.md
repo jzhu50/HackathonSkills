@@ -38,7 +38,7 @@ Phase 3: Epics -> Tasks.
 - **Act**: 
   - Create Verify Task first (needs ID for blocking).
   - Create all other tasks.
-  - Body: Goal, Context, AC, `Blocks`, `Blocked By`.
+  - Body: `## Project`, `## Parent`, `## Goal`, `## Context` (include epic branch name), `## Acceptance Criteria`, `## Blocks`, `## Blocked By`.
   - Label: `ai-approved`. If `## Blocked By` is non-empty: also add `blocked`.
 - **Link**: Update Epic `## Child Issues`. Unassign Epic.
 

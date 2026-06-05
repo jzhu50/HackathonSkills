@@ -13,7 +13,7 @@ Phase 3: Epics -> Tasks.
 
 ## Phase 0: Orient
 - Load `hackathon.config.yml`. Gate: `task_breakdown`.
-- Sync: `git fetch origin; git rebase origin/main`.
+- Sync: `git fetch origin; git merge origin/main`.
 - Load `AGENTS.md`, `PLAN.md`.
 
 ## Phase 1: Claim Epic

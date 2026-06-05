@@ -18,15 +18,15 @@ Phase 4: Implement Tasks -> PRs.
 
 ## Phase 1: Orient
 - `git fetch origin`.
-- `git checkout main; git rebase origin/main`.
+- `git checkout main; git merge origin/main`.
 - Unblock: Check `blocked` issues -> Remove label if deps closed.
 
 ## Phase 2: Task Loop
 1. **Claim**: Call tool `read_file` on `skills/modules/skill-claim.md`. Follow its steps to claim `ai-approved` task.
 2. **Branch**: `git checkout -b task/[id]-[slug]`.
-3. **Sync**: Call tool `read_file` on `skills/modules/skill-sync.md`. Follow its steps to rebase on epic branch.
+3. **Sync**: Call tool `read_file` on `skills/modules/skill-sync.md`. Follow its steps to sync with epic branch.
 4. **Validate Baseline**: Call tool `read_file` on `skills/modules/skill-validate.md`. Follow its steps to write script -> Confirm FAIL.
-5. **Implement**: 
+5. **Implement**:
    - Check signals -> Read and follow domain skills (e.g., `read_file` on `skills/hackathon-auth.md`).
    - Implement -> Run tests -> Debug on regression.
 6. **Validate Success**: Run success script -> Must PASS.
@@ -37,7 +37,6 @@ Phase 4: Implement Tasks -> PRs.
    - Comment: What built + test results.
 
 ## Rules
-- **REBASE ONLY**. Ban `merge main`.
+- **No Direct Commits**: Always branch.
 - **Validation Blocking**: No PASS = No PR.
-- **Autonomy**: Rebase fail -> Open PR + Tag `[REBASE_FAILED]`.
 - **Collision**: Refresh status before claim.

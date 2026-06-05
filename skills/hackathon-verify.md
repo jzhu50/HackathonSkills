@@ -39,5 +39,5 @@ Final task per epic. E2E Verify -> Main Merge.
 - Verify Epic auto-closed. Remove task label.
 
 ## Rules
-- **Linear History**: Rebase before testing.
+- **Testing**: Run tests to verify branch.
 - **Audit Trail**: Epic -> Main uses regular merge. DO NOT SQUASH.

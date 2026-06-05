@@ -7,7 +7,6 @@ AI agents write code. You control oversight.
 - **GitHub = Brain**: Issues, Projects, PRs store all state. No local memory.
 - **Caveman Mode**: Agents speak in fragments. Save 50% tokens. No filler.
 - **Context Mode**: Agents write scripts to compute data. Never read large files.
-- **Linear History**: Rebase ONLY. `merge origin/master` is banned.
 - **Validation-First**: Agents write Success Scripts before coding. PR blocks if FAIL.
 
 ## Hierarchy
@@ -30,8 +29,7 @@ irm https://raw.githubusercontent.com/Victor-Casado/HackathonSkills/main/install
 Run `/hackathon-setup` inside project.
 
 ## Config (`hackathon.config.yml`)
-- `autonomy: total`: Agents never escalate. Auto-rebase, auto-validate.
-- `history: linear`: Enforce rebase-only syncing.
+- `autonomy: total`: Agents never escalate. Auto-validate.
 - `validation: autonomous-script`: Mandate Success Scripts for AC.
 
 ## States

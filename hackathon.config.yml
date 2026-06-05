@@ -1,7 +1,7 @@
 # hackathon.config.yml
 # Controls human oversight and quality requirements across all hackathon skills.
 # Missing file or missing keys default to maximum oversight:
-#   all gates: true, testing: required, comments: verbose, parallelism: false
+#   all gates: true, testing: required, parallelism: false
 
 gates:
   project_breakdown:

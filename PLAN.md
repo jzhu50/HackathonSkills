@@ -53,6 +53,9 @@ _TODO_
      Use multiple projects when distinct deliverables have separate timelines, owners,
      or release gates (e.g. "MVP", "Admin Portal", "Mobile App").
 
+     **V3.1.0 RULE: GLUE EPICS**
+     If you have multiple projects, you MUST create an "Integration / Glue Epic" to wire them together. This ensures end-to-end (E2E) testing across boundaries.
+
      Each feature listed under a project becomes one epic issue. Be specific enough
      that an agent can understand what "done" means. -->
 

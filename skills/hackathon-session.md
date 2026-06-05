@@ -22,12 +22,12 @@ Phase 4: Implement Tasks -> PRs.
 - Unblock: Check `blocked` issues -> Remove label if deps closed.
 
 ## Phase 2: Task Loop
-1. **Claim**: Load `skills/modules/skill-claim.md`. Claim `ai-approved` task.
+1. **Claim**: Call tool `read_file` on `skills/modules/skill-claim.md`. Follow its steps to claim `ai-approved` task.
 2. **Branch**: `git checkout -b task/[id]-[slug]`.
-3. **Sync**: Load `skills/modules/skill-sync.md`. Rebase on epic branch.
-4. **Validate Baseline**: Load `skills/modules/skill-validate.md`. Write script -> Confirm FAIL.
+3. **Sync**: Call tool `read_file` on `skills/modules/skill-sync.md`. Follow its steps to rebase on epic branch.
+4. **Validate Baseline**: Call tool `read_file` on `skills/modules/skill-validate.md`. Follow its steps to write script -> Confirm FAIL.
 5. **Implement**: 
-   - Check signals -> Load domain skills (`hackathon-auth`, etc.).
+   - Check signals -> Read and follow domain skills (e.g., `read_file` on `skills/hackathon-auth.md`).
    - Implement -> Run tests -> Debug on regression.
 6. **Validate Success**: Run success script -> Must PASS.
 7. **PR**:

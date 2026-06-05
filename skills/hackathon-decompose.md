@@ -18,7 +18,7 @@ Phase 3: Epics -> Tasks.
 
 ## Phase 1: Claim Epic
 - Find `ai-approved` epic. No deps open.
-- **Collision Check**: Load `skills/modules/skill-claim.md`.
+- **Collision Check**: Call tool `read_file` on `skills/modules/skill-claim.md`. Follow its steps.
 - Label `in-progress`. Assign self.
 
 ## Phase 2: Branch & Context

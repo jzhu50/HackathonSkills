@@ -17,9 +17,9 @@ Final task per epic. E2E Verify -> Main Merge.
 - Ensure all sibling tasks closed. Open? -> Unassign + ABORT.
 
 ## Phase 1: Rebase & Test
-- Load `skills/modules/skill-sync.md`. Rebase `epic` branch on `main`.
+- Call tool `read_file` on `skills/modules/skill-sync.md`. Follow its steps to rebase `epic` branch on `main`.
 - Run test suite.
-- Security audit: `hackathon-security-audit`. CRITICAL = ABORT + File bugs.
+- Security audit: Call tool `read_file` on `skills/hackathon-security-audit.md`. CRITICAL = ABORT + File bugs.
 - Verify AC.
 
 ## Phase 2: Verdict

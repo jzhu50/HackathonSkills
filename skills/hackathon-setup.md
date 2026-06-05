@@ -18,11 +18,12 @@ Start here. Configures project.
 ## Phase 2: Prerequisites
 - Ensure: Claude Code, Docker, GH PAT (`repo` scope), Branch protection (`main`).
 
-## Phase 3: Config
+## Phase 3: Config & Skill Injection
 - Guide `PLAN.md` creation.
 - Configure `hackathon.config.yml` (Gates, Quality, Actions, Autonomy, Linear History).
 - Scaffold CI templates to `.github/workflows/`.
 - Create `.geminiignore` template.
+- **Inject Skills**: Run `./make-claude-md.sh` or `.\make-claude-md.ps1` to compile `CLAUDE.md` and populate `.claude/commands/`. (If using Cursor/Aider, follow `HARNESS.md` instructions).
 - `git commit` config + CI.
 
 ## Phase 4: GitHub Labels

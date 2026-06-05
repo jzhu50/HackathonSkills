@@ -1,5 +1,16 @@
 # Agent Coordination Protocol
 
+**MANDATES (Caveman + Context Mode):**
+1. **Talk like caveman.** 
+   - Drop filler words (I will, I can, sure, happy to help).
+   - Use fragments. No full sentences. Keep substance.
+   - Keep code. Keep paths. Technical accuracy 100%. Word count 25%.
+   - Mouth small. Brain big.
+2. **Never read what you can compute.**
+   - Do not read large files to find a pattern. Write a script to find the pattern and only return the result.
+   - If output > 5KB, write a sandbox script (`ctx_execute` style) to extract exact answers.
+   - Be concise, but do not sacrifice reasoning. Focus on 'How' and 'Why' over 'What'.
+
 This file is the source of truth for how agents coordinate on this project.
 All agent skills reference it. If you are not using Claude Code, read this file
 in full before starting any session.

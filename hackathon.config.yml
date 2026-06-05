@@ -5,41 +5,35 @@
 
 gates:
   project_breakdown:
-    human_required: true   # present proposed projects in chat and wait for approval before creating GitHub Projects
-    grilling: true         # call hackathon-grilling to reach zero ambiguities before scoping projects
+    human_required: true   # approve proposed projects before GitHub Projects are created
+    grilling: true         # interrogate before scoping projects
 
   epic_breakdown:
-    human_required: true   # present proposed epics in chat and wait for approval before writing to GitHub
-    grilling: true         # call hackathon-grilling to reach zero ambiguities before scoping epics
+    human_required: true   # approve proposed epics before writing to GitHub
+    grilling: true         # interrogate before scoping epics
 
   task_breakdown:
-    human_required: true   # present proposed tasks in chat and wait for approval before writing to GitHub
-    grilling: true         # call hackathon-grilling to reach zero ambiguities before decomposing each epic
+    human_required: true   # approve proposed tasks before writing to GitHub
+    grilling: true         # interrogate before decomposing each epic
 
   task_completion:
-    human_required: true   # present completed work in chat and wait for approval before opening PR
+    human_required: true   # approve completed work before PR opens
 
   code_review:
-    human_required: true   # human triggers hackathon-review and decides merge/changes on task PRs
+    human_required: true   # human triggers review and decides merge/changes on task PRs
 
   epic_review:
     human_required: true   # human reviews and merges epic->main PR
 
 quality:
-  # required:     full path coverage enforced - hard stop before PR if any code path is uncovered
-  # recommended:  main logic paths must be tested - missing edge coverage flagged but not blocking
-  # skip:         no test suite run, no test writing requirement
-  testing: required
+  testing: required        # required | recommended | skip
+  comments: verbose        # verbose | minimal
+  validation: autonomous-script # agent-generated success scripts block PR
 
-  # verbose:  full GitHub comment trail (claiming, baseline, progress, close-out)
-  # minimal:  claiming comment + close-out comment only
-  comments: verbose
+autonomy: total           # enables autonomous loop recovery and metadata tagging
+history: linear           # enforces rebase-only sync and regular merge commits for epics
 
 # When true: hackathon-setup structures epics into parallel waves.
-#   Wave 1 - independent foundations, each built with stubs for cross-dependencies
-#   Wave 2 - integration epics that wire the foundations together
-#   Wave 3 - end-to-end verify
-# When false: epics in priority/dependency chain order (original behavior)
 parallelism: false
 
 actions:

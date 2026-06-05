@@ -22,12 +22,12 @@ Phase 4: Implement Tasks -> PRs.
 - Unblock: Check `blocked` issues -> Remove label if deps closed.
 
 ## Phase 2: Task Loop
-1. **Claim**: Call tool `read_file` on `skills/modules/skill-claim.md`. Follow its steps to claim `ai-approved` task.
+1. **Claim**: Use the `Read` tool on `skills/modules/skill-claim.md`. Follow its steps to claim `ai-approved` task.
 2. **Branch**: `git checkout -b task/[id]-[slug]`.
-3. **Sync**: Call tool `read_file` on `skills/modules/skill-sync.md`. Follow its steps to sync with epic branch.
-4. **Validate Baseline**: Call tool `read_file` on `skills/modules/skill-validate.md`. Follow its steps to write script -> Confirm FAIL.
+3. **Sync**: Use the `Read` tool on `skills/modules/skill-sync.md`. Follow its steps to sync with epic branch.
+4. **Validate Baseline**: Use the `Read` tool on `skills/modules/skill-validate.md`. Follow its steps to write script -> Confirm FAIL.
 5. **Implement**:
-   - Check signals -> Read and follow domain skills (e.g., `read_file` on `skills/hackathon-auth.md`).
+   - Check signals -> Read and follow domain skills (e.g., use `Read` on `skills/hackathon-auth.md`).
    - Implement -> Run tests -> Debug on regression.
 6. **Validate Success**: Run success script -> Must PASS.
 7. **PR**:
@@ -35,6 +35,20 @@ Phase 4: Implement Tasks -> PRs.
    - `mcp__github__create_pull_request`: Base = epic branch.
    - Label: `review-ready`.
    - Comment: What built + test results.
+
+## Phase 3: Review Sweep
+After task loop exhausted:
+1. List all `review-ready` issues via MCP.
+2. For each: Use the `Read` tool on `skills/hackathon-review.md`. Follow review steps.
+
+## Phase 4: Stale Reclaim
+Check `in-progress` issues with no progress comment in >30 min:
+- Branch pushed? -> Check out + continue from where left off.
+- No branch? -> Reset label `ai-approved`, unassign, comment `agent: reclaiming - no branch, restarting`. Re-enter Phase 2.
+
+## Phase 5: Done
+- No `ai-approved`, no `review-ready`, no stale reclaims remaining.
+- Report: Open PRs, blocked count. Stop.
 
 ## Rules
 - **No Direct Commits**: Always branch.

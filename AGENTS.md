@@ -65,7 +65,7 @@ The coordination primitives are:
 | `code_review.human_required` | `hackathon-session` | Human triggers review | AI reviews and merges |
 | `epic_review.human_required` | `hackathon-verify` | Human reviews epic->main PR | Auto-merge on clean verify |
 
-**Autonomy Level:** `hackathon.config.yml` `autonomy: total` enables end-to-end autonomous loops. Failures tag metadata for future agents rather than escalating.
+**Autonomy Level:** `hackathon.config.yml` `autonomy: total` enables end-to-end autonomous loops. Failures still file `needs-human-review` issues and reset the failing task to `ai-approved` — the loop continues on other tasks rather than stopping, but broken work is never silently merged.
 
 ---
 

@@ -65,7 +65,7 @@ The coordination primitives are:
 | `code_review.human_required` | `hackathon-session` | Human triggers review | AI reviews and merges |
 | `epic_review.human_required` | `hackathon-verify` | Human reviews epic->main PR | Auto-merge on clean verify |
 
-**Autonomy Level:** `hackathon.config.yml` `autonomy: total` enables end-to-end autonomous loops. Failures still file `needs-human-review` issues and reset the failing task to `ai-approved` — the loop continues on other tasks rather than stopping, but broken work is never silently merged.
+All gates default to `true` when key is missing. Set `human_required: false` on any gate to let agents proceed without waiting for approval at that step.
 
 ---
 
@@ -119,10 +119,7 @@ git merge origin/epic/<n>-<slug>
 
 ## Collision Prevention
 
-Before any `claim` or `review`:
-1. **Refresh:** Get latest issue comments + assignees.
-2. **Verify:** Check if someone claimed in last 120 seconds.
-3. **Act:** Claim/Review only if clear.
+Before any `claim` or `review`, follow `skills/modules/skill-claim.md`.
 
 ---
 

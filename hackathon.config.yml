@@ -29,8 +29,6 @@ quality:
   testing: required        # required | recommended | skip
   validation: autonomous-script # agent-generated success scripts block PR
 
-autonomy: total           # enables autonomous loop recovery and metadata tagging
-
 # When true: hackathon-setup structures epics into parallel waves.
 parallelism: true
 

@@ -29,8 +29,8 @@ irm https://raw.githubusercontent.com/Victor-Casado/HackathonSkills/main/install
 Run `/hackathon-setup` inside project.
 
 ## Config (`hackathon.config.yml`)
-- `autonomy: total`: Agents never escalate. Auto-validate.
 - `validation: autonomous-script`: Mandate Success Scripts for AC.
+- All gates default `true`. Set `human_required: false` per gate for autonomous operation.
 
 ## States
 - `needs-human-review`: Bugs/Scope.

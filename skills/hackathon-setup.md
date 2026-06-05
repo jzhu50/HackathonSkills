@@ -321,7 +321,8 @@ Check existing labels first; skip any that are already present.
 | `ai-approved` | `#16a34a` | Ready for an agent to claim and work |
 | `in-progress` | `#2563eb` | Actively being worked |
 | `blocked` | `#dc2626` | Cannot proceed — comment explains why |
-| `in-review` | `#7c3aed` | PR is open and waiting for review/merge |
+| `review-ready` | `#7c3aed` | Task done, PR open, waiting for review |
+| `in-review` | `#6d28d9` | Review actively in progress |
 | `epic` | `#0891b2` | Parent container — work happens in child task issues |
 | `bug` | `#dc2626` | Something is broken — routed to hackathon-debug |
 | `planning-update` | `#f59e0b` | Allows modifying protected files on a task branch |
@@ -372,7 +373,7 @@ Loops through all `ai-approved` tasks: implements, tests, opens PRs.
 ```
 /hackathon-review
 ```
-Run this for each `in-review` PR. The agent reads the diff, posts findings.
+Run this for each `review-ready` PR. The agent reads the diff, posts findings.
 Say "merge" or "request changes: [specifics]".
 
 **Bugs:** the session auto-calls `/hackathon-debug` on test regressions.

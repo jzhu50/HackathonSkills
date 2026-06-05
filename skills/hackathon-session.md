@@ -14,7 +14,7 @@ Phase 4: Implement Tasks -> PRs.
 ## Phase 0: Read Config
 - Load `hackathon.config.yml`.
 - Gates: `task_completion`, `code_review`.
-- Quality: `testing`, `validation`, `autonomy`.
+- Quality: `testing`, `validation`.
 
 ## Phase 1: Orient
 - `git fetch origin`.
@@ -25,11 +25,11 @@ Phase 4: Implement Tasks -> PRs.
 1. **Claim**: Use the `Read` tool on `skills/modules/skill-claim.md`. Follow its steps to claim `ai-approved` task.
 2. **Branch**: `git checkout -b task/[id]-[slug]`.
 3. **Sync**: Use the `Read` tool on `skills/modules/skill-sync.md`. Follow its steps to sync with epic branch.
-4. **Validate Baseline**: Use the `Read` tool on `skills/modules/skill-validate.md`. Follow its steps to write script -> Confirm FAIL.
+4. **Validate Baseline**: If `testing: skip` -> skip this step. Otherwise: Use the `Read` tool on `skills/modules/skill-validate.md`. Follow its steps to write script -> Confirm FAIL.
 5. **Implement**:
    - Check signals -> Read and follow domain skills (e.g., use `Read` on `skills/hackathon-auth.md`).
    - Implement -> Run tests -> Debug on regression.
-6. **Validate Success**: Run success script -> Must PASS.
+6. **Validate Success**: If `testing: skip` -> skip this step. Otherwise: Run success script -> Must PASS.
 7. **PR**:
    - `git push -u origin [branch]`.
    - `mcp__github__create_pull_request`: Base = epic branch.
@@ -40,11 +40,12 @@ Phase 4: Implement Tasks -> PRs.
 After task loop exhausted:
 1. List all `review-ready` issues via MCP.
 2. For each: Use the `Read` tool on `skills/hackathon-review.md`. Follow review steps.
+3. If any tasks returned to `ai-approved` (REQUEST CHANGES) -> Return to Phase 2.
 
 ## Phase 4: Stale Reclaim
 Check `in-progress` issues with no progress comment in >30 min:
 - Branch pushed? -> Check out + continue from where left off.
-- No branch? -> Reset label `ai-approved`, unassign, comment `agent: reclaiming - no branch, restarting`. Re-enter Phase 2.
+- No branch? -> Re-read issue first. Verify still stale (no recent assignee change or comments). If clear: unassign + reset label to `ai-approved` + comment `agent: reclaiming - no branch, restarting`. Proceed to Phase 2 Step 2 (Branch) directly — skip the Claim step.
 
 ## Phase 5: Done
 - No `ai-approved`, no `review-ready`, no stale reclaims remaining.

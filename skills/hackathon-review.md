@@ -1,6 +1,6 @@
 ---
 description: Review one PR. Check AC, post findings, decide merge/changes. Triggered internally or by human.
-allowed-tools: mcp__github__*
+allowed-tools: mcp__github__*, Read
 ---
 
 # Skill: hackathon-review
@@ -16,9 +16,7 @@ Review one PR. Verify AC. Decide.
 - Load `AGENTS.md` and `PLAN.md`.
 
 ## Phase 1: Claim & Collision Check
-1. **Refresh**: `mcp__github__get_issue` + `mcp__github__list_issue_comments`.
-2. **Check**: Is it `review-ready`? Is there a claim < 120s? -> ABORT if yes.
-3. **Act**: Change label `review-ready` -> `in-review`. Assign self.
+- Use the `Read` tool on `skills/modules/skill-claim.md`. Follow its steps (claim target label is `review-ready`; transition to `in-review` instead of `in-progress`).
 
 ## Phase 2: Review
 - Read Issue: Goal, AC.

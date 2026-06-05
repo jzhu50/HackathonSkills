@@ -1,129 +1,26 @@
-﻿---
-description: Run the test suite and report results with expected vs actual output per test. Respects testing config (required/recommended/skip). Called by hackathon-session at baseline and throughout implementation. Also callable by humans.
+---
+description: Run test suite. Report expected vs actual + coverage gaps.
 allowed-tools: mcp__github__*, Read, Bash
 ---
 
 # Skill: hackathon-test
+Run tests. Report results. Never make decisions.
 
-**Reports results and returns - never makes decisions.** Runs the full test suite and
-outputs what was expected, what actually happened, and which failures are new vs
-pre-existing. The caller (`hackathon-session`) decides what to do with the results.
+## Phase 0: Check Config
+- `testing: skip` -> Return immediately. Do not run.
 
----
+## Phase 1: Run
+- Find command: `PLAN.md` -> `SPECS.md` -> defaults (`npm test`, etc).
+- Run suite. Capture output.
 
-## GitHub MCP - required for all operations
+## Phase 2: Report
+**Format:**
+- Command run.
+- Result: Pass, Fail, Skip.
+- **Failures**: Test name, Expected, Actual, File:Line.
+- **Context** (if baseline exists): New vs Pre-existing.
+- **Coverage** (if `testing: required`): List uncovered paths.
 
-Every GitHub operation **must** use the GitHub MCP (`mcp__github__*`).
-Do not use `gh` CLI, `curl`, or Bash for anything the MCP can handle.
-Make all MCP calls **sequentially, not in parallel.**
-
----
-
-## Trigger
-
-- `hackathon-session` at start of each task (mode: `baseline`)
-- `hackathon-session` during or after implementation (mode: `check`)
-- Human: "Run the tests", "Check what's failing", "What's the test status"
-
----
-
-## Step 0 - Check config
-
-Read `hackathon.config.yml`. Extract `quality.testing` (default: `required`).
-
-**If `testing: skip`:** return immediately:
-```
-Test run skipped - testing: skip is set in hackathon.config.yml
-```
-Do not run the suite. Do not report coverage.
-
----
-
-## Step 1 - Find the test command
-
-Check in order:
-1. `PLAN.md` Stack table - "Test command" row
-2. `SPECS.md` - setup or environment section
-3. Common defaults: `npm test`, `pytest`, `go test ./...`, `cargo test`, `bundle exec rspec`
-
-If no test command can be determined: report "no test command found" and stop.
-(A project with no test command should make establishing one its first task.)
-
----
-
-## Step 2 - Run the suite
-
-```bash
-<test command>
-```
-
-Capture all output. For each test, extract:
-- Test name or description
-- Status: PASS or FAIL
-- If FAIL: error message, assertion failure, file path, line number
-
----
-
-## Step 3 - Report
-
-Output the results in this format:
-
-```
-Test run - <mode: baseline / check>
-Command: <test command>
-Result: <N> passing, <M> failing, <K> skipped
-
-[If M > 0:]
-FAILING TESTS:
-- <test name>
-  Expected: <what the test asserts>
-  Actual:   <what happened - error/assertion output>
-  File:     <path:line if available>
-
-- <test name>
-  Expected: <what the test asserts>
-  Actual:   <what happened>
-  ...
-
-[If mode is "check" and baseline exists:]
-NEW FAILURES (were passing at baseline):
-  <list of test names - these need debugging>
-
-PRE-EXISTING FAILURES (also failing at baseline):
-  <list of test names - not your responsibility unless the task covers them>
-
-[If testing: required and mode is "check":]
-COVERAGE GAPS:
-  <list of code paths in new/modified files that are not exercised by any test>
-  <If none: "Full path coverage achieved.">
-```
-
-**Coverage gaps** are reported as a distinct section only when `testing: required`.
-The caller treats coverage gaps the same as test failures - they must be resolved
-before a PR can be opened. If `testing: recommended` or `testing: skip`, omit this
-section entirely.
-
----
-
-## Step 4 - Return result to caller
-
-Do not file issues or make decisions.
-
-Return the result summary to `hackathon-session`. The session skill decides:
-- If new failures exist -> call `hackathon-debug`
-- If only pre-existing failures -> note and continue
-- If suite is green -> proceed to PR
-
-When called by a human directly: just present the report above and stop.
-
----
-
-## Rules
-
-- **Never** file issues, change labels, or take action on failures - report only.
-- **Never** emit loop signals or close-out comments.
-- **Always** distinguish new failures from pre-existing ones when a baseline exists.
-- **Always** include file path and line number in failure output when available.
-
-
-
+## Phase 3: Return
+- Return summary to `hackathon-session`.
+- **DO NOT** file issues or change labels.

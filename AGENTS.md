@@ -95,25 +95,24 @@ Every epic gets its own branch. Every task gets a branch off its epic branch.
 | Task | `task/<n>-<slug>` | hackathon-session | epic branch |
 
 **Merge Rules:**
-- **Epic -> Main:** Regular merge commit (`git merge --no-ff`) to preserve history.
+- **Epic -> Main:** Regular merge commit. DO NOT SQUASH.
 - **Task -> Epic:** Squash merge (standard task close-out).
-- **Main -> Epic:** **BANNED**. Use `git rebase origin/main`.
+- **Main -> Epic:** No rebasing onto main. Parallel work relies on dependencies.
 
 ---
 
-## Git sync - REBASE ONLY
+## Git sync
 
 **Sync main:**
 ```bash
 git fetch origin
-git rebase origin/main
+git merge origin/main
 ```
-If rebase fails: `git rebase --abort`, open PR as-is, tag `[REBASE_FAILED]`.
 
 **Per task:** sync epic branch:
 ```bash
 git fetch origin
-git rebase origin/epic/<n>-<slug>
+git merge origin/epic/<n>-<slug>
 ```
 
 ---

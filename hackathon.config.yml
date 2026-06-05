@@ -27,14 +27,12 @@ gates:
 
 quality:
   testing: required        # required | recommended | skip
-  comments: verbose        # verbose | minimal
   validation: autonomous-script # agent-generated success scripts block PR
 
 autonomy: total           # enables autonomous loop recovery and metadata tagging
-history: linear           # enforces rebase-only sync and regular merge commits for epics
 
 # When true: hackathon-setup structures epics into parallel waves.
-parallelism: false
+parallelism: true
 
 actions:
   gitleaks: false         # secret scanning on every PR

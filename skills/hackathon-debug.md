@@ -24,7 +24,7 @@ Reproduce -> Diagnose -> Fix -> Green Suite.
 
 ## Mode B: Bug Issue
 1. **Orient**: Claim `bug` issue. Read context.
-2. **Reproduce**: Run steps. Fails? -> Continue. Passes? -> Unassign + Label `blocked`.
+2. **Reproduce**: Run steps. Fails? -> Continue. Passes 3x? -> Label `in-progress` -> `blocked`. Unassign. Comment explanation. Return to `hackathon-session`.
 3. **Diagnose**: Comment root cause.
 4. **Fix**: Minimal fix.
 5. **Test**: Write regression test (must fail without fix, pass with fix).

@@ -1,6 +1,6 @@
 ---
 description: Interrogate to zero ambiguity. Returns structured brief.
-allowed-tools: mcp__github__*, Read
+allowed-tools: Read
 ---
 
 # Skill: hackathon-grilling

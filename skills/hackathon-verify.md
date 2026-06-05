@@ -14,7 +14,7 @@ Final task per epic. E2E Verify -> Main Merge.
 ## Phase 0: Orient
 - Load `hackathon.config.yml`. Gate: `epic_review`.
 - Claim Verify task.
-- Ensure all sibling tasks closed. Open? -> Unassign + ABORT.
+- Ensure all sibling tasks closed **via merged PR** (not manually closed). Open or manually closed? -> Comment reason. Unassign + ABORT.
 
 ## Phase 1: Sync & Test
 - Use the `Read` tool on `skills/modules/skill-sync.md`. Follow its steps to sync the `epic` branch.
@@ -24,10 +24,11 @@ Final task per epic. E2E Verify -> Main Merge.
 
 ## Phase 2: Verdict
 - **FAIL**: 
-  - Deduplicate bugs.
-  - File `bug` issues -> `needs-human-review`.
-  - Add to Epic `Child Issues`. 
-  - Verify task -> `ai-approved`. Unassign.
+  - Deduplicate bugs (search open issues first; skip if duplicate exists).
+  - File `bug` issues. Label: `needs-human-review` if `task_breakdown.human_required: true`, else `ai-approved`.
+  - Add bug issue numbers to Epic `## Child Issues`.
+  - Update verify task `## Blocked By` to list all filed bug issue numbers.
+  - Label verify task `blocked`. Unassign. (Unblock sweep re-queues verify when all bugs close.)
 - **PASS**: 
   - Open PR: Epic -> Main. Title `[Epic #n] ready`. Body must include `Closes #<epic-number>` and `Closes #<verify-task-number>` on their own lines.
   - Task label -> `review-ready`.

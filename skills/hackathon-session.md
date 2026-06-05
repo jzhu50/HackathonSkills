@@ -18,8 +18,8 @@ Phase 4: Implement Tasks -> PRs.
 
 ## Phase 1: Orient
 - `git fetch origin`.
-- `git checkout main; git merge origin/main`.
-- Unblock: Check `blocked` issues -> Remove label if deps closed.
+- `git checkout main; git merge --ff-only origin/main`. Fails? -> Stop. Local main diverged.
+- Unblock: Check `blocked` issues -> Remove label if all `blocked-by` issue numbers are closed.
 
 ## Phase 2: Task Loop
 1. **Claim**: Use the `Read` tool on `skills/modules/skill-claim.md`. Follow its steps to claim `ai-approved` task.
@@ -30,7 +30,8 @@ Phase 4: Implement Tasks -> PRs.
    - Check signals -> Read and follow domain skills (e.g., use `Read` on `skills/hackathon-auth.md`).
    - Implement -> Run tests -> Debug on regression.
 6. **Validate Success**: If `testing: skip` -> skip this step. Otherwise: Run success script -> Must PASS.
-7. **PR**:
+7. **Task Completion Gate**: If `task_completion.human_required: true` -> Present summary (what built, files changed, test results). Wait for "looks good". Loop on changes until approved.
+8. **PR**:
    - `git push -u origin [branch]`.
    - `mcp__github__create_pull_request`: Base = epic branch. Body must include `Closes #<issue-number>` on its own line.
    - Label: `review-ready`.
@@ -38,14 +39,15 @@ Phase 4: Implement Tasks -> PRs.
 
 ## Phase 3: Review Sweep
 After task loop exhausted:
-1. List all `review-ready` issues via MCP. Skip any with `epic` label — those are verify tasks gated by `epic_review`, not `code_review`.
-2. For each remaining: Use the `Read` tool on `skills/hackathon-review.md`. Follow review steps.
-3. If any tasks returned to `ai-approved` (REQUEST CHANGES) -> Return to Phase 2.
+1. List all `review-ready` issues via MCP. Skip any that are **closed**. Skip any whose title matches `[#<n>] Verify epic` — those are gated by `epic_review`, not `code_review`.
+2. For each remaining (open, non-verify): Use the `Read` tool on `skills/hackathon-review.md`. Follow review steps.
+3. If REQUEST CHANGES returned for any issue: Check out its existing branch (from the open PR). Read PR review comments. Apply requested fixes. Push to existing branch (no new PR). Re-run review for that issue. Repeat until APPROVE.
+4. If any new `ai-approved` tasks appeared (discovered scope from review) -> Return to Phase 2.
 
 ## Phase 4: Stale Reclaim
-Check `in-progress` issues with no progress comment in >30 min:
-- Branch pushed? -> Check out + continue from where left off.
-- No branch? -> Re-read issue first. Verify still stale (no recent assignee change or comments). If clear: unassign + reset label to `ai-approved` + comment `agent: reclaiming - no branch, restarting`. Proceed to Phase 2 Step 2 (Branch) directly — skip the Claim step.
+Check `in-progress` issues with no progress comment in >30 min and no assignee activity:
+- Branch pushed? -> Check out + continue from where left off. Use skill-claim normally before resuming.
+- No branch? -> Verify still stale (no recent assignee change or comments). If clear: use skill-claim to re-claim (resets label + assigns self with collision check). Comment `agent: reclaiming - no branch, restarting`.
 
 ## Phase 5: Done
 - No `ai-approved`, no `review-ready`, no stale reclaims remaining.

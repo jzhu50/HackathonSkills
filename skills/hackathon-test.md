@@ -1,6 +1,6 @@
 ---
 description: Run test suite. Report expected vs actual + coverage gaps.
-allowed-tools: mcp__github__*, Read, Bash
+allowed-tools: Read, Bash
 ---
 
 # Skill: hackathon-test

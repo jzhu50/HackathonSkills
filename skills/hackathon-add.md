@@ -24,11 +24,11 @@ Add scope without disrupting active work.
 ## Phase 3: Scope & Spec
 - `grilling: true` -> Call `hackathon-grilling`.
 - Propose Epics -> Wait -> Approve.
-- Update `SPECS.md`. `git commit`.
+- Update `SPECS.md`. `git add SPECS.md; git commit -m "chore: update SPECS.md"; git push origin main`.
 
 ## Phase 4: Sync
-- Create GitHub Project (if new).
-- Create Epic issues (Label: `epic`, `ai-approved`). Add to Project.
+- Create GitHub Project (if new). Record project node ID from MCP response.
+- Create Epic issues (Label: `epic`, `ai-approved`). After each: add to Project using the node ID captured above.
 - Update Tracking Issue.
 
 ## Rules

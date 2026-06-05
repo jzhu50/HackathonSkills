@@ -1,6 +1,6 @@
 ---
 description: Onboarding guide - detects new vs existing project, scans existing codebases to pre-populate PLAN.md and SPECS.md, configures hackathon.config.yml interactively, and walks the user through the full workflow. Run this first.
-allowed-tools: Read, Write, Glob, Grep, Bash
+allowed-tools: mcp__github__*, Read, Write, Glob, Grep, Bash
 ---
 
 # Skill: hackathon-setup
@@ -224,8 +224,8 @@ gates:
 
 **Question 3 - Parallelism**
 > "Should epics be structured into parallel waves (foundations first, then integrations)?
->   A) Yes - wave-based parallel structure (default)
->   B) No - sequential priority order"
+>   A) No - sequential priority order (default)
+>   B) Yes - wave-based parallel structure"
 
 **Question 4 - Repository contract workflows**
 > "Which GitHub Actions workflows should be installed in your project?
@@ -284,8 +284,7 @@ gates:
 quality:
   testing: <required|recommended|skip>
   validation: autonomous-script
-autonomy: total
-parallelism: true
+parallelism: <true if user chose wave-based (Q3-A), false if sequential (Q3-B)>
 actions:
   gitleaks: <true|false>
   codeql: <true|false>
@@ -295,7 +294,14 @@ actions:
   contract: <true|false>
 ```
 
-After writing the config, scaffold enabled workflow templates into `.github/workflows/`
+After writing the config, commit and push it:
+```bash
+git add hackathon.config.yml
+git commit -m "chore: setup config"
+git push origin main
+```
+
+Then scaffold enabled workflow templates into `.github/workflows/`
 using the Write tool for each enabled workflow. Copy from `workflow-templates/` in the
 skills source. Then `git add .github/workflows/ && git commit -m "ci: scaffold repository contract workflows"`.
 

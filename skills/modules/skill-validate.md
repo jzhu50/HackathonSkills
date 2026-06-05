@@ -6,6 +6,10 @@
 
 Validate Definition of Done. Autonomous success script.
 
+## Phase 0: Check Config
+- Read `hackathon.config.yml`. Check `quality.validation`.
+- Value must be `autonomous-script`. Any other value: report unsupported mode and ABORT.
+
 ## Steps
 1. **Define**: Read AC -> Write `success_check.sh` (or `.py`).
 2. **Baseline**: Run script. Must **FAIL**. Exception: if AC is a removal/deletion ("X no longer exists"), a baseline PASS is expected — skip the fail-gate and proceed.

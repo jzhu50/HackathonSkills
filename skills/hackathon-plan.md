@@ -27,7 +27,7 @@ Phase 1: PLAN.md -> Projects + SPECS.md.
 ## Phase 3: Generate
 - Create `SPECS.md` from plan/grilling.
 - Sections: Data Models, API Routes, UI Flows, Rules, Env Vars.
-- `git add SPECS.md; git commit -m "chore: specs"`.
+- `git add SPECS.md; git commit -m "chore: specs"; git push origin main`.
 
 ## Phase 4: GitHub Sync
 - Human Gate: Present -> Wait -> Loop until approved.

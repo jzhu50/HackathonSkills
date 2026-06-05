@@ -1,6 +1,6 @@
 ---
 description: Security scan. Secrets, SQLi, Auth. Blocks PRs on CRITICAL.
-allowed-tools: mcp__github__*, Read, Bash
+allowed-tools: Read, Bash
 ---
 
 # Skill: hackathon-security-audit
@@ -20,10 +20,18 @@ OWASP scan before Epic->Main PR.
 6. **Rate Limit**: Check auth endpoints.
 7. **Deps**: `npm audit --audit-level=high`.
 
-## Output Report
-- **CRITICAL**: Blocks PR. Fix required.
-- **HIGH/MEDIUM**: Note in PR body.
-- **LOW**: Open issue.
+## Output Format
+Return structured report to `hackathon-verify`:
+
+```
+CRITICAL: <finding at file:line, or "none">
+HIGH: <finding, or "none">
+MEDIUM: <finding, or "none">
+LOW: <finding, or "none">
+PASSED: <comma-separated list of checks that passed>
+```
+
+Severity rules: CRITICAL = blocks PR (must fix). HIGH/MEDIUM = note in PR body. LOW = open issue.
 
 ## Rules
 - Report only. Do NOT fix.

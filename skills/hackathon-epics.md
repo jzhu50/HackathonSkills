@@ -20,7 +20,7 @@ Phase 2: Projects -> Epics.
 
 ## Phase 3: GitHub Sync
 - Create Epic issues sequentially.
-- Body: Project, Goal, Context, Dependencies, AC.
+- Body sections (all required): `## Project`, `## Goal`, `## Context`, `## Wave` (if parallelism: true), `## Dependencies`, `## Acceptance Bar`, `## Open Questions`, `## Child Issues` (leave blank — hackathon-decompose fills in).
 - Label: `epic`, `ai-approved`.
 - Assign Epic to GitHub Project.
 

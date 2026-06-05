@@ -16,14 +16,14 @@ Review one PR. Verify AC. Decide.
 - Load `AGENTS.md` and `PLAN.md`.
 
 ## Phase 1: Claim & Collision Check
-- Use the `Read` tool on `skills/modules/skill-claim.md`. Follow its steps (claim target label is `review-ready`; transition to `in-review` instead of `in-progress`).
+- Use the `Read` tool on `skills/modules/skill-claim.md`. Follow its steps. **Target label: `in-review`** (transitions `review-ready` -> `in-review`).
 
 ## Phase 2: Review
 - Read Issue: Goal, AC.
 - Read PR: `mcp__github__get_pull_request_files`.
 - **Mergeable?**: 
   - `null` -> Wait 10s -> Retry.
-  - `conflicted` -> Comment `agent: merge conflict`. Label `in-review` -> `ai-approved`. Unassign. ABORT.
+  - `conflicted` -> Comment `agent: merge conflict`. Label `in-review` -> `review-ready`. Unassign. ABORT.
 - **Evaluate**: 
   - Meets AC?
   - Matches goal?
@@ -39,5 +39,5 @@ Review one PR. Verify AC. Decide.
 - Present findings. Wait for `merge` or `request changes`.
 
 **If Autonomous:**
-- `APPROVE` -> Merge PR (squash for tasks). Auto-close issue. Remove `in-review`.
-- `REQUEST CHANGES` -> Post review. Label `in-review` -> `ai-approved`. Unassign. Comment instructions.
+- `APPROVE` -> Merge PR: **squash if base = epic branch; regular merge commit if base = `main`**. Auto-close issue. Remove `in-review`.
+- `REQUEST CHANGES` -> Post review. Label `in-review` -> `review-ready`. Unassign. Comment instructions for fixer to check out existing branch and push to existing PR (do NOT open a new PR).

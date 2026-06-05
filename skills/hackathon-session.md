@@ -14,7 +14,7 @@ Phase 4: Implement Tasks -> PRs.
 ## Phase 0: Read Config
 - Load `hackathon.config.yml`.
 - Gates: `task_completion`, `code_review`.
-- Quality: `testing`, `validation`, `autonomy`, `history`.
+- Quality: `testing`, `validation`, `autonomy`.
 
 ## Phase 1: Orient
 - `git fetch origin`.

@@ -1,7 +1,7 @@
 # Hackathon Skills v3.1.0
 
 AI agents write code. You control oversight.
-**V3.1.0 Focus**: Autonomous loops, linear history, context hygiene.
+**V3.1.0 Focus**: Autonomous loops, context hygiene.
 
 ## Core Concepts
 - **GitHub = Brain**: Issues, Projects, PRs store all state. No local memory.

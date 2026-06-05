@@ -76,12 +76,13 @@ All gates default to `true` when key is missing. Set `human_required: false` on 
 | `needs-human-review` | Bug/Discovered scope - always needs human judgment |
 | `ai-approved` | Ready for claim |
 | `in-progress` | Active work - has assignee |
+| `blocked` | Dependency open - auto-cleared by session when deps close |
 | `review-ready` | Task done, PR open, waiting for review |
 | `in-review` | Review in progress - prevent double review |
 | `epic` | Parent container |
 | `bug` | Broken - routes to hackathon-debug |
 
-An issue has exactly one of: `needs-human-review`, `ai-approved`, `in-progress`, `review-ready`, `in-review`.
+An issue has exactly one of: `needs-human-review`, `ai-approved`, `in-progress`, `review-ready`, `in-review`. `blocked` and `bug` are additive co-labels.
 
 ---
 

@@ -29,7 +29,7 @@ Final task per epic. E2E Verify -> Main Merge.
   - Add to Epic `Child Issues`. 
   - Verify task -> `ai-approved`. Unassign.
 - **PASS**: 
-  - Open PR: Epic -> Main. Title `[Epic #n] ready`.
+  - Open PR: Epic -> Main. Title `[Epic #n] ready`. Body must include `Closes #<epic-number>` and `Closes #<verify-task-number>` on their own lines.
   - Task label -> `review-ready`.
 
 ## Phase 3: Execute Merge

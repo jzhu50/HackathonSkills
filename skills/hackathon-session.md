@@ -32,14 +32,14 @@ Phase 4: Implement Tasks -> PRs.
 6. **Validate Success**: If `testing: skip` -> skip this step. Otherwise: Run success script -> Must PASS.
 7. **PR**:
    - `git push -u origin [branch]`.
-   - `mcp__github__create_pull_request`: Base = epic branch.
+   - `mcp__github__create_pull_request`: Base = epic branch. Body must include `Closes #<issue-number>` on its own line.
    - Label: `review-ready`.
    - Comment: What built + test results.
 
 ## Phase 3: Review Sweep
 After task loop exhausted:
-1. List all `review-ready` issues via MCP.
-2. For each: Use the `Read` tool on `skills/hackathon-review.md`. Follow review steps.
+1. List all `review-ready` issues via MCP. Skip any with `epic` label — those are verify tasks gated by `epic_review`, not `code_review`.
+2. For each remaining: Use the `Read` tool on `skills/hackathon-review.md`. Follow review steps.
 3. If any tasks returned to `ai-approved` (REQUEST CHANGES) -> Return to Phase 2.
 
 ## Phase 4: Stale Reclaim

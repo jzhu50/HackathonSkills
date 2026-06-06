@@ -28,7 +28,7 @@ Final task per epic. E2E Verify -> Main Merge.
   - File `bug` issues. Label: `needs-human-review` if `task_breakdown.human_required: true`, else `ai-approved`.
   - Add bug issue numbers to Epic `## Child Issues`.
   - Update verify task `## Blocked By` to list all filed bug issue numbers.
-  - Label verify task `blocked`. Unassign. (Unblock sweep re-queues verify when all bugs close.)
+  - Label verify task: remove `in-progress`, set `ai-approved` + `blocked`. Unassign. (Unblock sweep re-queues verify when all bugs close.)
 - **PASS**: 
   - Open PR: Epic -> Main. Title `[Epic #n] ready`. Body must include `Closes #<epic-number>` and `Closes #<verify-task-number>` on their own lines.
   - Task label -> `review-ready`.

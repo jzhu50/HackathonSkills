@@ -16,7 +16,8 @@ Phase 2: Projects -> Epics.
 
 ## Phase 2: Scope
 - Define Done Criteria, Dependencies, AC.
-- Output proposal -> Wait for Human -> Approve.
+- Output proposal.
+- `human_required: true` -> Wait for Human -> Approve. `human_required: false` -> Proceed.
 
 ## Phase 3: GitHub Sync
 - Create Epic issues sequentially.

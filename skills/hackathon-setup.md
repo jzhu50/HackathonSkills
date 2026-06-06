@@ -284,7 +284,7 @@ gates:
 quality:
   testing: <required|recommended|skip>
   validation: autonomous-script
-parallelism: <true if user chose wave-based (Q3-A), false if sequential (Q3-B)>
+parallelism: <true if user chose wave-based (Q3-B), false if sequential (Q3-A)>
 actions:
   gitleaks: <true|false>
   codeql: <true|false>

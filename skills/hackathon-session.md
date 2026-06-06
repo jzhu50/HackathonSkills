@@ -11,10 +11,16 @@ allowed-tools: mcp__github__*, Read, Write, Edit, Bash, Skill
 
 Phase 4: Implement Tasks -> PRs.
 
-## Phase 0: Read Config
+## Phase 0: Read Config + Session Override
 - Load `hackathon.config.yml`.
 - Gates: `task_completion`, `code_review`.
 - Quality: `testing`, `validation`.
+- **Ask Human (once, before any work):**
+  > "Human approval mode for this session?
+  >   A) Yes — approve each task + review manually (config default)
+  >   B) No — auto-PR + auto-merge if no conflicts; human only on conflict"
+- Store answer as `SESSION_AUTO` (`true` if B, `false` if A).
+- `SESSION_AUTO: true` overrides `task_completion.human_required` and `code_review.human_required` to `false` for this session only.
 
 ## Phase 1: Orient
 - `git fetch origin`.
@@ -30,7 +36,7 @@ Phase 4: Implement Tasks -> PRs.
    - Check signals -> Read and follow domain skills (e.g., use `Read` on `skills/hackathon-auth.md`).
    - Implement -> Run tests -> Debug on regression.
 6. **Validate Success**: If `testing: skip` -> skip this step. Otherwise: Run success script -> Must PASS.
-7. **Task Completion Gate**: If `task_completion.human_required: true` -> Present summary (what built, files changed, test results). Wait for "looks good". Loop on changes until approved.
+7. **Task Completion Gate**: If `task_completion.human_required: true` AND `SESSION_AUTO: false` -> Present summary (what built, files changed, test results). Wait for "looks good". Loop on changes until approved.
 8. **PR**:
    - `git push -u origin [branch]`.
    - `mcp__github__create_pull_request`: Base = epic branch. Body must include `Closes #<issue-number>` on its own line.
@@ -41,6 +47,11 @@ Phase 4: Implement Tasks -> PRs.
 After task loop exhausted:
 1. List all `review-ready` issues via MCP. Skip any that are **closed**. Skip any whose title matches `[#<n>] Verify epic` — those are gated by `epic_review`, not `code_review`.
 2. For each remaining (open, non-verify): Use the `Read` tool on `skills/hackathon-review.md`. Follow review steps.
+   - **`SESSION_AUTO: true`**: Check `mergeable` first.
+     - `conflicted` -> Escalate to human: comment `agent: merge conflict - human required`. Label stays `review-ready`. Unassign. Move to next task.
+     - `null` -> Wait 10s -> Retry once. Still null -> Treat as conflict, escalate.
+     - Clean -> APPROVE + squash merge immediately. No human pause.
+   - **`SESSION_AUTO: false`**: Follow full review flow per `hackathon-review.md`.
 3. If REQUEST CHANGES returned for any issue: Check out its existing branch (from the open PR). Read PR review comments. Apply requested fixes. Push to existing branch (no new PR). Re-run review for that issue. Repeat until APPROVE.
 4. If any new `ai-approved` tasks appeared (discovered scope from review) -> Return to Phase 2.
 

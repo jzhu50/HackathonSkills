@@ -12,7 +12,9 @@ Validate Definition of Done. Autonomous success script.
 
 ## Steps
 1. **Define**: Read AC -> Write `success_check.sh` (or `.py`).
-2. **Baseline**: Run script. Must **FAIL**. Exception: if AC is a removal/deletion ("X no longer exists"), a baseline PASS is expected — skip the fail-gate and proceed.
+2. **Baseline**: Run script.
+   - Script errors (syntax, missing deps, wrong path)? -> Fix script. Do NOT count as a meaningful run.
+   - Must **FAIL** (non-zero exit). Exception: if AC is a removal/deletion ("X no longer exists"), a baseline PASS is expected — skip the fail-gate and proceed.
 3. **Loop**: Implement -> Run script until **PASS**.
 4. **Cleanup**: `rm success_check.sh` before PR.
 

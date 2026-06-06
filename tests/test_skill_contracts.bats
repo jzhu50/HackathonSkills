@@ -193,6 +193,48 @@ PYEOF
 }
 
 # ---------------------------------------------------------------------------
+# Issue auto-close correctness: Closes # only triggers on default branch
+# GitHub only auto-closes issues when a PR merges into the default branch.
+# Task PRs target the epic branch — agent must explicitly close via MCP.
+# ---------------------------------------------------------------------------
+
+@test "hackathon-session clarifies Closes # does NOT auto-close for task PRs" {
+  # The skill must warn that Closes # in a task PR body is traceability-only
+  grep -q "does NOT auto-close\|not.*auto-close\|traceability" "$SKILLS/hackathon-session.md"
+}
+
+@test "hackathon-review explicitly closes task issue after squash merge" {
+  # After squash-merging into epic branch, issue must be closed via MCP
+  grep -q "update_issue\|state: closed\|explicitly close" "$SKILLS/hackathon-review.md"
+}
+
+@test "hackathon-review does not rely on Closes # to close task issues" {
+  # Closes # magic must not be the mechanism for task→epic merges
+  # The line about auto-close via Closes # must qualify 'base = main' only
+  ! grep "Auto-close issue" "$SKILLS/hackathon-review.md"
+}
+
+@test "hackathon-review verifies epic auto-close for main-targeting PRs" {
+  # For epic→main, GitHub does auto-close — skill should verify it happened
+  grep -q "get_issue\|Verify.*auto-close\|Verify closure\|verify.*closed" "$SKILLS/hackathon-review.md"
+}
+
+@test "hackathon-verify explicitly closes verify task after epic->main merge" {
+  # Verify task is not an epic — GitHub won't auto-close it via Closes #
+  grep -q "update_issue\|explicitly close\|Explicitly close" "$SKILLS/hackathon-verify.md"
+}
+
+@test "hackathon-session auto mode explicitly closes issue after squash merge" {
+  # SESSION_AUTO fast-merge path must not rely on Closes # either
+  grep "squash merge" "$SKILLS/hackathon-session.md" | grep -q "update_issue\|explicitly close\|Explicitly close"
+}
+
+@test "hackathon-verify confirms epic auto-close via get_issue not assumption" {
+  # Must verify, not assume
+  grep -q "get_issue\|Verify.*auto-close\|Verify via" "$SKILLS/hackathon-verify.md"
+}
+
+# ---------------------------------------------------------------------------
 # Merge rules: no squash on epic->main
 # ---------------------------------------------------------------------------
 

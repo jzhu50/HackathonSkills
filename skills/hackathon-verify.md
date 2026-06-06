@@ -37,7 +37,8 @@ Final task per epic. E2E Verify -> Main Merge.
 **Human Mode**: Stop. Wait for human merge.
 **Autonomous**: 
 - `mcp__github__merge_pull_request`: **MERGE COMMIT** (No squash. Preserve task history).
-- Verify Epic auto-closed. Remove `review-ready` label from verify task.
+- Epic auto-closed via `Closes #<epic-number>` (PR targets main ✓). Verify via `mcp__github__get_issue`.
+  - Verify task itself is NOT auto-closed (it's a task, not an epic). Explicitly close via `mcp__github__update_issue` (state: closed). Remove `review-ready`.
 
 ## Rules
 - **Testing**: Run tests to verify branch.

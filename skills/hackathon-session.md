@@ -39,7 +39,7 @@ Phase 4: Implement Tasks -> PRs.
 7. **Task Completion Gate**: If `task_completion.human_required: true` AND `SESSION_AUTO: false` -> Present summary (what built, files changed, test results). Wait for "looks good". Loop on changes until approved.
 8. **PR**:
    - `git push -u origin [branch]`.
-   - `mcp__github__create_pull_request`: Base = epic branch. Body must include `Closes #<issue-number>` on its own line.
+   - `mcp__github__create_pull_request`: Base = epic branch. Body must include `Closes #<issue-number>` on its own line for traceability. **Note: this does NOT auto-close the issue** (only PRs merging into the default branch trigger auto-close). Issue is closed explicitly by hackathon-review after merge.
    - Label: `review-ready`.
    - Comment: What built + test results.
 
@@ -50,7 +50,7 @@ After task loop exhausted:
    - **`SESSION_AUTO: true`**: Check `mergeable` first.
      - `conflicted` -> Escalate to human: comment `agent: merge conflict - human required`. Label stays `review-ready`. Unassign. Move to next task.
      - `null` -> Wait 10s -> Retry once. Still null -> Treat as conflict, escalate.
-     - Clean -> APPROVE + squash merge immediately. No human pause.
+     - Clean -> APPROVE + squash merge immediately. Explicitly close issue via `mcp__github__update_issue` (state: closed). No human pause.
    - **`SESSION_AUTO: false`**: Follow full review flow per `hackathon-review.md`.
 3. If REQUEST CHANGES returned for any issue: Check out its existing branch (from the open PR). Read PR review comments. Apply requested fixes. Push to existing branch (no new PR). Re-run review for that issue. Repeat until APPROVE.
 4. If any new `ai-approved` tasks appeared (discovered scope from review) -> Return to Phase 2.

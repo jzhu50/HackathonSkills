@@ -39,5 +39,7 @@ Review one PR. Verify AC. Decide.
 - Present findings. Wait for `merge` or `request changes`.
 
 **If Autonomous:**
-- `APPROVE` -> Merge PR: **squash if base = epic branch; regular merge commit if base = `main`**. Auto-close issue. Remove `in-review`.
+- `APPROVE` -> Merge PR: **squash if base = epic branch; regular merge commit if base = `main`**.
+  - Base = **epic branch** (task PR): `Closes #` does NOT auto-close on non-default branch. Explicitly close via `mcp__github__update_issue` (state: closed) after merge. Remove `in-review`.
+  - Base = **main** (epic PR): `Closes #` auto-closes linked issues. Verify closure via `mcp__github__get_issue`. Remove `in-review`.
 - `REQUEST CHANGES` -> Post review. Label `in-review` -> `review-ready`. Unassign. Comment instructions for fixer to check out existing branch and push to existing PR (do NOT open a new PR).

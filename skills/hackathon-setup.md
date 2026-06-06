@@ -241,10 +241,11 @@ For custom (C), ask about each individually:
 - actionlint: lint GitHub Actions workflows?
 - markdownlint: lint PLAN.md, SPECS.md, AGENTS.md?
 - contract: enforce branch/label/issue/env/protected-file rules?
+- unblock_sweep: auto-remove `blocked` label when all dependencies close?
 
 Map answers to `actions:` presets:
 - **A - All:** all keys `true`
-- **B - Security only:** gitleaks, codeql, dependency_review `true`; actionlint, markdownlint, contract `false`
+- **B - Security only:** gitleaks, codeql, dependency_review `true`; actionlint, markdownlint, contract, unblock_sweep `false`
 - **C - Custom:** set each key per answer
 - **D - None:** all keys `false`
 

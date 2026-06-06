@@ -25,7 +25,7 @@ Phase 4: Implement Tasks -> PRs.
 ## Phase 1: Orient
 - `git fetch origin`.
 - `git checkout main; git merge --ff-only origin/main`. Fails? -> Stop. Local main diverged.
-- Unblock: Check `blocked` issues -> Remove label if all `blocked-by` issue numbers are closed.
+- Unblock: Check `blocked` issues -> Remove label if all `blocked-by` issue numbers are closed. (The `unblock-sweep` GitHub Action handles this automatically on issue/PR close; this step catches any that slipped through.)
 
 ## Phase 2: Task Loop
 1. **Claim**: Use the `Read` tool on `skills/modules/skill-claim.md`. Follow its steps to claim `ai-approved` task.

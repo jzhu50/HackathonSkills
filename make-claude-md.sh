@@ -186,7 +186,7 @@ if [ -d "$WORKFLOW_TEMPLATES_DIR" ] && [ -f "$TARGET_DIR/hackathon.config.yml" ]
   mkdir -p "$WORKFLOWS_OUT"
 
   scaffolded=()
-  for pair in "gitleaks:gitleaks.yml" "codeql:codeql.yml" "dependency_review:dependency-review.yml" "actionlint:actionlint.yml" "markdownlint:markdownlint.yml" "contract:hackathon-contract.yml"; do
+  for pair in "gitleaks:gitleaks.yml" "codeql:codeql.yml" "dependency_review:dependency-review.yml" "actionlint:actionlint.yml" "markdownlint:markdownlint.yml" "contract:hackathon-contract.yml" "unblock_sweep:unblock-sweep.yml"; do
     key="${pair%%:*}"
     file="${pair##*:}"
 

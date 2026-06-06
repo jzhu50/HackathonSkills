@@ -39,3 +39,4 @@ actions:
   actionlint: true        # lint .github/workflows/
   markdownlint: true      # lint PLAN.md, SPECS.md, AGENTS.md
   contract: true          # branch/label/issue/env/protected-file contract checks
+  unblock_sweep: true     # auto-remove blocked label when all dependencies close

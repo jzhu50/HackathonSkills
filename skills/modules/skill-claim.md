@@ -1,3 +1,8 @@
+---
+description: Safely claim an issue. Collision prevention. Call before any in-progress or in-review transition.
+allowed-tools: mcp__github__*
+---
+
 # skill-claim
 
 **MANDATES:**

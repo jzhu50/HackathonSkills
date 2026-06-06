@@ -1,3 +1,8 @@
+---
+description: Write and run success_check.sh. Baseline must FAIL before implementing, PASS before PR.
+allowed-tools: Read, Write, Bash
+---
+
 # skill-validate
 
 **MANDATES:**

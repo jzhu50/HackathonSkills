@@ -1,3 +1,8 @@
+---
+description: Sync current branch from target via merge. Call before implementing on any task or verify branch.
+allowed-tools: Bash
+---
+
 # skill-sync
 
 **MANDATES:**
